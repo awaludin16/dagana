@@ -537,6 +537,40 @@ class InventoryManagementTest extends TestCase
             ->assertCreated();
     }
 
+    public function test_active_opname_endpoint(): void
+    {
+        ['user' => $user, 'tenant' => $tenant, 'outlet' => $outlet] = $this->createTenantWithOwner();
+        $token = $this->loginAs($user);
+
+        $headers = array_merge($this->tenantHeader($tenant->id), $this->outletHeader($outlet->id));
+
+        // Belum ada opname berjalan.
+        $this->withToken($token)
+            ->getJson('/api/v1/inventory/opnames/active', $headers)
+            ->assertOk()
+            ->assertJsonPath('data', null);
+
+        $opnameId = $this->withToken($token)
+            ->postJson('/api/v1/inventory/opnames', [], $headers)
+            ->json('data.id');
+
+        // Setelah dimulai → tampil sebagai opname aktif.
+        $this->withToken($token)
+            ->getJson('/api/v1/inventory/opnames/active', $headers)
+            ->assertOk()
+            ->assertJsonPath('data.id', $opnameId);
+
+        $this->withToken($token)
+            ->postJson("/api/v1/inventory/opnames/{$opnameId}/complete", [], $headers)
+            ->assertOk();
+
+        // Setelah selesai → tidak ada lagi yang aktif.
+        $this->withToken($token)
+            ->getJson('/api/v1/inventory/opnames/active', $headers)
+            ->assertOk()
+            ->assertJsonPath('data', null);
+    }
+
     private function addRoleUser(Tenant $tenant, Outlet $outlet, string $roleCode, string $email): User
     {
         $user = User::factory()->create(['email' => $email]);

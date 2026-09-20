@@ -70,6 +70,7 @@ export interface ProductFilters {
   category?: string
   status?: ProductStatus
   page?: number
+  per_page?: number
 }
 
 export function listProducts(filters: ProductFilters = {}): Promise<Paginated<Product>> {

@@ -4,6 +4,7 @@ import { api } from './api'
 const ACCESS_KEY = 'dagana.accessToken'
 const REFRESH_KEY = 'dagana.refreshToken'
 const TENANT_KEY = 'dagana.tenant'
+const OUTLET_KEY = 'dagana.outlet'
 
 export interface TenantLite {
   id: string
@@ -35,6 +36,14 @@ export function setActiveTenant(tenantId: string): void {
   localStorage.setItem(TENANT_KEY, tenantId)
 }
 
+export function getActiveOutlet(): string | null {
+  return localStorage.getItem(OUTLET_KEY)
+}
+
+export function setActiveOutlet(outletId: string): void {
+  localStorage.setItem(OUTLET_KEY, outletId)
+}
+
 export function setSession(session: LoginResult): void {
   localStorage.setItem(ACCESS_KEY, session.access_token)
   localStorage.setItem(REFRESH_KEY, session.refresh_token)
@@ -46,6 +55,7 @@ export function clearSession(): void {
   localStorage.removeItem(ACCESS_KEY)
   localStorage.removeItem(REFRESH_KEY)
   localStorage.removeItem(TENANT_KEY)
+  localStorage.removeItem(OUTLET_KEY)
 }
 
 export async function login(email: string, password: string): Promise<LoginResult> {

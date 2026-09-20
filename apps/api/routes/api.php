@@ -79,6 +79,8 @@ Route::prefix('v1')->group(function () {
 
         // Mutasi + low-stock rules: semua dibatasi outlet context.
         Route::middleware('outlet')->group(function () {
+            Route::get('/opnames/active', [InventoryController::class, 'activeOpname'])
+                ->middleware('permission:inventory.stock_opname');
             Route::post('/adjustments', [InventoryController::class, 'storeAdjustment'])
                 ->middleware('permission:inventory.adjust');
             Route::post('/receivings', [InventoryController::class, 'storeReceiving'])

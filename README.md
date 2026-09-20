@@ -31,7 +31,7 @@ Dokumentasi teknis lengkap di [`docs/`](docs/): [PRD](docs/Dagana_PRD_v0.1.md) �
 |---|---|
 | 0 — Foundation | ✅ baseline: monorepo, backend + auth JWT, tenant/outlet middleware, RBAC, RLS, catalog minimal, seeder demo, CI, 2 frontend |
 | 1 — Catalog | ✅ Phase 1: CRUD produk (SKU/barcode/harga/variant), kategori, filter & soft-delete produk, UI admin (produk + kategori) dengan design system v1 |
-| 2 — Inventory | 📋 terencana |
+| 2 — Inventory | ✅ Phase 2: ledger stok append-only (adjustment, receiving, opname, low-stock rules), mutasi wajib outlet, UI Inventori (badge stok, riwayat movement, dialog adjust/terima barang/opname) |
 | 3 — POS | 📋 terencana |
 | 4 — QR Ordering | 📋 terencana |
 | 5 — Admin Dashboard | 📋 terencana |
@@ -60,7 +60,7 @@ php artisan key:generate
 # set nilai JWT_SECRET di .env (contoh):
 #   php -r "echo bin2hex(random_bytes(32));"
 php artisan migrate --seed    # schema + role/permission + tenant demo
-php artisan test              # 26 test (auth, RBAC, isolasi tenant, catalog)
+php artisan test              # 40 test (auth, RBAC, isolasi tenant, catalog, inventory)
 php artisan serve             # http://localhost:8000
 ```
 

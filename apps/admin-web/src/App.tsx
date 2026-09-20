@@ -4,6 +4,7 @@ import { getToken } from './lib/auth'
 import AppShell from './components/AppShell'
 import CategoriesPage from './pages/CategoriesPage'
 import DashboardPage from './pages/DashboardPage'
+import InventoryPage from './pages/InventoryPage'
 import LoginPage from './pages/LoginPage'
 import NotFoundPage from './pages/NotFoundPage'
 import ProductFormPage from './pages/ProductFormPage'
@@ -34,6 +35,7 @@ export default function App() {
           <Route path="products/new" element={<ProductFormPage />} />
           <Route path="products/:productId/edit" element={<ProductFormPage />} />
           <Route path="categories" element={<CategoriesPage />} />
+          <Route path="inventory" element={<InventoryPage />} />
         </Route>
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

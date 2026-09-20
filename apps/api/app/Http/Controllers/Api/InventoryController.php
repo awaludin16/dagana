@@ -260,6 +260,28 @@ class InventoryController extends Controller
         ]], 201);
     }
 
+    public function activeOpname(Request $request): JsonResponse
+    {
+        $tenantId = $request->attributes->get('tenant_context');
+        $outletId = $request->attributes->get('outlet_context');
+
+        if ($outletId === null) {
+            throw ValidationException::withMessages([
+                'outlet_id' => 'Pilih outlet terlebih dahulu.',
+            ]);
+        }
+
+        $opname = StockOpname::query()
+            ->withCount('adjustments')
+            ->where('tenant_id', $tenantId)
+            ->where('outlet_id', $outletId)
+            ->where('status', StockOpnameStatus::InProgress->value)
+            ->orderByDesc('created_at')
+            ->first();
+
+        return response()->json(['data' => $opname]);
+    }
+
     public function storeOpname(CreateStockOpnameRequest $request): JsonResponse
     {
         $tenantId = $request->attributes->get('tenant_context');

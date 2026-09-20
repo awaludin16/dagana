@@ -9,6 +9,7 @@ const nav = [
   { to: '/', label: 'Dashboard', end: true },
   { to: '/products', label: 'Produk' },
   { to: '/categories', label: 'Kategori' },
+  { to: '/inventory', label: 'Inventori' },
 ]
 
 export default function AppShell() {
