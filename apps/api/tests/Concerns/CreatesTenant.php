@@ -26,14 +26,14 @@ trait CreatesTenant
 
         $user = User::factory()->create(['email' => $email]);
 
-        $tenant = DB::transaction(function () use ($slug) {
+        $tenant = DB::transaction(function () use ($slug, $user) {
             $tenant = Tenant::create([
                 'name' => 'Tenant '.$slug,
                 'slug' => $slug,
                 'status' => 'ACTIVE',
             ]);
 
-            // Konteks RLS agar insert role/outlet (tabel ber-tenant) lolos policy.
+            // Konteks RLS agar insert/kutip role & outlet (tabel ber-tenant) diizinkan policy.
             Rls::setTenantContext($tenant->id);
 
             RolesSeeder::runForTenant($tenant);
@@ -47,22 +47,25 @@ trait CreatesTenant
 
             $tenant->setRelation('outlet', $outlet);
 
+            // Semua dibaca/ditulis di dalam konteks → konsisten di PostgreSQL (RLS aktif).
+            $ownerRoleId = $tenant->roles()->where('code', 'OWNER')->value('id');
+
+            $user->memberships()->create([
+                'tenant_id' => $tenant->id,
+                'role_id' => $ownerRoleId,
+                'status' => 'ACTIVE',
+            ]);
+
+            $user->outletAssignments()->create([
+                'tenant_id' => $tenant->id,
+                'outlet_id' => $outlet->id,
+                'status' => 'ACTIVE',
+            ]);
+
             return $tenant;
         });
 
         $outlet = $tenant->getRelation('outlet');
-
-        $user->memberships()->create([
-            'tenant_id' => $tenant->id,
-            'role_id' => $tenant->roles()->where('code', 'OWNER')->value('id'),
-            'status' => 'ACTIVE',
-        ]);
-
-        $user->outletAssignments()->create([
-            'tenant_id' => $tenant->id,
-            'outlet_id' => $outlet->id,
-            'status' => 'ACTIVE',
-        ]);
 
         return ['user' => $user, 'tenant' => $tenant, 'outlet' => $outlet];
     }

@@ -32,19 +32,19 @@ class DemoTenantSeeder extends Seeder
             ['name' => 'Demo Cafe', 'status' => 'ACTIVE', 'plan' => 'free'],
         );
 
-        $outlet = Outlet::firstOrCreate(
-            ['tenant_id' => $tenant->id, 'name' => 'Bandung'],
-            ['address' => 'Jl. Braga No. 12, Bandung', 'business_type' => 'restaurant'],
-        );
-
-        $user = User::firstOrCreate(
-            ['email' => self::DEMO_EMAIL],
-            ['name' => 'Owner Demo', 'password' => 'password'],
-        );
-
-        DB::transaction(function () use ($tenant, $outlet, $user): void {
-            // Set konteks RLS agar insert katalog & roles tidak ditolak policy.
+        DB::transaction(function () use ($tenant): void {
+            // Set konteks RLS agar insert katalog, roles, & outlet tidak ditolak policy.
             Rls::setTenantContext($tenant->id);
+
+            $outlet = Outlet::firstOrCreate(
+                ['tenant_id' => $tenant->id, 'name' => 'Bandung'],
+                ['address' => 'Jl. Braga No. 12, Bandung', 'business_type' => 'restaurant'],
+            );
+
+            $user = User::firstOrCreate(
+                ['email' => self::DEMO_EMAIL],
+                ['name' => 'Owner Demo', 'password' => 'password'],
+            );
 
             RolesSeeder::runForTenant($tenant);
 

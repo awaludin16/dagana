@@ -204,9 +204,21 @@ class AuthController extends Controller
 
     protected function issueForTenant(User $user, ?string $tenantId, array $session): string
     {
-        $membership = $tenantId
-            ? Membership::with('role')->where('user_id', $user->id)->where('tenant_id', $tenantId)->first()
-            : null;
+        $membership = null;
+
+        if ($tenantId) {
+            // `roles` dilindungi RLS; login/refresh tidak lewat middleware tenant,
+            // jadi konteks harus disetel eksplisit agar relasi role terbaca
+            // (di PostgreSQL policy menyembunyikan baris tanpa konteks).
+            $membership = DB::transaction(function () use ($user, $tenantId) {
+                Rls::setTenantContext($tenantId);
+
+                return Membership::with('role')
+                    ->where('user_id', $user->id)
+                    ->where('tenant_id', $tenantId)
+                    ->first();
+            });
+        }
 
         $outletIds = $tenantId
             ? $user->outletAssignments()->where('tenant_id', $tenantId)->pluck('outlet_id')->all()
