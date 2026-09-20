@@ -130,6 +130,8 @@ return [
     |
     */
 
-    'jwt_secret' => env('JWT_SECRET', env('APP_KEY')),
+    // `?:` — JWT_SECRET kosong ('' dari .env) jangan menghasilkan key terlalu
+    // pendek; fallback ke APP_KEY (harus ≥ 32 byte / base64 dari key:generate).
+    'jwt_secret' => env('JWT_SECRET') ?: env('APP_KEY'),
 
 ];

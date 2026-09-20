@@ -47,9 +47,13 @@ jobs:
       - name: Install dependencies
         working-directory: apps/api
         run: composer install --no-interaction --prefer-dist
-      - name: Env
+      - name: Env & secrets
         working-directory: apps/api
-        run: cp .env.example .env
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+          # Isi JWT_SECRET (baris .env.example sengaja kosong).
+          php -r "\$f = file('.env'); \$f = preg_replace('/^JWT_SECRET=.*$/m', 'JWT_SECRET='.bin2hex(random_bytes(32)), \$f); file_put_contents('.env', \$f);"
       - name: Static analysis & style
         working-directory: apps/api
         run: composer run lint
