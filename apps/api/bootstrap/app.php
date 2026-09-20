@@ -42,11 +42,12 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $exceptions->render(function (HttpException $e, Request $request) {
-            if ($request->is('api/*') && in_array($e->getStatusCode(), [403, 404, 429])) {
+            if ($request->is('api/*') && in_array($e->getStatusCode(), [403, 404, 422, 429])) {
                 return response()->json(['error' => [
                     'code' => match ($e->getStatusCode()) {
                         403 => 'FORBIDDEN',
                         404 => 'NOT_FOUND',
+                        422 => 'UNPROCESSABLE',
                         429 => 'TOO_MANY_REQUESTS',
                         default => 'ERROR',
                     },

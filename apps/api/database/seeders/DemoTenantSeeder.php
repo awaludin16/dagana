@@ -3,12 +3,15 @@
 namespace Database\Seeders;
 
 use App\Models\Category;
+use App\Models\LowStockRule;
 use App\Models\Outlet;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Role;
+use App\Models\StockMovement;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\StockService;
 use App\Support\Rls;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -53,6 +56,7 @@ class DemoTenantSeeder extends Seeder
             $this->firstCreateAssignment($user, $tenant, $outlet);
 
             $this->createDemoCatalog($tenant);
+            $this->seedDemoStock($tenant, $outlet, $user);
         });
     }
 
@@ -117,5 +121,55 @@ class DemoTenantSeeder extends Seeder
             'cost_price' => 9000,
             'status' => 'ACTIVE',
         ]);
+
+        $water = Product::create([
+            'tenant_id' => $tenant->id,
+            'category_id' => $category->id,
+            'name' => 'Air Mineral',
+            'status' => 'ACTIVE',
+        ]);
+
+        ProductVariant::create([
+            'product_id' => $water->id,
+            'tenant_id' => $tenant->id,
+            'sku' => 'AMN-BDG-001',
+            'barcode' => '899'.Str::random(10),
+            'unit' => 'botol',
+            'price' => 5000,
+            'cost_price' => 2500,
+            'status' => 'ACTIVE',
+        ]);
+    }
+
+    /**
+     * Stok awal demo: melalui StockService (jalur resmi — ledger append-only).
+     */
+    private function seedDemoStock(Tenant $tenant, Outlet $outlet, User $user): void
+    {
+        if (StockMovement::where('tenant_id', $tenant->id)->exists()) {
+            return;
+        }
+
+        $service = app(StockService::class);
+        $actorId = (string) $user->id;
+
+        $sugarMilk = ProductVariant::where('tenant_id', $tenant->id)->where('sku', 'KPG-BDG-001')->first();
+        $water = ProductVariant::where('tenant_id', $tenant->id)->where('sku', 'AMN-BDG-001')->first();
+
+        if ($sugarMilk) {
+            $service->move($sugarMilk, (string) $outlet->id, 120, 'RECEIVING', 'RECEIVING', null, 'Stock awal', 'Seed demo', $actorId);
+            LowStockRule::firstOrCreate(
+                ['tenant_id' => $tenant->id, 'product_variant_id' => $sugarMilk->id, 'outlet_id' => null],
+                ['threshold' => 30],
+            );
+        }
+
+        if ($water) {
+            $service->move($water, (string) $outlet->id, 5, 'RECEIVING', 'RECEIVING', null, 'Stock awal', 'Seed demo', $actorId);
+            LowStockRule::firstOrCreate(
+                ['tenant_id' => $tenant->id, 'product_variant_id' => $water->id, 'outlet_id' => null],
+                ['threshold' => 20],
+            );
+        }
     }
 }
