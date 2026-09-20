@@ -109,8 +109,9 @@ class DemoTenantSeeder extends Seeder
 
         ProductVariant::create([
             'product_id' => $product->id,
+            'tenant_id' => $tenant->id,
             'sku' => 'KPG-BDG-001',
-            'barcode' => '899'.Str::random(10),
+            'barcode' => '899' . Str::random(10),
             'unit' => 'cup',
             'price' => 18000,
             'cost_price' => 9000,
