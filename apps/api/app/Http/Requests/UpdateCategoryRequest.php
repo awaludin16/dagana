@@ -6,7 +6,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Validator;
 
-class CreateCategoryRequest extends FormRequest
+class UpdateCategoryRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -27,6 +27,10 @@ class CreateCategoryRequest extends FormRequest
         $validator->after(function (Validator $validator): void {
             if ($this->parent_id === null) {
                 return;
+            }
+
+            if ($this->parent_id === $this->route('category')?->id) {
+                $validator->errors()->add('parent_id', 'Kategori tidak boleh menjadi parent-nya sendiri.');
             }
 
             $parentInTenant = DB::table('categories')

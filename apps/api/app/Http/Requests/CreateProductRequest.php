@@ -2,11 +2,15 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ValidatesVariantKeys;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class CreateProductRequest extends FormRequest
 {
+    use ValidatesVariantKeys;
+
     public function authorize(): bool
     {
         return true;
@@ -37,5 +41,12 @@ class CreateProductRequest extends FormRequest
             'variants.*.price' => ['required', 'numeric', 'min:0'],
             'variants.*.cost_price' => ['nullable', 'numeric', 'min:0'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $this->rejectDuplicateVariantKeys($this, $validator);
+        });
     }
 }

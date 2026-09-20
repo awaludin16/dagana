@@ -1,30 +1,20 @@
-import { useQuery } from '@tanstack/react-query'
 import { LogOut } from 'lucide-react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { Badge } from './ui/badge'
 import { getActiveTenant, logout } from '../lib/auth'
-import { api } from '../lib/api'
+import { useMe } from '../lib/me'
 import { cn } from '../lib/utils'
-
-interface Me {
-  user: { id: string; name: string; email: string }
-  tenants: { id: string; name: string; slug: string }[]
-  current_tenant: string | null
-  permissions: string[]
-}
 
 const nav = [
   { to: '/', label: 'Dashboard', end: true },
   { to: '/products', label: 'Produk' },
+  { to: '/categories', label: 'Kategori' },
 ]
 
 export default function AppShell() {
   const navigate = useNavigate()
   const activeTenant = getActiveTenant()
-  const { data: me } = useQuery({
-    queryKey: ['me'],
-    queryFn: () => api.get<{ data: Me }>('/auth/me').then((r) => r.data.data),
-  })
+  const { data: me } = useMe()
 
   async function handleLogout() {
     await logout()

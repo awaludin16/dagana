@@ -41,3 +41,20 @@ export function errorMessage(error: unknown): string {
   const data = (error as { response?: { data?: { error?: ApiErrorShape } } })?.response?.data
   return data?.error?.message ?? 'Terjadi kesalahan. Coba lagi.'
 }
+
+export interface ApiFieldErrors {
+  [field: string]: string[]
+}
+
+/** Ambil daftar kesalahan per field dari respons 422 Laravel. */
+export function extractFieldErrors(error: unknown): ApiFieldErrors {
+  const data = (error as { response?: { data?: { errors?: ApiFieldErrors } } })?.response?.data
+  const errors = data?.errors
+  if (!errors || typeof errors !== 'object' || Array.isArray(errors)) return {}
+  return errors
+}
+
+/** Pesan error untuk satu field, mis. `variants.0.sku`. */
+export function fieldError(error: unknown, field: string): string | undefined {
+  return extractFieldErrors(error)[field]?.[0]
+}

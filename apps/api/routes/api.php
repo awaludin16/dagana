@@ -50,10 +50,20 @@ Route::prefix('v1')->group(function () {
         Route::get('/categories', [CategoryController::class, 'index']);
         Route::post('/categories', [CategoryController::class, 'store'])
             ->middleware('permission:categories.create');
+        Route::put('/categories/{category}', [CategoryController::class, 'update'])
+            ->middleware('permission:categories.update');
+        Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])
+            ->middleware('permission:categories.delete');
 
         Route::get('/products', [ProductController::class, 'index']);
         Route::post('/products', [ProductController::class, 'store'])
             ->middleware('permission:products.create');
         Route::get('/products/{product}', [ProductController::class, 'show']);
+        Route::put('/products/{product}', [ProductController::class, 'update'])
+            ->middleware('permission:products.update');
+        Route::post('/products/{product}/variants', [ProductController::class, 'addVariant'])
+            ->middleware('permission:products.update');
+        Route::delete('/products/{product}', [ProductController::class, 'destroy'])
+            ->middleware('permission:products.delete');
     });
 });
