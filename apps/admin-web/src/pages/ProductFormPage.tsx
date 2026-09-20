@@ -86,7 +86,17 @@ function ProductForm({ product, productId }: { product?: Product; productId?: st
       qc.invalidateQueries({ queryKey: ['products'] })
       navigate('/products')
     },
-    onError: (error) => setFieldErrors(extractFieldErrors(error)),
+    onError: (error) => {
+      const errors = extractFieldErrors(error)
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors)
+      } else {
+        setFieldErrors({})
+        toast.error(
+          isEdit ? 'Gagal memperbarui produk. Coba lagi.' : 'Gagal membuat produk. Coba lagi.',
+        )
+      }
+    },
   })
 
   const submitDisabled = useMemo(

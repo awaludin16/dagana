@@ -48,6 +48,8 @@ Dokumentasi teknis lengkap di [`docs/`](docs/): [PRD](docs/Dagana_PRD_v0.1.md) Â
 
 > **Nota driver:** driver PHP `pdo_pgsql` wajib aktif untuk PostgreSQL. Tes lokal memakai SQLite in-memory (`phpunit.xml`), jadi `php artisan test` tetap bisa jalan tanpa PostgreSQL.
 
+> **Nota cache/queue dev:** `.env.example` menargetkan `CACHE_STORE=file` + `QUEUE_CONNECTION=sync` sehingga `php artisan serve` langsung jalan **tanpa Redis** (phpredis tidak wajib diinstal). `REDIS_*` & Reverb tetap tersedia untuk stack Docker penuh (`infra/docker/compose.yaml`) dan fase realtime.
+
 ## Menjalankan Backend (Laravel)
 
 ```bash

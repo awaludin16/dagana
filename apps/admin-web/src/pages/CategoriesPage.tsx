@@ -69,7 +69,17 @@ export default function CategoriesPage() {
       qc.invalidateQueries({ queryKey: ['categories'] })
       setDialogOpen(false)
     },
-    onError: (error) => setFieldErrors(extractFieldErrors(error)),
+    onError: (error) => {
+      const errors = extractFieldErrors(error)
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors)
+      } else {
+        setFieldErrors({})
+        toast.error(
+          editing ? 'Gagal memperbarui kategori. Coba lagi.' : 'Gagal membuat kategori. Coba lagi.',
+        )
+      }
+    },
   })
 
   const deleteMutation = useMutation({
