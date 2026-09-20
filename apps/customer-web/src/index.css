@@ -1,1 +1,66 @@
 @import 'tailwindcss';
+
+/* ============================================================================
+   Dagana Design Tokens
+   Sumber kebenaran: docs/UI-UX-Design-System.md (bagian 4-6).
+   Blok @theme ini IDENTIK di admin-web & customer-web.
+   Ubah bersama sekaligus, lalu perbarui dokumentasi.
+   ========================================================================== */
+
+@theme {
+  /* Brand / semantik */
+  --color-primary: #059669;           /* emerald-600 */
+  --color-primary-foreground: #ffffff;
+  --color-primary-soft: #ecfdf5;      /* emerald-50 */
+  --color-ring: #10b981;              /* emerald-500 */
+
+  /* Netral & kanvas */
+  --color-background: #f8fafc;        /* slate-50 */
+  --color-foreground: #0f172a;        /* slate-900 */
+  --color-card: #ffffff;
+  --color-card-foreground: #0f172a;
+  --color-muted: #f1f5f9;             /* slate-100 */
+  --color-muted-foreground: #64748b;  /* slate-500 */
+  --color-border: #e2e8f0;            /* slate-200 */
+  --color-input: #cbd5e1;             /* slate-300 */
+
+  /* Status */
+  --color-success: #059669;
+  --color-warning: #d97706;           /* amber-600 */
+  --color-info: #0284c7;              /* sky-600 */
+  --color-destructive: #e11d48;       /* rose-600 */
+  --color-destructive-foreground: #ffffff;
+
+  /* Sidebar (admin dashboard) */
+  --color-sidebar: #0f172a;           /* slate-900 */
+  --color-sidebar-foreground: #e2e8f0; /* slate-200 */
+  --color-sidebar-muted: #94a3b8;     /* slate-400 */
+  --color-sidebar-border: #1e293b;    /* slate-800 */
+  --color-sidebar-accent: #059669;    /* primary */
+  --color-sidebar-accent-foreground: #ffffff;
+
+  /* Font */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas,
+    'Liberation Mono', monospace;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply antialiased;
+    color-scheme: light;
+  }
+
+  body {
+    @apply bg-background font-sans text-foreground;
+  }
+
+  ::selection {
+    @apply bg-primary text-primary-foreground;
+  }
+}

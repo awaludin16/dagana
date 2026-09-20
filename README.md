@@ -19,7 +19,11 @@ dagana/
 └── .github/workflows/    # CI (test backend, build frontend)
 ```
 
-Dokumentasi teknis lengkap di [`docs/`](docs/): [PRD](docs/Dagana_PRD_v0.1.md) · [Domain Modeling](docs/domain-modeling.md) · [ERD](docs/ERD.md) · [API Spec](docs/API-Specification.md) · [Auth & RBAC](docs/Authentication-RBAC.md) · [System Architecture](docs/System-Architecture.md)
+Dokumentasi teknis lengkap di [`docs/`](docs/): [PRD](docs/Dagana_PRD_v0.1.md) · [Domain Modeling](docs/domain-modeling.md) · [ERD](docs/ERD.md) · [API Spec](docs/API-Specification.md) · [Auth & RBAC](docs/Authentication-RBAC.md) · [System Architecture](docs/System-Architecture.md) · [UI/UX Design System](docs/UI-UX-Design-System.md)
+
+> **Design system:** tokens tema (warna, font, dsb.) — blok `@theme` di `src/index.css` —
+> **identik** di `admin-web` dan `customer-web`; rujukan tunggal: `docs/UI-UX-Design-System.md`.
+> Komponen UI dapat ditemukan di `src/components/ui/*` di kedua app.
 
 ## Status Phase
 

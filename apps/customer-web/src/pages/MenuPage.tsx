@@ -1,25 +1,30 @@
+import { ArrowLeft } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { Card } from '../components/ui/card'
 
 export default function MenuPage() {
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900">
-      <header className="border-b bg-white px-6 py-4">
+    <div className="min-h-screen bg-background text-foreground">
+      <header className="sticky top-0 z-40 border-b bg-card/95 px-6 py-4 backdrop-blur">
         <div className="mx-auto flex max-w-2xl items-center justify-between">
-          <span className="font-bold">Menu</span>
-          <span className="text-xs text-slate-400">Demo Cafe · Bandung</span>
+          <Link to="/" className="inline-flex items-center gap-2 text-sm font-semibold text-foreground">
+            <ArrowLeft className="size-4" aria-hidden />
+            Menu
+          </Link>
+          <span className="text-xs text-muted-foreground">Demo Cafe · Bandung</span>
         </div>
       </header>
 
       <main className="mx-auto max-w-2xl px-6 py-10">
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
-          <p className="text-sm text-slate-500">
-            Endpoint publik menu QR (<code className="rounded bg-slate-100 px-1">.qr/menu</code>)
+        <Card className="border-dashed p-10 text-center">
+          <p className="text-sm text-muted-foreground">
+            Endpoint publik menu QR (<code className="rounded bg-muted px-1 font-mono text-xs">.qr/menu</code>)
             akan diimplementasikan pada Phase 4.
           </p>
-          <Link to="/" className="mt-4 inline-block text-sm text-slate-900 underline">
+          <Link to="/" className="mt-4 inline-block text-sm font-medium text-primary underline underline-offset-4">
             Kembali
           </Link>
-        </div>
+        </Card>
       </main>
     </div>
   )
