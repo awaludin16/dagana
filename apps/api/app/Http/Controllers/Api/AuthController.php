@@ -132,15 +132,30 @@ class AuthController extends Controller
 
         $tenantId = $request->attributes->get('jwt_payload')['tenant_id'] ?? null;
 
+        // Route /auth/me tidak lewat middleware tenant, padahal query membership/
+        // assignment dilindungi RLS (PostgreSQL). Set konteks eksplisit dalam
+        // transaksi agar outlets & permissions terbaca.
+        $outlets = [];
+        $permissions = [];
+
+        if ($tenantId !== null) {
+            [$outlets, $permissions] = DB::transaction(function () use ($user, $tenantId) {
+                Rls::setTenantContext($tenantId);
+
+                return [
+                    $user->outletAssignments()->where('tenant_id', $tenantId)->with('outlet')->get()
+                        ->pluck('outlet')->map(fn ($o) => $o?->only('id', 'name', 'business_type')),
+                    $this->rbac->permissionsFor($user, $tenantId),
+                ];
+            });
+        }
+
         return response()->json(['data' => [
             'user' => $user->only('id', 'name', 'email', 'status'),
             'tenants' => $tenants,
             'current_tenant' => $tenantId,
-            'outlets' => $tenantId
-                ? $user->outletAssignments()->where('tenant_id', $tenantId)->with('outlet')->get()
-                    ->pluck('outlet')->map(fn ($o) => $o?->only('id', 'name', 'business_type'))
-                : [],
-            'permissions' => $tenantId ? $this->rbac->permissionsFor($user, $tenantId) : [],
+            'outlets' => $outlets,
+            'permissions' => $permissions,
         ]]);
     }
 

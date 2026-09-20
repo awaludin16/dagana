@@ -44,15 +44,18 @@ class AuthTest extends TestCase
 
     public function test_me_returns_tenant_context_and_permissions(): void
     {
-        ['user' => $user, 'tenant' => $tenant] = $this->createTenantWithOwner();
+        ['user' => $user, 'tenant' => $tenant, 'outlet' => $outlet] = $this->createTenantWithOwner();
         $token = $this->loginAs($user);
 
         $this->withToken($token)
             ->getJson('/api/v1/auth/me')
             ->assertOk()
             ->assertJsonPath('data.current_tenant', $tenant->id)
-            ->assertJsonStructure(['data' => ['tenants', 'permissions']])
-            ->assertJsonPath('data.permissions.0', 'tenants.read');
+            ->assertJsonStructure(['data' => ['tenants', 'permissions', 'outlets']])
+            ->assertJsonPath('data.permissions.0', 'tenants.read')
+            // OWNER membawa permission produk → UI menampilkan tombol Nonaktifkan.
+            ->assertJsonPath('data.permissions', fn (array $permissions) => in_array('products.delete', $permissions, true))
+            ->assertJsonPath('data.outlets.0.id', $outlet->id);
     }
 
     public function test_refresh_rotates_refresh_token(): void

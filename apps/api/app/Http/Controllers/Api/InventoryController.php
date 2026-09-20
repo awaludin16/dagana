@@ -12,6 +12,7 @@ use App\Http\Requests\CreateStockReceivingRequest;
 use App\Http\Requests\StoreLowStockRuleRequest;
 use App\Http\Requests\UpdateLowStockRuleRequest;
 use App\Models\LowStockRule;
+use App\Models\Outlet;
 use App\Models\ProductVariant;
 use App\Models\Stock;
 use App\Models\StockAdjustment;
@@ -39,10 +40,16 @@ class InventoryController extends Controller
         $tenantId = $request->attributes->get('tenant_context');
         $outletId = $request->attributes->get('outlet_context');
 
+        // Dengan outlet aktif, daftar berisi SEMUA varian tenant — termasuk yang
+        // belum punya baris stok (balance 0) — agar produk baru / baru diaktifkan
+        // langsung tampil di halaman inventori.
+        if ($outletId !== null) {
+            return $this->stocksForOutlet($request, $tenantId, $outletId);
+        }
+
         $stocks = Stock::query()
             ->with(['productVariant.product', 'productVariant.lowStockRules', 'outlet'])
             ->where('tenant_id', $tenantId)
-            ->when($outletId, fn ($q) => $q->where('outlet_id', $outletId))
             ->when(
                 $request->product_variant_id,
                 fn ($q, $variantId) => $q->where('product_variant_id', $variantId),
@@ -74,22 +81,13 @@ class InventoryController extends Controller
             ->paginate($request->integer('per_page', 25));
 
         $stocks->getCollection()->transform(function (Stock $stock) {
-            // Prioritas rule: khusus outlet, baru rule seluruh outlet tenant.
-            $rule = $stock->productVariant->lowStockRules
-                ->filter(fn (LowStockRule $rule) => $rule->outlet_id === $stock->outlet_id || $rule->outlet_id === null)
-                ->sortBy(fn (LowStockRule $rule) => $rule->outlet_id === $stock->outlet_id ? 0 : 1)
-                ->first();
-
-            $threshold = $rule?->threshold;
-            $quantity = (float) $stock->quantity;
+            $badge = $this->stockBadge((float) $stock->quantity, $stock->productVariant->lowStockRules, $stock->outlet_id);
 
             return [
                 'id' => $stock->id,
                 'quantity' => $stock->quantity,
-                'stock_status' => $quantity <= 0
-                    ? 'out_of_stock'
-                    : ($threshold !== null && $quantity < (float) $threshold ? 'low_stock' : 'in_stock'),
-                'threshold' => $threshold,
+                'stock_status' => $badge['stock_status'],
+                'threshold' => $badge['threshold'],
                 'variant' => [
                     'id' => $stock->productVariant->id,
                     'sku' => $stock->productVariant->sku,
@@ -107,6 +105,97 @@ class InventoryController extends Controller
         });
 
         return response()->json($stocks);
+    }
+
+    private function stocksForOutlet(Request $request, string $tenantId, string $outletId): JsonResponse
+    {
+        $outlet = Outlet::query()->where('tenant_id', $tenantId)->find($outletId);
+
+        $variants = ProductVariant::query()
+            ->with(['product', 'lowStockRules'])
+            ->leftJoin('stocks', function ($join) use ($tenantId, $outletId) {
+                $join->on('stocks.product_variant_id', '=', 'product_variants.id')
+                    ->where('stocks.tenant_id', '=', $tenantId)
+                    ->where('stocks.outlet_id', '=', $outletId);
+            })
+            ->where('product_variants.tenant_id', $tenantId)
+            ->when(
+                $request->product_variant_id,
+                fn ($q, $variantId) => $q->where('product_variants.id', $variantId),
+            )
+            ->when($request->search, function ($q, $search) {
+                $needle = '%'.mb_strtolower($search).'%';
+                $q->where(function ($sub) use ($needle) {
+                    $sub->whereRaw('LOWER(product_variants.sku) LIKE ?', [$needle])
+                        ->orWhereHas('product', fn ($p) => $p->whereRaw('LOWER(name) LIKE ?', [$needle]));
+                });
+            })
+            ->when($request->boolean('low_stock'), function ($q) use ($outletId) {
+                $q->where(function ($sub) use ($outletId) {
+                    $sub->whereRaw('(stocks.quantity IS NULL OR stocks.quantity <= 0)')
+                        ->orWhereExists(function ($ex) use ($outletId) {
+                            $ex->selectRaw('1')
+                                ->from('low_stock_rules')
+                                ->whereColumn('low_stock_rules.product_variant_id', 'product_variants.id')
+                                ->where(function ($outlet) use ($outletId) {
+                                    // rule khusus outlet ATAU rule seluruh outlet tenant
+                                    $outlet->where('low_stock_rules.outlet_id', $outletId)
+                                        ->orWhereNull('low_stock_rules.outlet_id');
+                                })
+                                ->whereRaw('low_stock_rules.threshold > COALESCE(stocks.quantity, 0)');
+                        });
+                });
+            })
+            ->select(['product_variants.*', DB::raw('COALESCE(stocks.quantity, 0) as stock_quantity')])
+            ->orderByDesc('product_variants.updated_at')
+            ->paginate($request->integer('per_page', 25));
+
+        $variants->getCollection()->transform(function (ProductVariant $variant) use ($outlet, $outletId) {
+            $quantity = (float) ($variant->stock_quantity ?? 0);
+            $badge = $this->stockBadge($quantity, $variant->lowStockRules, $outletId);
+
+            return [
+                'id' => $variant->id,
+                'quantity' => number_format($quantity, 2, '.', ''),
+                'stock_status' => $badge['stock_status'],
+                'threshold' => $badge['threshold'],
+                'variant' => [
+                    'id' => $variant->id,
+                    'sku' => $variant->sku,
+                    'unit' => $variant->unit,
+                    'product' => [
+                        'id' => $variant->product->id,
+                        'name' => $variant->product->name,
+                    ],
+                ],
+                'outlet' => $outlet ? ['id' => $outlet->id, 'name' => $outlet->name] : null,
+            ];
+        });
+
+        return response()->json($variants);
+    }
+
+    /**
+     * Status stok & ambang yang berlaku. Prioritas rule: khusus outlet dulu,
+     * baru rule seluruh outlet tenant.
+     *
+     * @param  iterable<LowStockRule>  $rules
+     * @return array{stock_status: string, threshold: ?string}
+     */
+    private function stockBadge(float $quantity, iterable $rules, ?string $outletId): array
+    {
+        $threshold = collect($rules)
+            ->filter(fn (LowStockRule $rule) => $rule->outlet_id === $outletId || $rule->outlet_id === null)
+            ->sortBy(fn (LowStockRule $rule) => $rule->outlet_id === $outletId ? 0 : 1)
+            ->first()
+            ?->threshold;
+
+        return [
+            'stock_status' => $quantity <= 0
+                ? 'out_of_stock'
+                : ($threshold !== null && $quantity < (float) $threshold ? 'low_stock' : 'in_stock'),
+            'threshold' => $threshold,
+        ];
     }
 
     public function stockByVariant(Request $request, ProductVariant $variant): JsonResponse
@@ -162,7 +251,49 @@ class InventoryController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate($request->integer('per_page', 25));
 
+        $movements->getCollection()->transform(
+            fn (StockMovement $movement) => $this->movementPayload($movement),
+        );
+
         return response()->json($movements);
+    }
+
+    /**
+     * Bentuk response movement yang konsisten dengan kontrak frontend:
+     * key `variant` (bukan snake_case relasi `product_variant`).
+     *
+     * @return array<string, mixed>
+     */
+    private function movementPayload(StockMovement $movement): array
+    {
+        $variant = $movement->productVariant;
+
+        return [
+            'id' => $movement->id,
+            'quantity' => $movement->quantity,
+            'movement_type' => $movement->movement_type->value,
+            'reference_type' => $movement->reference_type?->value,
+            'reference_id' => $movement->reference_id,
+            'reason' => $movement->reason,
+            'note' => $movement->note,
+            'created_at' => $movement->created_at?->toIso8601String(),
+            'variant' => $variant ? [
+                'id' => $variant->id,
+                'sku' => $variant->sku,
+                'unit' => $variant->unit,
+                'product' => [
+                    'id' => $variant->product->id,
+                    'name' => $variant->product->name,
+                ],
+            ] : null,
+            'outlet' => [
+                'id' => $movement->outlet->id,
+                'name' => $movement->outlet->name,
+            ],
+            'actor' => $movement->actor
+                ? ['id' => $movement->actor->id, 'name' => $movement->actor->name]
+                : null,
+        ];
     }
 
     public function storeAdjustment(CreateStockAdjustmentRequest $request): JsonResponse
@@ -204,7 +335,7 @@ class InventoryController extends Controller
 
         return response()->json(['data' => [
             'adjustment' => $adjustment->load('productVariant.product'),
-            'movement' => $movement->load(['productVariant.product', 'outlet', 'actor']),
+            'movement' => $this->movementPayload($movement->load(['productVariant.product', 'outlet', 'actor'])),
             'balance' => number_format($balance, 2, '.', ''),
         ]], 201);
     }
@@ -254,7 +385,7 @@ class InventoryController extends Controller
         return response()->json(['data' => [
             'receiving' => $receiving->load('items.productVariant.product'),
             'movements' => array_map(
-                fn (StockMovement $movement) => $movement->load('productVariant.product'),
+                fn (StockMovement $movement) => $this->movementPayload($movement->load(['productVariant.product', 'outlet', 'actor'])),
                 $movements,
             ),
         ]], 201);

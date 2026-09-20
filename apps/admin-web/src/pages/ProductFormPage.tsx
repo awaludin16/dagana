@@ -11,6 +11,7 @@ import { Select } from '../components/ui/select'
 import { Skeleton } from '../components/ui/skeleton'
 import { Textarea } from '../components/ui/textarea'
 import { type ApiFieldErrors, extractFieldErrors } from '../lib/api'
+import { normalizeDecimalInput } from '../lib/format'
 import {
   createProduct,
   getProduct,
@@ -66,8 +67,8 @@ function ProductForm({ product, productId }: { product?: Product; productId?: st
           sku: v.sku,
           barcode: v.barcode ?? '',
           unit: v.unit,
-          price: v.price,
-          cost_price: v.cost_price,
+          price: normalizeDecimalInput(v.price),
+          cost_price: normalizeDecimalInput(v.cost_price),
         }))
       : [emptyVariant()],
   )

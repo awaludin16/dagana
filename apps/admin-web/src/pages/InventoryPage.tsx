@@ -38,7 +38,7 @@ import {
 import { Textarea } from '../components/ui/textarea'
 import { getActiveOutlet, setActiveOutlet } from '../lib/auth'
 import { listProducts, type Product } from '../lib/catalog'
-import { formatDateTime, formatNumber } from '../lib/format'
+import { formatDateTime, formatNumber, normalizeDecimalInput } from '../lib/format'
 import {
   addOpnameAdjustment,
   completeOpname,
@@ -481,7 +481,7 @@ function OpnameDialog({ open, onClose }: { open: boolean; onClose: () => void })
             label: `${stock.variant.product.name} · ${stock.variant.sku}`,
             unit: stock.variant.unit,
             system: stock.quantity,
-            counted: stock.quantity,
+            counted: normalizeDecimalInput(stock.quantity),
           })),
         )
         setStage(opname ? 'counting' : 'start')

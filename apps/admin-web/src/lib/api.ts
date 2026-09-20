@@ -1,6 +1,6 @@
 // Lapisan akses API — enkripsi header konteks tenant/outlet & autorisasi.
-import axios from 'axios'
-import { clearSession, getToken } from './auth'
+import axios, { type InternalAxiosRequestConfig } from 'axios'
+import { clearSession, getRefreshToken, getToken, setSession, type LoginResult } from './auth'
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? '/api/v1',
@@ -19,15 +19,54 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+// Satu refresh berjalan dibagi oleh semua request 401 yang datang bersamaan.
+let refreshPromise: Promise<LoginResult> | null = null
+
+// Perbarui access token via refresh token (pakai axios polos supaya tidak
+// masuk loop interceptor). Backend memutar refresh token tiap kali dipakai.
+async function refreshTokens(): Promise<LoginResult> {
+  const refreshToken = getRefreshToken()
+  if (!refreshToken) throw new Error('Tidak ada refresh token.')
+  const { data } = await axios.post<{ data: LoginResult }>(
+    `${api.defaults.baseURL}/auth/refresh`,
+    { refresh_token: refreshToken },
+    { headers: { Accept: 'application/json' } },
+  )
+  setSession(data.data)
+  return data.data
+}
+
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      clearSession()
-      if (window.location.pathname !== '/login') {
-        window.location.assign('/login')
+  async (error) => {
+    const config = error?.config as
+      | (InternalAxiosRequestConfig & { _retry?: boolean })
+      | undefined
+    const status = error?.response?.status
+    const isOnLogin = window.location.pathname === '/login'
+
+    // 401 pada request biasa → coba refresh sekali lalu ulangi request.
+    // Request refresh itu sendiri tidak ikut di-retry (hindari infinite loop).
+    const canRetry =
+      config && status === 401 && !config._retry && !isOnLogin && !config.url?.includes('/auth/refresh')
+
+    if (canRetry) {
+      try {
+        if (!refreshPromise) {
+          refreshPromise = refreshTokens().finally(() => {
+            refreshPromise = null
+          })
+        }
+        await refreshPromise
+        config._retry = true
+        return api(config)
+      } catch {
+        // Refresh gagal → sesi dianggap kedaluwarsa, lanjut ke logout.
       }
     }
+
+    clearSession()
+    if (!isOnLogin) window.location.assign('/login')
     return Promise.reject(error)
   },
 )

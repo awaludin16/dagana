@@ -39,6 +39,14 @@ export function formatNumber(value: number | string | null | undefined): string 
   return numberFormat.format(Number(value))
 }
 
+/** "18000.00" → "18000", "1500.50" → "1500.5", "" → "" (untuk isi input angka). */
+export function normalizeDecimalInput(value: string | null | undefined): string {
+  if (value === null || value === undefined || value === '') return ''
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return value
+  return String(numeric)
+}
+
 /** `2026-09-20T10:30:00` → "20 Sep 2026" */
 export function formatDate(value: string | Date | null | undefined): string {
   if (!value) return '—'

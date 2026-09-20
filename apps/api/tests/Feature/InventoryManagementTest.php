@@ -537,6 +537,66 @@ class InventoryManagementTest extends TestCase
             ->assertCreated();
     }
 
+    public function test_new_variant_without_stock_row_appears_in_stock_list(): void
+    {
+        ['user' => $user, 'tenant' => $tenant, 'outlet' => $outlet] = $this->createTenantWithOwner();
+        $token = $this->loginAs($user);
+        $variant = $this->createProductViaApi($token, $tenant->id, 'NEW-001')['variant'];
+
+        $headers = array_merge($this->tenantHeader($tenant->id), $this->outletHeader($outlet->id));
+
+        // Produk baru belum punya baris stok → tetap tampil di daftar (balance 0).
+        $rows = collect($this->withToken($token)
+            ->getJson('/api/v1/inventory/stocks', $headers)
+            ->assertOk()
+            ->json('data'))
+            ->keyBy('variant.sku');
+
+        $this->assertArrayHasKey('NEW-001', $rows->all());
+        $this->assertSame('0.00', $rows['NEW-001']['quantity']);
+        $this->assertSame('out_of_stock', $rows['NEW-001']['stock_status']);
+
+        // Setelah adjustment, balance tampil ter-update.
+        $this->adjustViaApi($token, $tenant->id, $outlet->id, [
+            'product_variant_id' => $variant['id'], 'quantity' => 5, 'reason' => 'CORRECTION',
+        ])->assertCreated();
+
+        $updated = collect($this->withToken($token)
+            ->getJson('/api/v1/inventory/stocks?search=NEW-001', $headers)
+            ->assertOk()
+            ->json('data'))
+            ->first();
+
+        $this->assertSame('5.00', $updated['quantity']);
+        $this->assertSame('in_stock', $updated['stock_status']);
+    }
+
+    public function test_movements_list_returns_variant_key_for_ui(): void
+    {
+        ['user' => $user, 'tenant' => $tenant, 'outlet' => $outlet] = $this->createTenantWithOwner();
+        $token = $this->loginAs($user);
+        $variant = $this->createProductViaApi($token, $tenant->id, 'MOV-001')['variant'];
+
+        $this->adjustViaApi($token, $tenant->id, $outlet->id, [
+            'product_variant_id' => $variant['id'],
+            'quantity' => 8,
+            'reason' => 'CORRECTION',
+        ])->assertCreated();
+
+        // Kontrak frontend memakai key `variant` (bukan `product_variant`).
+        $this->withToken($token)
+            ->getJson('/api/v1/inventory/stock-movements', array_merge(
+                $this->tenantHeader($tenant->id),
+                $this->outletHeader($outlet->id),
+            ))
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.variant.sku', 'MOV-001')
+            ->assertJsonPath('data.0.variant.product.name', 'Produk MOV-001')
+            ->assertJsonPath('data.0.outlet.id', $outlet->id)
+            ->assertJsonPath('data.0.movement_type', 'ADJUSTMENT');
+    }
+
     public function test_active_opname_endpoint(): void
     {
         ['user' => $user, 'tenant' => $tenant, 'outlet' => $outlet] = $this->createTenantWithOwner();
