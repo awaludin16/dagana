@@ -1,0 +1,91 @@
+# Dagana CI/CD --- baseline Phase 0
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (Laravel)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: dagana_test
+          POSTGRES_USER: dagana
+          POSTGRES_PASSWORD: secret
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U dagana -d dagana_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: pgsql, pdo_pgsql, bcmath, intl, redis
+          coverage: xdebug
+      - name: Cache composer
+        uses: actions/cache@v4
+        with:
+          path: apps/api/vendor
+          key: composer-${{ hashFiles('apps/api/composer.lock') }}
+      - name: Install dependencies
+        working-directory: apps/api
+        run: composer install --no-interaction --prefer-dist
+      - name: Env
+        working-directory: apps/api
+        run: cp .env.example .env
+      - name: Static analysis & style
+        working-directory: apps/api
+        run: composer run lint
+      - name: Tests
+        working-directory: apps/api
+        run: php artisan test
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: dagana_test
+          DB_USERNAME: dagana
+          DB_PASSWORD: secret
+
+  frontend:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [admin-web, customer-web]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: apps/${{ matrix.app }}/package-lock.json
+      - name: Install
+        working-directory: apps/${{ matrix.app }}
+        run: npm ci
+      - name: Lint
+        working-directory: apps/${{ matrix.app }}
+        run: npm run lint
+      - name: Typecheck
+        working-directory: apps/${{ matrix.app }}
+        run: npx tsc -b
+      - name: Build
+        working-directory: apps/${{ matrix.app }}
+        run: npm run build

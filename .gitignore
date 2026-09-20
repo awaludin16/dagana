@@ -1,0 +1,33 @@
+# Dependensi
+/vendor/
+/node_modules/
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+
+# Build & cache
+/build/
+/dist/
+/storage/*.key
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+/storage/logs/*
+/public/build/
+/public/hot
+public/storage
+
+# Tooling
+.phpunit.result.cache
+.coverage
+.phpactor.json
+.php-cs-fixer.cache
+.idea/
+.vscode/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
