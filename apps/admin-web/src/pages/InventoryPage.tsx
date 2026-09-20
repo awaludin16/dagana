@@ -222,8 +222,8 @@ function AdjustDialog({
             <Input
               id="adj-qty"
               type="number"
-              min="0.01"
-              step="0.01"
+              min="0"
+              step="1"
               inputMode="decimal"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
@@ -387,8 +387,8 @@ function ReceivingDialog({ open, onClose }: { open: boolean; onClose: () => void
                   <Input
                     id={`rcv-qty-${index}`}
                     type="number"
-                    min="0.01"
-                    step="0.01"
+                    min="0"
+                    step="1"
                     inputMode="decimal"
                     value={row.quantity}
                     onChange={(e) => updateRow(index, { quantity: e.target.value })}
@@ -403,7 +403,7 @@ function ReceivingDialog({ open, onClose }: { open: boolean; onClose: () => void
                     id={`rcv-cost-${index}`}
                     type="number"
                     min="0"
-                    step="500"
+                    step="100"
                     inputMode="decimal"
                     value={row.cost_price}
                     onChange={(e) => updateRow(index, { cost_price: e.target.value })}
@@ -607,7 +607,7 @@ function OpnameDialog({ open, onClose }: { open: boolean; onClose: () => void })
                       <Input
                         type="number"
                         min="0"
-                        step="0.01"
+                        step="1"
                         inputMode="decimal"
                         value={row.counted}
                         onChange={(e) => updateCounted(index, e.target.value)}
