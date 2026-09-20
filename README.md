@@ -60,7 +60,7 @@ php artisan key:generate
 # set nilai JWT_SECRET di .env (contoh):
 #   php -r "echo bin2hex(random_bytes(32));"
 php artisan migrate --seed    # schema + role/permission + tenant demo
-php artisan test              # 40 test (auth, RBAC, isolasi tenant, catalog, inventory)
+php artisan test              # 42 test (auth, RBAC, isolasi tenant, catalog, inventory)
 php artisan serve             # http://localhost:8000
 ```
 
