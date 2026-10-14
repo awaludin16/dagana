@@ -1,0 +1,34 @@
+# Secrets and local environment files
+.env
+.env.*
+!.env.example
+!.env.docker.example
+apps/api/.env
+
+# PHP / Laravel
+apps/api/vendor/
+apps/api/storage/logs/*
+apps/api/storage/framework/cache/data/*
+apps/api/storage/framework/sessions/*
+apps/api/storage/framework/views/*
+apps/api/bootstrap/cache/*.php
+
+# JavaScript
+node_modules/
+**/node_modules/
+**/dist/
+**/coverage/
+
+# Flutter / Dart
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/build/
+
+# IDE and OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.log
+*.stackdump

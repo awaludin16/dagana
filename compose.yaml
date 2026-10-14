@@ -1,0 +1,70 @@
+name: dagana-dev
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile.dev
+    working_dir: /var/www/html
+    volumes:
+      - ./apps/api:/var/www/html
+    command:
+      - sh
+      - -lc
+      - >-
+        if [ -f artisan ]; then
+          php artisan serve --host=0.0.0.0 --port=8000;
+        else
+          echo 'Laravel belum tersedia di apps/api. Inisialisasi Laravel terlebih dahulu; container dibiarkan idle.';
+          sleep infinity;
+        fi
+    environment:
+      APP_ENV: local
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: ${POSTGRES_DB:-dagana}
+      DB_USERNAME: ${POSTGRES_USER:-dagana}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-dagana_local_only}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-dagana}
+      POSTGRES_USER: ${POSTGRES_USER:-dagana}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dagana_local_only}
+    ports:
+      - "${POSTGRES_PORT:-54329}:5432"
+    volumes:
+      - dagana_postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6380}:6379"
+    volumes:
+      - dagana_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  dagana_postgres_data:
+  dagana_redis_data:
