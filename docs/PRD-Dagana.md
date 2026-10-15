@@ -2347,7 +2347,7 @@ Masih perlu diputuskan:
 
 - [ ] Apakah satu user dapat memiliki beberapa Business
 - [ ] Apakah Owner dapat memiliki beberapa Business
-- [ ] Final permission catalog
+- [x] Final permission catalog
 - [ ] Apakah custom role masuk MVP
 - [ ] Apakah role dapat memiliki outlet-specific permissions
 - [ ] Apakah satu Cash Session hanya boleh memiliki satu operator
