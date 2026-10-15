@@ -14,7 +14,7 @@ Dagana adalah **F&B Business Operating Platform**: POS, order, payment, cash ses
 ```text
 .
 ├── apps/
-│   └── api/             # Laravel 13 API (modular monolith) — Phase 0 aktif
+│   └── api/             # Laravel 13 API (modular monolith) — Phase 0–1
 │       ├── app/
 │       ├── routes/api.php   # endpoint /api/v1
 │       └── tests/
@@ -81,3 +81,5 @@ docker compose --env-file .env.docker down
 - Compose dan PHP built-in server di `Dockerfile.dev` **hanya untuk development**, bukan konfigurasi produksi.
 - Jangan commit `.env.docker` atau `apps/api/.env`.
 - Uang direpresentasikan sebagai integer rupiah; waktu disimpan dalam UTC (lihat `docs/adr/`).
+- Autentikasi API memakai **session cookie SPA** via Sanctum mode stateful (lihat ADR-0005). Klien browser memanggil `GET /sanctum/csrf-cookie` lebih dulu lalu mengirim `X-XSRF-TOKEN`.
+- Endpoint Phase 1: `auth/*`, `me`, `businesses`, dan `outlets`; lihat `docs/api-conventions.md` §5.

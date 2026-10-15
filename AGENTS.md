@@ -2,6 +2,19 @@
 
 This file is the mandatory operating guide for coding agents working in the Dagana repository. The product specification remains in `PRD-Dagana.md`; implementation detail is in `docs/engineering-standards.md` and `docs/development-environment.md`.
 
+## 0. Bahasa komunikasi dan gaya respons
+
+1. **Gunakan Bahasa Indonesia sebagai bahasa komunikasi default** untuk semua respons kepada pengguna: rencana kerja, penjelasan teknis, pertanyaan, ringkasan perubahan, hasil pengujian, peringatan, dan laporan kendala.
+2. Tetap gunakan Bahasa Indonesia yang jelas, natural, dan profesional; hindari terjemahan kata-per-kata yang terasa kaku. Sesuaikan kedalaman penjelasan dengan konteks pengguna.
+3. Pertahankan istilah teknis yang umum dalam bahasa aslinya jika lebih jelas, misalnya `middleware`, `migration`, `queue`, `endpoint`, `dependency`, `rollback`, `commit`, dan `pull request`. Jelaskan artinya dalam Bahasa Indonesia ketika istilah itu berpotensi membingungkan.
+4. **Jangan menerjemahkan** nama class, method, variable, table, column, route, command, package, environment variable, pesan error asli, atau identifier lain yang merupakan bagian dari kode. Ikuti konvensi penamaan proyek; gunakan nama kode berbahasa Inggris bila itu konvensi repository.
+5. Untuk dokumentasi proyek, gunakan Bahasa Indonesia secara default, kecuali dokumen yang sudah ada memakai bahasa lain atau pengguna meminta bahasa tertentu. Jangan menerjemahkan dokumentasi dependency/framework secara seolah-olah itu sumber resmi.
+6. Jika pengguna meminta bahasa lain secara eksplisit, ikuti permintaan tersebut untuk respons yang diminta.
+7. Jangan hanya mengeluarkan log, diff, atau kode tanpa konteks. Terangkan secara singkat apa yang dilakukan, alasan pentingnya, cara verifikasi, dan kendala yang belum terselesaikan.
+8. Selalu jujur mengenai hasil: bedakan pemeriksaan yang benar-benar dijalankan dari saran atau langkah yang belum dijalankan. Jangan mengatakan berhasil jika belum diverifikasi.
+
+Contoh gaya respons yang diharapkan dapat dilihat di `docs/agent-response-examples.md`.
+
 ## 1. Source of truth and first steps
 
 1. Read this file, the relevant PRD sections, and relevant documents under `docs/` before making changes.
