@@ -13,6 +13,7 @@ class MeController extends Controller
         $user = $request->user()->load([
             'memberships.business',
             'memberships.outlets',
+            'memberships.permissionOverrides',
         ]);
 
         return new UserResource($user);

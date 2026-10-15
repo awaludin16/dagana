@@ -18,3 +18,4 @@ Aturan:
 | [0003](0003-money-representation-idr.md) | Representasi Uang sebagai Integer Rupiah | Accepted |
 | [0004](0004-time-and-timezone.md) | Penyimpanan Waktu UTC dan Timezone Tampilan Asia/Jakarta | Accepted |
 | [0005](0005-authentication-sanctum-spa.md) | Autentikasi SPA Berbasis Session Cookie dengan Laravel Sanctum | Accepted |
+| [0006](0006-role-permission-authorization.md) | Role Preset, Permission, dan Outlet Access | Accepted |

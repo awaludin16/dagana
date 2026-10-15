@@ -8,9 +8,18 @@ use App\Domain\Authorization\Enums\RolePreset;
 | Authorization
 |--------------------------------------------------------------------------
 |
-| Role presets map to default permission sets. Only the Owner set is fully
-| exercised in Phase 1 (owner-as-operator). The other presets are provisional
-| defaults and can be tuned before employee management ships (Phase 2).
+| Role presets map to their default permission sets. The catalog and mapping
+| are final for the MVP (docs/decision-log.md D-03/D-04): Owner holds the full
+| catalog plus business-wide outlet access, and custom roles are explicitly
+| out of scope (ADR-0006).
+|
+| Sebuah membership dapat menambah/mencabut permission lewat override eksplisit
+| (tabel membership_permissions) tanpa membuat role baru. Preset di bawah adalah
+| default-nya, bukan batas absolut.
+|
+| Preset Manager sengaja merupakan superset dari preset non-Owner lainnya agar
+| aktor ber-permission `permissions.manage_membership` tidak bisa melakukan
+| eskalasi melalui assignment role (lihat MembershipPermissionManager).
 |
 */
 
@@ -22,20 +31,33 @@ return [
         RolePreset::Owner->value => Permission::values(),
 
         RolePreset::Manager->value => [
+            $p(Permission::BusinessRead),
+            $p(Permission::OutletsRead),
+            $p(Permission::OutletsCreate),
+            $p(Permission::OutletsUpdate),
+            $p(Permission::MembersRead),
+            $p(Permission::MembersInvite),
+            $p(Permission::MembersUpdate),
+            $p(Permission::RolesRead),
+            $p(Permission::PermissionsRead),
+            $p(Permission::PermissionsManageMembership),
+            $p(Permission::CategoriesRead),
+            $p(Permission::CategoriesCreate),
+            $p(Permission::CategoriesUpdate),
+            $p(Permission::CategoriesArchive),
             $p(Permission::ProductsRead),
             $p(Permission::ProductsCreate),
             $p(Permission::ProductsUpdate),
-            $p(Permission::ProductsDelete),
+            $p(Permission::ProductsArchive),
             $p(Permission::OrdersRead),
             $p(Permission::OrdersCreate),
             $p(Permission::OrdersUpdate),
             $p(Permission::OrdersCancel),
-            $p(Permission::OrdersRefund),
             $p(Permission::PaymentsRead),
             $p(Permission::PaymentsCreate),
             $p(Permission::PaymentsRefund),
-            $p(Permission::CashOpen),
             $p(Permission::CashRead),
+            $p(Permission::CashOpen),
             $p(Permission::CashCashIn),
             $p(Permission::CashCashOut),
             $p(Permission::CashClose),
@@ -45,55 +67,63 @@ return [
             $p(Permission::InventoryStockOpname),
             $p(Permission::ReportsRead),
             $p(Permission::ReportsExport),
-            $p(Permission::EmployeesRead),
-            $p(Permission::EmployeesCreate),
-            $p(Permission::EmployeesUpdate),
-            $p(Permission::OutletsRead),
-            $p(Permission::OutletsManage),
-            $p(Permission::SettingsRead),
-            $p(Permission::SettingsUpdate),
             $p(Permission::QrRead),
             $p(Permission::QrManage),
+            $p(Permission::KitchenRead),
+            $p(Permission::KitchenUpdateStatus),
+            $p(Permission::BillingRead),
+            $p(Permission::SettingsRead),
         ],
 
         RolePreset::Cashier->value => [
+            $p(Permission::BusinessRead),
+            $p(Permission::OutletsRead),
+            $p(Permission::CategoriesRead),
             $p(Permission::ProductsRead),
             $p(Permission::OrdersRead),
             $p(Permission::OrdersCreate),
             $p(Permission::OrdersUpdate),
             $p(Permission::PaymentsRead),
             $p(Permission::PaymentsCreate),
-            $p(Permission::CashOpen),
             $p(Permission::CashRead),
+            $p(Permission::CashOpen),
             $p(Permission::CashCashIn),
             $p(Permission::CashCashOut),
             $p(Permission::CashClose),
             $p(Permission::InventoryRead),
-            $p(Permission::OutletsRead),
             $p(Permission::QrRead),
+            $p(Permission::KitchenRead),
         ],
 
         RolePreset::Inventory->value => [
+            $p(Permission::BusinessRead),
+            $p(Permission::OutletsRead),
+            $p(Permission::CategoriesRead),
             $p(Permission::ProductsRead),
-            $p(Permission::ProductsUpdate),
             $p(Permission::InventoryRead),
             $p(Permission::InventoryAdjust),
             $p(Permission::InventoryStockOpname),
             $p(Permission::ReportsRead),
-            $p(Permission::OutletsRead),
         ],
 
         RolePreset::Kitchen->value => [
+            $p(Permission::BusinessRead),
+            $p(Permission::OutletsRead),
+            $p(Permission::CategoriesRead),
             $p(Permission::ProductsRead),
             $p(Permission::OrdersRead),
             $p(Permission::OrdersUpdate),
-            $p(Permission::OutletsRead),
+            $p(Permission::KitchenRead),
+            $p(Permission::KitchenUpdateStatus),
         ],
 
         RolePreset::Staff->value => [
+            $p(Permission::BusinessRead),
+            $p(Permission::OutletsRead),
+            $p(Permission::CategoriesRead),
             $p(Permission::ProductsRead),
             $p(Permission::OrdersRead),
-            $p(Permission::OutletsRead),
+            $p(Permission::KitchenRead),
         ],
     ],
 

@@ -6,8 +6,9 @@ namespace App\Domain\Authorization\Enums;
  * Role presets from the PRD (§14). A role is a bundle of default permissions,
  * not an absolute boundary; permissions remain the source of authorization.
  *
- * The preset-to-permission mapping lives in config/authorization.php so it can
- * be tuned without changing code. The sets below are provisional defaults.
+ * The preset-to-permission mapping lives in config/authorization.php. The preset
+ * set and permission catalog are final for the MVP; custom roles are explicitly
+ * out of scope.
  */
 enum RolePreset: string
 {
