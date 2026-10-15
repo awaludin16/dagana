@@ -1,0 +1,107 @@
+<?php
+
+namespace App\Domain\Organization\Models;
+
+use App\Domain\Authorization\Enums\Permission;
+use App\Domain\Authorization\Enums\RolePreset;
+use App\Domain\Outlet\Models\Outlet;
+use App\Models\User;
+use Database\Factories\MembershipFactory;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\UseFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+
+#[Fillable(['business_id', 'user_id', 'role', 'status'])]
+#[UseFactory(MembershipFactory::class)]
+class Membership extends Model
+{
+    /** @use HasFactory<MembershipFactory> */
+    use HasFactory;
+
+    public const STATUS_ACTIVE = 'active';
+
+    public const STATUS_INVITED = 'invited';
+
+    public const STATUS_DISABLED = 'disabled';
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'role' => RolePreset::class,
+        ];
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    /**
+     * @return BelongsTo<Business, $this>
+     */
+    public function business(): BelongsTo
+    {
+        return $this->belongsTo(Business::class);
+    }
+
+    /**
+     * Outlets a non-owner member is explicitly granted access to.
+     *
+     * @return BelongsToMany<Outlet, $this>
+     */
+    public function outlets(): BelongsToMany
+    {
+        return $this->belongsToMany(Outlet::class, 'membership_outlet')->withTimestamps();
+    }
+
+    public function isActive(): bool
+    {
+        return $this->status === self::STATUS_ACTIVE;
+    }
+
+    /**
+     * Permission values granted by this membership's role preset.
+     *
+     * @return array<int, string>
+     */
+    public function permissions(): array
+    {
+        return $this->role?->permissions() ?? [];
+    }
+
+    public function hasPermission(Permission $permission): bool
+    {
+        return $this->isActive()
+            && in_array($permission->value, $this->permissions(), strict: true);
+    }
+
+    /**
+     * Owner has business-wide outlet access (PRD §13.3).
+     */
+    public function hasAllOutletAccess(): bool
+    {
+        return $this->role?->hasBusinessWideOutletAccess() ?? false;
+    }
+
+    public function hasOutletAccess(Outlet $outlet): bool
+    {
+        if (! $this->isActive()) {
+            return false;
+        }
+
+        if ($this->hasAllOutletAccess()) {
+            return true;
+        }
+
+        return $this->outlets()->whereKey($outlet->getKey())->exists();
+    }
+}

@@ -45,9 +45,22 @@ Aturan:
 
 ## 4. Autentikasi dan otorisasi
 
-- Endpoint yang dilindungi memerlukan token; mekanisme token ditetapkan pada Phase 1 (Identity).
+Autentikasi memakai **session cookie SPA** melalui Laravel Sanctum mode stateful (lihat ADR-0005), bukan Bearer token pada Phase 1.
+
+Alur klien SPA:
+
+1. Panggil `GET /sanctum/csrf-cookie` (middleware `web`) untuk menerima cookie `XSRF-TOKEN`.
+2. Kirim request dengan `credentials: 'include'` dan header `X-XSRF-TOKEN` untuk method yang mengubah data.
+3. Panggil `POST /api/v1/auth/login` atau `POST /api/v1/auth/register`; session cookie akan diset.
+4. Panggil `POST /api/v1/auth/logout` untuk mencabut session.
+
+Aturan:
+
+- Endpoint yang dilindungi memakai middleware `auth:sanctum`; request tanpa session valid menerima `401`.
 - Business/outlet context diambil dari membership terautentikasi di backend, tidak pernah dari input client (lihat ADR-0002).
+- `business_id`/`outlet_id` dari client tidak dipercaya; route model binding di-scope ke membership aktif dan mengembalikan `404` bila tidak dapat diakses.
 - Setiap endpoint tenant-owned wajib memiliki test isolasi lintas tenant.
+- Role bersifat preset permission; otorisasi memakai pengecekan permission eksplisit, bukan label role (lihat `config/authorization.php` dan `app/Domain/Authorization/Enums/Permission.php`).
 
 ## 5. Endpoint fondasi
 
@@ -55,6 +68,19 @@ Aturan:
 | --- | --- | --- | --- |
 | GET | `/api/v1/health` | Tidak | Status API + konektivitas database & cache |
 | GET | `/up` | Tidak | Health check runtime (bawaan Laravel) |
+| GET | `/sanctum/csrf-cookie` | Tidak | Menyetel cookie CSRF untuk SPA |
+| POST | `/api/v1/auth/register` | Tidak | Registrasi user; otomatis login (throttle 6/menit) |
+| POST | `/api/v1/auth/login` | Tidak | Login user (throttle 6/menit) |
+| POST | `/api/v1/auth/logout` | Ya | Logout + invalidasi session |
+| GET | `/api/v1/me` | Ya | Profil user + membership (business, outlet, permission) |
+| GET | `/api/v1/businesses` | Ya | Daftar business milik user |
+| POST | `/api/v1/businesses` | Ya | Buat business + owner membership (+ outlet pertama opsional) |
+| GET | `/api/v1/businesses/{business}` | Ya | Detail business (owner anggota) |
+| PATCH | `/api/v1/businesses/{business}` | Ya | Ubah setting business (permission `settings.update`) |
+| GET | `/api/v1/businesses/{business}/outlets` | Ya | Daftar outlet (permission `outlets.read`) |
+| POST | `/api/v1/businesses/{business}/outlets` | Ya | Buat outlet (permission `outlets.manage`) |
+| GET | `/api/v1/outlets/{outlet}` | Ya | Detail outlet (perlu akses outlet) |
+| PATCH | `/api/v1/outlets/{outlet}` | Ya | Ubah outlet (permission `outlets.manage` + akses outlet) |
 
 ## 6. Pagination dan limit
 
