@@ -1,5 +1,6 @@
 import { Outlet, NavLink, Link } from 'react-router-dom'
 import { Layout, House, ShoppingCart, ClipboardText, Warehouse, Coins, DotsThree } from '@phosphor-icons/react'
+import { UserInfo } from './UserInfo'
 
 const navItems = [
   { to: '/', label: 'Dasbor', icon: House },
@@ -19,6 +20,7 @@ export function RootLayout() {
             <Layout className="size-5" />
             <span className="text-sm font-semibold tracking-tight">Dagana</span>
           </Link>
+          <UserInfo />
         </div>
       </header>
       <main className="mx-auto w-full max-w-screen-2xl flex-1 px-4 pb-20 pt-4 md:pb-4">
