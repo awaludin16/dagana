@@ -58,4 +58,20 @@ class RolePresetPermissionTest extends TestCase
             $this->assertFalse($role->hasBusinessWideOutletAccess());
         }
     }
+
+    public function test_manager_preset_is_a_superset_of_every_other_non_owner_preset(): void
+    {
+        $manager = RolePreset::Manager->permissions();
+
+        foreach ([RolePreset::Cashier, RolePreset::Inventory, RolePreset::Kitchen, RolePreset::Staff] as $role) {
+            $this->assertSame(
+                [],
+                array_diff($role->permissions(), $manager),
+                "Manager preset must cover [{$role->value}] so it cannot escalate by assigning it."
+            );
+        }
+
+        // Owner is deliberately not a subset of Manager: only an Owner may create another Owner.
+        $this->assertNotSame([], array_diff(RolePreset::Owner->permissions(), $manager));
+    }
 }

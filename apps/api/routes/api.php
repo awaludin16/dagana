@@ -6,7 +6,10 @@ use App\Http\Controllers\Api\V1\Auth\RegisterController;
 use App\Http\Controllers\Api\V1\BusinessController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\MeController;
+use App\Http\Controllers\Api\V1\MembershipController;
 use App\Http\Controllers\Api\V1\OutletController;
+use App\Http\Controllers\Api\V1\PermissionController;
+use App\Http\Controllers\Api\V1\RoleController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', HealthController::class);
@@ -37,4 +40,18 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
     Route::get('/outlets/{outlet}', [OutletController::class, 'show']);
     Route::patch('/outlets/{outlet}', [OutletController::class, 'update']);
+
+    // Role preset and permission catalogs for employee assignment UI.
+    Route::get('/roles', [RoleController::class, 'index']);
+    Route::get('/permissions', [PermissionController::class, 'index']);
+
+    // Employee (membership) management; {membership} is scoped to {business}.
+    Route::get('/businesses/{business}/members', [MembershipController::class, 'index']);
+    Route::post('/businesses/{business}/members', [MembershipController::class, 'store']);
+    Route::patch('/businesses/{business}/members/{membership}', [MembershipController::class, 'update'])
+        ->scopeBindings();
+    Route::post('/businesses/{business}/members/{membership}/disable', [MembershipController::class, 'disable'])
+        ->scopeBindings();
+    Route::post('/businesses/{business}/members/{membership}/enable', [MembershipController::class, 'enable'])
+        ->scopeBindings();
 });

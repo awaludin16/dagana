@@ -28,7 +28,7 @@ class OutletPolicy
         $membership = $this->membership($user, $outlet);
 
         if ($membership === null
-            || ! $membership->hasPermission(Permission::OutletsManage)
+            || ! $membership->hasPermission(Permission::OutletsUpdate)
             || ! $membership->hasOutletAccess($outlet)) {
             return Response::denyAsNotFound();
         }

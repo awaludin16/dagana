@@ -2,11 +2,11 @@
 
 > **Product Requirements Document (PRD)**
 
-| Field   | Value                                                                                                                                                        |
-| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Version | Draft v1.1 — Engineering Baseline                                                                                                                                         |
-| Status  | Draft                                                                                                                                                        |
-| Purpose | Menjadi acuan utama untuk product strategy, domain modeling, ERD, API specification, authorization design, system architecture, dan implementation planning. |
+| Field    | Value                                                                                                                                                                     |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Version  | Draft v1.1 — Engineering Baseline                                                                                                                                         |
+| Status   | Draft                                                                                                                                                                     |
+| Purpose  | Menjadi acuan utama untuk product strategy, domain modeling, ERD, API specification, authorization design, system architecture, dan implementation planning.              |
 
 ---
 
@@ -726,52 +726,84 @@ OWNER
 + payments.*
 + cash.*
 + reports.*
-+ employees.*
++ members.*
 + settings.*
 ```
 
 Namun permission tetap menjadi sumber authorization.
 
+Custom role tidak disediakan pada MVP; penyesuaian di tingkat individu dilakukan lewat override permission per membership (lihat §15.2 dan `docs/decision-log.md` D-04).
+
 ---
 
 ## 15. Permission Model
 
-Contoh permission:
+Katalog permission **final untuk MVP** mengikuti baseline yang ditinjau di `docs/decision-log.md` D-03. Permission dinyatakan eksplisit per resource/action.
 
 ```text
+business.read
+business.update
+
+outlets.read
+outlets.create
+outlets.update
+outlets.disable
+
+members.read
+members.invite
+members.update
+members.disable
+
+roles.read
+permissions.read
+permissions.manage_membership
+
+categories.read
+categories.create
+categories.update
+categories.archive
+
 products.read
 products.create
 products.update
-products.delete
+products.archive
+
 orders.read
 orders.create
 orders.update
 orders.cancel
-orders.refund
+
 payments.read
 payments.create
 payments.refund
-cash.open
+
 cash.read
+cash.open
 cash.cash_in
 cash.cash_out
 cash.close
 cash.reconcile
+
 inventory.read
 inventory.adjust
 inventory.stock_opname
+
 reports.read
 reports.export
-employees.read
-employees.create
-employees.update
-employees.disable
-outlets.read
-outlets.manage
-settings.read
-settings.update
+
 qr.read
 qr.manage
+
+kitchen.read
+kitchen.update_status
+
+billing.read
+billing.manage_settings
+
+audit.read
+
+settings.read
+settings.update
 ```
 
 ### 15.1 Important Rule
@@ -790,10 +822,22 @@ Tidak peduli apakah role-nya:
 OWNER
 CASHIER
 MANAGER
-CUSTOM ROLE
 ```
 
 Authorization ditentukan oleh permission.
+
+### 15.2 Override Permission per Membership
+
+Role adalah preset default, bukan batas absolut. Sebuah membership dapat memiliki **override permission eksplisit** tanpa membuat custom role (D-04):
+
+- `allow` menambah kemampuan di luar preset role.
+- `deny` mencabut permission yang seharusnya diberikan preset.
+- Permission efektif = `(preset ∪ allow) \ deny`. `deny` selalu menang atas preset.
+- Override hanya boleh diubah oleh aktor yang memiliki permission `permissions.manage_membership`.
+- Aktor tidak dapat memberikan role atau permission yang tidak dimilikinya sendiri (anti-eskalasi).
+- Membership Owner selalu memegang seluruh katalog permission; override pada Owner diabaikan agar administrasi bisnis tidak terkunci.
+
+Override disimpan pada tabel `membership_permissions` dan ditegakkan di backend. Lihat `ADR-0006`.
 
 ---
 
@@ -810,7 +854,7 @@ Cash
 Products
 Reports
 Inventory
-Employees
+Members
 Business Settings
 Outlet Settings
 Billing
@@ -881,27 +925,27 @@ Keduanya berada dalam aplikasi yang sama.
 
 ## 19. Core Modules
 
-| Module        | Responsibility                  |
-| ------------- | ------------------------------- |
-| Identity      | Authentication, user            |
-| Organization  | Business, membership            |
-| Outlet        | Outlet & operating context      |
-| Authorization | Role, permission, outlet access |
-| Catalog       | Menu, category, price           |
-| Sales         | Order, transaction              |
-| POS           | Selling workflow                |
-| Payment       | Payment & settlement            |
-| Cash          | Cash Session                    |
-| Inventory     | Stock & movement                |
-| Recipe        | Recipe/BOM                      |
-| Ordering      | POS/QR order                    |
-| Tables        | Table & session                 |
-| Kitchen       | Preparation workflow            |
-| Customers     | Customer data                   |
-| Reporting     | Sales & business reports        |
-| Billing       | Platform fee                    |
-| Audit         | Critical activity history       |
-| Notification  | Realtime/system notification    |
+| Module         | Responsibility                   |
+| -------------- | -------------------------------- |
+| Identity       | Authentication, user             |
+| Organization   | Business, membership             |
+| Outlet         | Outlet & operating context       |
+| Authorization  | Role, permission, outlet access  |
+| Catalog        | Menu, category, price            |
+| Sales          | Order, transaction               |
+| POS            | Selling workflow                 |
+| Payment        | Payment & settlement             |
+| Cash           | Cash Session                     |
+| Inventory      | Stock & movement                 |
+| Recipe         | Recipe/BOM                       |
+| Ordering       | POS/QR order                     |
+| Tables         | Table & session                  |
+| Kitchen        | Preparation workflow             |
+| Customers      | Customer data                    |
+| Reporting      | Sales & business reports         |
+| Billing        | Platform fee                     |
+| Audit          | Critical activity history        |
+| Notification   | Realtime/system notification     |
 
 ---
 
@@ -2232,21 +2276,21 @@ tanpa employee?
 
 ## 58. Development Phases
 
-| Phase    | Focus                        |
-| -------- | ---------------------------- |
-| Phase 0  | Foundation                   |
-| Phase 1  | Identity, Business, Outlet   |
-| Phase 2  | Membership, Role, Permission |
-| Phase 3  | Catalog                      |
-| Phase 4  | POS + Payment                |
-| Phase 5  | Cash Session                 |
-| Phase 6  | Basic Inventory              |
-| Phase 7  | Reporting                    |
-| Phase 8  | QR Ordering                  |
-| Phase 9  | Realtime                     |
-| Phase 10 | Billing                      |
-| Phase 11 | Stabilization                |
-| Phase 12 | Advanced F&B Operations      |
+| Phase     | Focus                         |
+| --------- | ----------------------------- |
+| Phase 0   | Foundation                    |
+| Phase 1   | Identity, Business, Outlet    |
+| Phase 2   | Membership, Role, Permission  |
+| Phase 3   | Catalog                       |
+| Phase 4   | POS + Payment                 |
+| Phase 5   | Cash Session                  |
+| Phase 6   | Basic Inventory               |
+| Phase 7   | Reporting                     |
+| Phase 8   | QR Ordering                   |
+| Phase 9   | Realtime                      |
+| Phase 10  | Billing                       |
+| Phase 11  | Stabilization                 |
+| Phase 12  | Advanced F&B Operations       |
 
 Urutan dapat berubah berdasarkan hasil validasi dan implementation dependency.
 
@@ -2312,68 +2356,101 @@ Object Storage
 
 ## 60. Key Architectural Decisions
 
-| Area            | Decision                              |
-| --------------- | ------------------------------------- |
-| Product         | F&B Business Operating Platform       |
-| Primary ICP     | Micro / Small F&B                     |
-| Product Core    | POS + Transaction + Cash              |
-| Owner           | Owner can operate POS                 |
-| Operator        | User with relevant permission         |
-| Organization    | User → Membership → Business → Outlet |
-| Authorization   | Permission-based                      |
-| Role            | Permission preset                     |
-| Outlet Access   | Explicit scope                        |
-| Cash            | Cash Session                          |
-| Shift           | Not complex in MVP                    |
-| Inventory       | Basic MVP                             |
-| Recipe          | Later / optional based on scope       |
-| QR              | Optional channel                      |
-| Backend         | Laravel                               |
-| Architecture    | Modular Monolith                      |
-| API             | REST                                  |
-| Database        | PostgreSQL                            |
-| Cache/Queue     | Redis                                 |
-| POS             | Flutter                               |
-| Admin           | React                                 |
-| Customer Web    | React                                 |
-| Billing         | Usage-based                           |
-| Source of Truth | PostgreSQL/backend                    |
+| Area             | Decision                               |
+| ---------------- | -------------------------------------- |
+| Product          | F&B Business Operating Platform        |
+| Primary ICP      | Micro / Small F&B                      |
+| Product Core     | POS + Transaction + Cash               |
+| Owner            | Owner can operate POS                  |
+| Operator         | User with relevant permission          |
+| Organization     | User → Membership → Business → Outlet  |
+| Authorization    | Permission-based                       |
+| Role             | Permission preset                      |
+| Outlet Access    | Explicit scope                         |
+| Cash             | Cash Session                           |
+| Shift            | Not complex in MVP                     |
+| Inventory        | Basic MVP                              |
+| Recipe           | Later / optional based on scope        |
+| QR               | Optional channel                       |
+| Backend          | Laravel                                |
+| Architecture     | Modular Monolith                       |
+| API              | REST                                   |
+| Database         | PostgreSQL                             |
+| Cache/Queue      | Redis                                  |
+| POS              | Flutter                                |
+| Admin            | React                                  |
+| Customer Web     | React                                  |
+| Billing          | Usage-based                            |
+| Source of Truth  | PostgreSQL/backend                     |
 
 ---
 
-## 61. Open Decisions
+## 61. Decision Baseline & Deferred Business Gates
 
-Masih perlu diputuskan:
+Bagian ini menetapkan **rekomendasi baseline Dagana v1** untuk menutup daftar open decisions yang muncul selama perencanaan. Ini merupakan usulan keputusan produk/teknis yang harus ditinjau oleh Product Owner sebelum dianggap disetujui secara resmi. Rincian alasan, implikasi implementasi, dan kriteria verifikasi terdapat di `docs/decision-log.md`.
 
-- [ ] Apakah satu user dapat memiliki beberapa Business
-- [ ] Apakah Owner dapat memiliki beberapa Business
-- [x] Final permission catalog
-- [ ] Apakah custom role masuk MVP
-- [ ] Apakah role dapat memiliki outlet-specific permissions
-- [ ] Apakah satu Cash Session hanya boleh memiliki satu operator
-- [ ] Apakah satu outlet dapat memiliki beberapa Cash Session aktif
-- [ ] Aturan Cash Session ketika operator berganti
-- [ ] Unit conversion inventory
-- [ ] Inventory costing method
-- [ ] Final COGS formula
-- [ ] Final billing formula
-- [ ] Platform fee rate
-- [ ] Billing due date
-- [ ] Payment gateway
-- [ ] QR payment gateway
-- [ ] WebSocket provider
-- [ ] Object storage
-- [ ] Thermal printer
-- [ ] Barcode hardware
-- [ ] Local database Flutter
-- [ ] Offline conflict strategy
-- [ ] Split payment
-- [ ] Modifier inventory impact
-- [ ] Outlet-specific pricing
-- [ ] Customer login
-- [ ] KDS target phase
-- [ ] Audit retention
-- [ ] Backup/disaster recovery
+Prinsip umum:
+
+- Keputusan harus menjaga workflow merchant tetap sederhana dan mendukung Owner sebagai operator.
+- Authorization selalu ditentukan oleh permission efektif dan cakupan Business/Outlet, bukan nama role saja.
+- PostgreSQL/backend tetap menjadi source of truth untuk transaksi tersinkronisasi.
+- Hal komersial, kontraktual, perangkat fisik, atau operasional produksi boleh memiliki gate yang jelas; jangan menggantinya dengan asumsi tersembunyi di dalam kode.
+
+### 61.1 Rekomendasi Keputusan
+
+| No. | Area                                 | Rekomendasi baseline Dagana v1                                                                                                                                                                   | Status                           |
+| --: | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------- |
+|   1 | Satu User memiliki beberapa Business | Ya. Relasi melalui Business Membership.                                                                                                                                                          | Direkomendasikan                 |
+|   2 | Owner memiliki beberapa Business     | Ya. Owner adalah membership-scoped ke setiap Business.                                                                                                                                           | Direkomendasikan                 |
+|   3 | Permission catalog                   | Gunakan permission eksplisit per resource/action; lihat `docs/decision-log.md`.                                                                                                                  | Direkomendasikan                 |
+|   4 | Custom role di MVP                   | Tidak. MVP memakai role preset bawaan; permission per membership dapat disesuaikan tanpa membuat role baru.                                                                                      | Direkomendasikan                 |
+|   5 | Permission spesifik per Outlet       | Belum untuk MVP. Permission berlaku pada semua outlet yang diberikan ke membership; outlet access tetap diperiksa terpisah.                                                                      | Direkomendasikan                 |
+|   6 | Operator per Cash Session            | Satu operator yang bertanggung jawab untuk setiap Cash Session.                                                                                                                                  | Direkomendasikan                 |
+|   7 | Banyak Cash Session aktif per Outlet | Boleh untuk operator berbeda; maksimal satu session aktif per operator per outlet.                                                                                                               | Direkomendasikan                 |
+|   8 | Pergantian operator                  | Operator lama menutup dan merekonsiliasi session; operator baru membuka session baru. Session tidak dialihkan.                                                                                   | Direkomendasikan                 |
+|   9 | Unit conversion inventory            | Gunakan base unit per item dan konversi terkontrol untuk massa, volume, serta unit hitung.                                                                                                       | Direkomendasikan                 |
+|  10 | Inventory costing                    | Moving Weighted Average Cost; aktifkan costing saat fitur valuation/recipe dibangun.                                                                                                             | Direkomendasikan                 |
+|  11 | Formula COGS                         | Jumlah bahan yang dikonsumsi × biaya unit rata-rata tertimbang pada waktu transaksi; simpan snapshot historis.                                                                                   | Direkomendasikan                 |
+|  12 | Formula billing                      | Platform fee = tarif konfigurasi × eligible net sales; definisi dan pengecualian di `docs/decision-log.md`.                                                                                      | Direkomendasikan                 |
+|  13 | Platform fee rate                    | Jangan hardcode tarif. Pilot tertutup menggunakan 0%; tarif komersial wajib disetujui sebelum billing berbayar diaktifkan.                                                                       | Gate komersial                   |
+|  14 | Billing due date                     | Statement bulanan diterbitkan tanggal 1 periode berikutnya; jatuh tempo 7 hari kalender setelah diterbitkan. Tidak ada pemblokiran POS otomatis di MVP.                                          | Direkomendasikan                 |
+|  15 | Payment gateway                      | Gunakan Xendit sebagai kandidat integrasi pertama melalui adapter/provider interface; live launch menunggu validasi settlement dan persetujuan akun/kontrak merchant.                            | Gate produksi                    |
+|  16 | QR payment gateway                   | Gunakan QRIS dinamis melalui provider yang sama dengan payment gateway pertama; status pembayaran dikonfirmasi server-side melalui webhook terverifikasi.                                        | Direkomendasikan                 |
+|  17 | WebSocket provider                   | Laravel Reverb untuk tahap awal, dengan database tetap menjadi source of truth.                                                                                                                  | Direkomendasikan                 |
+|  18 | Object storage                       | Gunakan API S3-compatible; MinIO untuk development lokal. Provider produksi ditetapkan ketika infrastruktur produksi dipilih.                                                                    | Direkomendasikan / gate produksi |
+|  19 | Thermal printer                      | Printer bukan dependency untuk menyelesaikan transaksi MVP. Buat `PrinterService`/adapter dan validasi satu model ESC/POS pada pilot; Android Bluetooth menjadi kandidat awal.                   | Gate perangkat                   |
+|  20 | Barcode hardware                     | Di luar MVP. SKU/barcode boleh disiapkan sebagai data opsional; pemilihan scanner mengikuti validasi merchant.                                                                                   | Ditunda pasca-MVP                |
+|  21 | Local database Flutter               | SQLite melalui Drift untuk data terstruktur, migrasi, dan antrean lokal.                                                                                                                         | Direkomendasikan                 |
+|  22 | Offline conflict strategy            | Offline POS terbatas: cache katalog, cash sale lokal, idempotency key, antrean sinkronisasi, snapshot harga, serta penandaan selisih stok/harga; QR dan pembayaran eksternal memerlukan koneksi. | Direkomendasikan                 |
+|  23 | Split payment                        | Tidak masuk MVP. Satu order menggunakan satu metode pembayaran; split tender dapat dievaluasi setelah alur pembayaran dasar stabil.                                                              | Ditunda pasca-MVP                |
+|  24 | Modifier inventory impact            | Implementasikan bersama Recipe/BOM di roadmap lanjutan. Modifier hanya mengubah stok bila memiliki aturan konsumsi bahan yang eksplisit.                                                         | Ditunda sampai Recipe/BOM        |
+|  25 | Outlet-specific pricing              | Tidak masuk MVP; harga menu berlaku di tingkat Business untuk semua Outlet.                                                                                                                      | Ditunda pasca-MVP                |
+|  26 | Customer login                       | QR Ordering menggunakan guest-first flow; login pelanggan tidak diwajibkan untuk membuat order.                                                                                                  | Direkomendasikan                 |
+|  27 | Target KDS                           | Kitchen Queue dan status dasar masuk lingkup QR/realtime; KDS lanjutan ditunda ke roadmap pasca-MVP.                                                                                             | Direkomendasikan                 |
+|  28 | Audit retention                      | Target awal: searchable minimal 24 bulan, lalu dapat diarsipkan. Penghapusan final tunduk pada kebijakan retensi dan tinjauan hukum sebelum produksi.                                            | Gate kebijakan                   |
+|  29 | Backup/disaster recovery             | Backup terenkripsi off-site, target RPO ≤ 1 jam dan RTO ≤ 4 jam untuk produksi, retensi backup 30 hari, dan uji pemulihan berkala.                                                               | Gate produksi                    |
+
+### 61.2 Gate Sebelum Launch Produksi
+
+Hal berikut tidak boleh diam-diam ditetapkan oleh coding agent:
+
+1. Tarif platform fee final, syarat komersial, dan perlakuan pajak/tagihan harus disetujui Product Owner sebelum billing berbayar diaktifkan.
+2. Model onboarding merchant, settlement dana, refund, dan kontrak provider pembayaran harus diverifikasi sebelum menerima pembayaran live. Gunakan sandbox sampai gate ini lulus.
+3. Provider object storage produksi, konfigurasi backup, dan pengujian restore harus ditetapkan sebelum menyimpan data merchant produksi.
+4. Model printer yang didukung harus dinyatakan berdasarkan pengujian perangkat nyata; jangan mengklaim dukungan universal.
+5. Kebijakan retensi audit dan data pribadi harus melalui tinjauan kebijakan/hukum sebelum penghapusan otomatis atau peluncuran produksi.
+
+### 61.3 Cara Mengubah Keputusan
+
+Setiap perubahan atas keputusan di bagian ini harus:
+
+- menyebut keputusan yang berubah dan alasannya;
+- menjelaskan pengaruhnya terhadap skema database, API, security, UX, dan data yang sudah tersimpan;
+- memperbarui PRD dan `docs/decision-log.md` secara bersamaan;
+- menambahkan ADR jika perubahan berdampak arsitektural atau berisiko tinggi;
+- menyertakan test atau bukti verifikasi yang relevan.
+
+Coding agent boleh melaporkan alternatif yang lebih baik, tetapi tidak boleh mengganti keputusan berstatus baseline secara diam-diam.
 
 ---
 
@@ -2460,22 +2537,22 @@ Atau secara sederhana:
 
 ### Document Status
 
-| Property         | Value                        |
-| ---------------- | ---------------------------- |
-| Product          | Dagana                       |
-| Version | Draft v1.1 — Engineering Baseline |
-| Product Focus    | F&B                          |
-| Primary ICP      | Micro / Small F&B            |
-| Core User Model  | Owner-as-Operator            |
-| Core Product     | POS + Payment + Cash Session |
-| Supporting Core  | Basic Inventory + Reporting  |
-| Optional Channel | QR Ordering                  |
-| Authorization    | Permission-based             |
-| Cash Model       | Cash Session                 |
-| Architecture     | Modular Monolith             |
-| Database         | PostgreSQL                   |
-| Business Model   | Usage-based Platform Fee     |
-| Next Step        | Domain Modeling & UX Flow    |
+| Property          | Value                             |
+| ----------------- | --------------------------------- |
+| Product           | Dagana                            |
+| Version           | Draft v1.1 — Engineering Baseline |
+| Product Focus     | F&B                               |
+| Primary ICP       | Micro / Small F&B                 |
+| Core User Model   | Owner-as-Operator                 |
+| Core Product      | POS + Payment + Cash Session      |
+| Supporting Core   | Basic Inventory + Reporting       |
+| Optional Channel  | QR Ordering                       |
+| Authorization     | Permission-based                  |
+| Cash Model        | Cash Session                      |
+| Architecture      | Modular Monolith                  |
+| Database          | PostgreSQL                        |
+| Business Model    | Usage-based Platform Fee          |
+| Next Step         | Domain Modeling & UX Flow         |
 
 ---
 

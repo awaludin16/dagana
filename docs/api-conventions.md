@@ -76,11 +76,47 @@ Aturan:
 | GET | `/api/v1/businesses` | Ya | Daftar business milik user |
 | POST | `/api/v1/businesses` | Ya | Buat business + owner membership (+ outlet pertama opsional) |
 | GET | `/api/v1/businesses/{business}` | Ya | Detail business (owner anggota) |
-| PATCH | `/api/v1/businesses/{business}` | Ya | Ubah setting business (permission `settings.update`) |
+| PATCH | `/api/v1/businesses/{business}` | Ya | Ubah business (permission `business.update`) |
 | GET | `/api/v1/businesses/{business}/outlets` | Ya | Daftar outlet (permission `outlets.read`) |
-| POST | `/api/v1/businesses/{business}/outlets` | Ya | Buat outlet (permission `outlets.manage`) |
-| GET | `/api/v1/outlets/{outlet}` | Ya | Detail outlet (perlu akses outlet) |
-| PATCH | `/api/v1/outlets/{outlet}` | Ya | Ubah outlet (permission `outlets.manage` + akses outlet) |
+| POST | `/api/v1/businesses/{business}/outlets` | Ya | Buat outlet (permission `outlets.create`) |
+| GET | `/api/v1/outlets/{outlet}` | Ya | Detail outlet (permission `outlets.read` + akses outlet) |
+| PATCH | `/api/v1/outlets/{outlet}` | Ya | Ubah outlet (permission `outlets.update` + akses outlet) |
+| GET | `/api/v1/roles` | Ya | Katalog role preset + permission bawaannya (katalog statis; dibaca semua user terautentikasi) |
+| GET | `/api/v1/permissions` | Ya | Katalog permission final MVP (katalog statis; dibaca semua user terautentikasi) |
+| GET | `/api/v1/businesses/{business}/members` | Ya | Daftar membership employee (permission `members.read`) |
+| POST | `/api/v1/businesses/{business}/members` | Ya | Tambah employee terdaftar via email (permission `members.invite`) |
+| PATCH | `/api/v1/businesses/{business}/members/{membership}` | Ya | Ubah role, outlet access, dan/atau override permission (permission `members.update`, plus `permissions.manage_membership` bila override diubah) |
+| POST | `/api/v1/businesses/{business}/members/{membership}/disable` | Ya | Nonaktifkan membership (permission `members.disable`) |
+| POST | `/api/v1/businesses/{business}/members/{membership}/enable` | Ya | Aktifkan kembali membership (permission `members.update`) |
+
+Catatan employee management:
+
+- Katalog permission dan enam role preset (Owner, Manager, Cashier, Inventory, Kitchen, Staff) bersifat **final untuk MVP**; custom role di luar scope. Katalog mengikuti `docs/decision-log.md` D-03; lihat PRD §15.
+- Permission `roles.read`/`permissions.read` tersedia di katalog untuk gating UI fase berikutnya; endpoint katalog `/roles` dan `/permissions` saat ini dapat dibaca semua user terautentikasi karena isinya konfigurasi statis, bukan data tenant.
+- Flow invite Fase 2 menargetkan **user Dagana yang sudah terdaftar** (dicari via `email`) dan langsung membuat membership `active`. Undangan berbasis email/token serta infrastruktur mail adalah pekerjaan lanjutan.
+- `outlet_ids` hanya berlaku untuk role non-Owner; Owner selalu memiliki business-wide outlet access sehingga grant outlet eksplisit diabaikan.
+- Sebuah business wajib menyisakan **minimal satu Owner aktif**. Upaya menurunkan role atau menonaktifkan Owner terakhir ditolak dengan `409 Conflict`.
+- `{membership}` di-scope ke `{business}` melalui route model binding; membership milik tenant lain menghasilkan `404`.
+
+### 5.1 Override permission per membership (D-04)
+
+`POST` dan `PATCH` membership menerima dua field opsional:
+
+```json
+{
+  "permission_grants": ["reports.export"],
+  "permission_denials": ["payments.create"]
+}
+```
+
+- Permission efektif membership = `(preset role ∪ permission_grants) \ permission_denials`. `permission_denials` selalu menang atas preset.
+- Mengubah override memerlukan permission `permissions.manage_membership` sebagai tambahan `members.update`.
+- **Anti-eskalasi:** aktor hanya boleh memberikan role atau permission yang dimilikinya sendiri; jika tidak, respons `403`.
+- Satu permission tidak boleh muncul sekaligus di `permission_grants` dan `permission_denials` (`422`).
+- Nilai permission di luar katalog D-03 ditolak (`422`).
+- Membership **Owner** selalu memegang seluruh katalog; override pada Owner diabaikan.
+- Respons membership menyertakan `permissions` (efektif), `preset_permissions`, `permission_grants`, dan `permission_denials`.
+
 
 ## 6. Pagination dan limit
 

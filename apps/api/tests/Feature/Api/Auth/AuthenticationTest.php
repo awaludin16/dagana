@@ -77,12 +77,13 @@ class AuthenticationTest extends TestCase
             ->role(RolePreset::Owner)
             ->create();
 
-        $this->actingAs($user)
+        $response = $this->actingAs($user)
             ->getJson('/api/v1/me')
             ->assertOk()
             ->assertJsonPath('data.email', $user->email)
             ->assertJsonPath('data.memberships.0.role', 'owner')
-            ->assertJsonPath('data.memberships.0.business.id', $business->id)
-            ->assertJsonPath('data.memberships.0.permissions.0', 'products.read');
+            ->assertJsonPath('data.memberships.0.business.id', $business->id);
+
+        $this->assertContains('products.read', $response->json('data.memberships.0.permissions'));
     }
 }

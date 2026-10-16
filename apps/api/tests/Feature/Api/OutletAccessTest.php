@@ -87,8 +87,8 @@ class OutletAccessTest extends TestCase
             ->create();
         $membership->outlets()->attach($outlet->id);
 
-        // Kitchen has outlets.read in the provisional catalog, so this should
-        // succeed while a role without outlets.read (none in Phase 1) would not.
+        // Kitchen has outlets.read in the catalog, so listing succeeds while a
+        // role without outlets.read would receive a 403.
         $this->actingAs($kitchen)
             ->getJson("/api/v1/businesses/{$business->id}/outlets")
             ->assertOk();

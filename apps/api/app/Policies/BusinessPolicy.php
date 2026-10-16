@@ -11,12 +11,12 @@ class BusinessPolicy
 {
     public function view(User $user, Business $business): bool
     {
-        return $this->membership($user, $business) !== null;
+        return $this->membership($user, $business)?->hasPermission(Permission::BusinessRead) ?? false;
     }
 
     public function update(User $user, Business $business): bool
     {
-        return $this->membership($user, $business)?->hasPermission(Permission::SettingsUpdate) ?? false;
+        return $this->membership($user, $business)?->hasPermission(Permission::BusinessUpdate) ?? false;
     }
 
     public function viewOutlets(User $user, Business $business): bool
@@ -26,7 +26,22 @@ class BusinessPolicy
 
     public function createOutlet(User $user, Business $business): bool
     {
-        return $this->membership($user, $business)?->hasPermission(Permission::OutletsManage) ?? false;
+        return $this->membership($user, $business)?->hasPermission(Permission::OutletsCreate) ?? false;
+    }
+
+    public function viewEmployees(User $user, Business $business): bool
+    {
+        return $this->membership($user, $business)?->hasPermission(Permission::MembersRead) ?? false;
+    }
+
+    public function createEmployee(User $user, Business $business): bool
+    {
+        return $this->membership($user, $business)?->hasPermission(Permission::MembersInvite) ?? false;
+    }
+
+    public function manageMembershipPermissions(User $user, Business $business): bool
+    {
+        return $this->membership($user, $business)?->hasPermission(Permission::PermissionsManageMembership) ?? false;
     }
 
     private function membership(User $user, Business $business): ?Membership
