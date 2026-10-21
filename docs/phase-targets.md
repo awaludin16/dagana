@@ -30,6 +30,7 @@ Fokus: identitas user, konteks business, dan outlet, beserta tenant scoping.
 - [x] Dokumentasi alur CSRF/SPA di `docs/api-conventions.md`.
 - [x] `User -> Membership -> Business -> Outlet`; satu user dapat menjadi anggota banyak business (D-01, D-02).
 - [x] Pembuatan business menghasilkan membership Owner dan opsional outlet pertama.
+- [x] Pengelolaan outlet setelah onboarding: list terpaginasikan, create, update, disable/enable; riwayat operasional tidak dihapus (`OutletController`, `OutletAccessTest`).
 - [x] Tenant scoping: `business`/`outlet` di-resolve dari membership aktif, bukan input client (ADR-0002). Akses lintas tenant `404`.
 - [x] Otorisasi outlet memeriksa permission **dan** akses outlet.
 - [x] Test isolasi lintas tenant dan outlet access lulus.
@@ -41,7 +42,7 @@ Fokus: pengelolaan employee, role preset, katalog permission, dan switch ke otor
 - [x] Katalog permission final MVP mengikuti `docs/decision-log.md` D-03 (`App\Domain\Authorization\Enums\Permission`); `GET /api/v1/permissions` mengembalikannya.
 - [x] Enam role preset (Owner, Manager, Cashier, Inventory, Kitchen, Staff) dipetakan ke permission di `config/authorization.php`; `GET /api/v1/roles` mengembalikan preset + permission bawaannya.
 - [x] Custom role tidak disediakan pada MVP (D-04).
-- [x] Pengelolaan membership: list, invite (user terdaftar via email, membership langsung `active`), update role/outlet access, disable, enable.
+- [x] Pengelolaan membership: list terpaginasikan, undangan email/token untuk email belum terdaftar atau sudah terdaftar, terima undangan setelah login/register, update role/outlet access, disable, enable.
 - [x] Owner memegang seluruh katalog + business-wide outlet access; grant outlet eksplisit untuk Owner diabaikan.
 - [x] Outlet access eksplisit untuk non-Owner; outlet di luar cakupan `404`.
 - [x] **Override permission per membership (D-04)**: tabel `membership_permissions` dengan effect `allow`/`deny`; permission efektif = `(preset ∪ allow) \ deny`; `deny` menang atas preset.
@@ -53,11 +54,59 @@ Fokus: pengelolaan employee, role preset, katalog permission, dan switch ke otor
 - [x] Resource membership mengekspos `permissions` (efektif), `preset_permissions`, `permission_grants`, `permission_denials`.
 - [x] Test: permission granted/denied, override + anti-eskalasi, membership inactive, tenant isolation, akses outlet, invariant owner terakhir.
 
-### Dependency terbuka setelah Phase 2 (bukan blocker fase)
+### Dependency setelah Phase 2
 
 - [ ] Audit log untuk perubahan membership/role/permission penting — menunggu modul Audit (Phase 11). Dicatat sebagai dependency di ADR-0006.
-- [ ] Undangan berbasis email/token beserta infrastruktur mail/queue — ditunda; Phase 2 menargetkan user terdaftar.
-- [ ] Pagination daftar membership — ditunda selama jumlah employee per business masih kecil; ditinjau kembali bila data bertambah.
+- [ ] Konfigurasi provider email/queue yang sesuai environment diperlukan untuk pengiriman undangan di luar local/test.
+
+## Integrasi frontend Phase 0–2
+
+Bagian ini mencatat cakupan UI Owner/Admin (`apps/admin-web`), bukan mengganti acceptance
+criteria backend di atas. Health check Phase 0 adalah endpoint operasional dan tidak
+memerlukan layar khusus merchant.
+
+### Phase 0
+
+- (N/A) Tidak ada workflow merchant Phase 0 yang memerlukan layar. Aplikasi web berjalan
+  terpisah dari health endpoint API.
+
+### Phase 1
+
+- [x] Register, login, logout, dan pemuatan `/me` memakai session Sanctum; kegagalan
+  pemuatan sesi ditampilkan dan dapat dicoba ulang.
+- [x] User tanpa membership aktif diarahkan ke onboarding untuk membuat business dan
+  opsional outlet pertama.
+- [x] Owner/Admin dapat mengelola outlet melalui CRUD yang aman: membuat, membaca, mengubah,
+  menonaktifkan, dan mengaktifkan kembali outlet; outlet nonaktif tidak tersedia untuk operasi
+  baru, tetapi histori tetap dipertahankan.
+- [x] Pengguna dengan beberapa membership aktif dapat memilih business; pemilihan outlet
+  menampilkan akses yang diberikan membership (Owner memperoleh daftar outlet
+  business-wide). Pemilihan UI tidak menggantikan scoping otoritatif backend.
+
+### Phase 2
+
+- [x] Halaman Anggota menampilkan membership business aktif dan memakai katalog role serta
+  permission dari API.
+- [x] Pengguna berwenang dapat mengundang email yang belum terdaftar maupun terdaftar,
+  mengubah role/outlet, mengatur override sesuai permission yang dimiliki, serta
+  mengaktifkan/nonaktifkan anggota.
+- [x] Penerima dapat menyelesaikan undangan dengan token yang acak, kedaluwarsa, sekali pakai,
+  dan terikat ke email; membership aktif baru dibuat setelah identitas terautentikasi cocok.
+- [x] Daftar anggota, undangan, dan outlet menggunakan pagination API dengan batas `per_page`; UI
+  menyediakan navigasi halaman dan state loading, empty, error, serta retry.
+- [x] UI menangani status loading, empty, error, dan konflik Owner terakhir; otorisasi,
+  validasi, serta anti-eskalasi tetap ditegakkan oleh API.
+
+### Shell Owner/Admin
+
+- [x] Logo resmi Dagana digunakan pada shell aplikasi.
+- [x] Semua fitur utama yang tersedia memiliki tautan navigasi eksplisit; halaman "Lainnya"
+  tidak menjadi tempat penampung fitur utama.
+- [x] Semua breakpoint menggunakan drawer kiri yang tersembunyi secara default dan bisa
+  ditoggle; drawer dapat ditutup dengan Escape/overlay/navigasi dan menjaga akses keyboard.
+
+Integrasi ini tersedia pada Owner/Admin web. Customer Web dan Flutter POS belum terdapat
+di workspace frontend saat ini.
 
 ---
 

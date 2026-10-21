@@ -40,6 +40,14 @@ class Business extends Model
     }
 
     /**
+     * @return HasMany<MemberInvitation, $this>
+     */
+    public function invitations(): HasMany
+    {
+        return $this->hasMany(MemberInvitation::class);
+    }
+
+    /**
      * Active memberships that hold the Owner preset.
      *
      * @return HasMany<Membership, $this>

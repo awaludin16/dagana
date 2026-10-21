@@ -8,18 +8,20 @@ services:
     working_dir: /var/www/html
     volumes:
       - ./apps/api:/var/www/html
+      - ./docker/php/opcache-dev.ini:/usr/local/etc/php/conf.d/99-opcache-dev.ini:ro
     command:
       - sh
       - -lc
       - >-
         if [ -f artisan ]; then
-          php artisan serve --host=0.0.0.0 --port=8000;
+          php artisan serve --host=0.0.0.0 --port=8000 --no-reload;
         else
           echo 'Laravel belum tersedia di apps/api. Inisialisasi Laravel terlebih dahulu; container dibiarkan idle.';
           sleep infinity;
         fi
     environment:
       APP_ENV: local
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       DB_CONNECTION: pgsql
       DB_HOST: postgres
       DB_PORT: 5432
@@ -28,6 +30,7 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD:-dagana_local_only}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      PHP_CLI_SERVER_WORKERS: ${PHP_CLI_SERVER_WORKERS:-4}
     ports:
       - "${API_PORT:-8000}:8000"
     depends_on:

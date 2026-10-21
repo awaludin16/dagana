@@ -121,6 +121,14 @@ curl http://localhost:8000/api/v1/health
 
 `/api/v1/health` returns `{"data":{"status":"ok","checks":{...}}}` and reports the database and cache connectivity.
 
+The development PHP server enables OPcache with timestamp checks and runs four
+CLI server workers by default, so concurrent SPA requests do not queue behind one
+single worker. PHP source changes are detected within at most two seconds. On
+Windows, keep the repository in the WSL2 Linux filesystem (for example,
+`~/developments/dagana`) rather than under `/mnt/c` or a Windows-mounted path
+when possible; bind-mounted PHP/vendor files on Windows can make every request
+slow even when the database is nearly empty.
+
 ### Autentikasi (SPA session, Phase 1)
 
 The API uses Sanctum's stateful SPA mode (session cookie + CSRF), not Bearer tokens (ADR-0005). A browser client must send an `Origin` from `SANCTUM_STATEFUL_DOMAINS`. From a shell, add the `Origin` header so the request is treated as stateful:
@@ -150,7 +158,7 @@ Useful commands:
 docker compose --env-file .env.docker logs -f api postgres redis
 
 # Run Laravel commands
-docker compose --env-file .env.docker exec api php artisan test
+docker compose --env-file .env.docker exec api composer test
 docker compose --env-file .env.docker exec api php artisan route:list
 
 # Install/update Composer dependencies in the mounted API workspace
@@ -159,6 +167,10 @@ docker compose --env-file .env.docker exec api composer install
 # Stop containers but preserve local database data
 docker compose --env-file .env.docker down
 ```
+
+Test PHPUnit menggunakan SQLite in-memory dari `phpunit.xml`; jangan mengarahkan `RefreshDatabase`
+ke PostgreSQL lokal yang menyimpan data development. Script `composer test` menjalankan PHPUnit
+langsung agar test bootstrap memakai konfigurasi tersebut sebelum aplikasi Laravel dimuat.
 
 Do not use `docker compose down -v` casually: `-v` removes named volumes and can permanently delete local database data.
 

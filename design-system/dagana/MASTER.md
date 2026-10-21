@@ -22,11 +22,12 @@ dengan bagian lain di file ini, bagian ini yang menang.
 1. **Karakter produk:** operational tool untuk bisnis F&B — bukan landing page, bukan
    dashboard enterprise. Ikuti `docs/UIUX-Design-Dagana.md` (terutama §61–§64 anti AI-slop)
    sebagai otoritas UX; file ini adalah pelengkap visual.
-2. **Primary action = navy `#0F172A`.** Emas `#A16207` HANYA untuk CTA tingkat tertinggi
-   yang bersifat "mulai/menyelesaikan" (Mulai Jualan, Checkout, Bayar) — maksimal satu
-   per layar. Jangan memakai emas sebagai primary button generik.
-3. **Merah `#DC2626` eksklusif untuk destructive/danger** (payment gagal, refund, void,
-   tutup kas, hapus). Jangan memakai merah sebagai warna brand/primary.
+2. **Primary action = teal `#176B5B`**, dengan hover `#12564A`. Amber `#F4A340`
+   digunakan terbatas untuk highlight dan penekanan, bukan sebagai pengganti primary.
+   Gunakan foreground gelap di atas amber.
+3. **Warna semantic** success, warning, error, dan info khusus untuk status sistem.
+   Error `#B91C1C` juga menjadi warna destructive; jangan gunakan warna semantic sebagai
+   warna brand/primary.
 4. **Warna adalah komunikasi, bukan dekorasi** (UIUX §40). Status selalu
    dot/ikon + label tekstual; warna tidak pernah menjadi satu-satunya indikator.
 5. **Mobile-first adalah standar wajib** (UIUX §36, §67, §68): desain dari 375px ke atas,
@@ -50,35 +51,45 @@ dengan bagian lain di file ini, bagian ini yang menang.
 
 | Role | Hex | CSS Variable |
 |------|-----|--------------|
-| Primary | `#0F172A` | `--color-primary` |
-| On Primary | `#FFFFFF` | `--color-on-primary` |
-| Secondary | `#1E3A8A` | `--color-secondary` |
-| On Secondary | `#FFFFFF` | `--color-on-secondary` |
-| Accent/CTA | `#A16207` | `--color-accent` |
-| On Accent/CTA | `#FFFFFF` | `--color-on-accent` |
-| Background | `#F8FAFC` | `--color-background` |
-| Foreground | `#020617` | `--color-foreground` |
-| Card | `#FFFFFF` | `--color-card` |
-| Card Foreground | `#020617` | `--color-card-foreground` |
-| Muted | `#E8ECF1` | `--color-muted` |
-| Muted Foreground | `#475569` | `--color-muted-foreground` |
-| Border | `#E2E8F0` | `--color-border` |
-| Destructive | `#DC2626` | `--color-destructive` |
-| On Destructive | `#FFFFFF` | `--color-on-destructive` |
-| Ring | `#0F172A` | `--color-ring` |
+| Primary | `#176B5B` | `--color-primary` |
+| Primary Hover | `#12564A` | `--color-primary-hover` |
+| On Primary | `#FFFFFF` | `--color-primary-foreground` |
+| Soft Primary | `#E7F3EE` | `--color-soft-primary` |
+| Accent | `#F4A340` | `--color-accent` |
+| On Accent | `#19312B` | `--color-accent-foreground` |
+| Canvas | `#F7F9F7` | `--color-canvas` |
+| Surface | `#FFFFFF` | `--color-surface` |
+| Text | `#19312B` | `--color-text` |
+| Muted Text | `#596B64` | `--color-muted-text` |
+| Border | `#DDE7E2` | `--color-border` |
+| Control Border | `#596B64` | `--color-input` |
+| Success | `#15803D` | `--color-success` |
+| Warning | `#B45309` | `--color-warning` |
+| Error / Destructive | `#B91C1C` | `--color-error` / `--color-destructive` |
+| Info | `#1D4ED8` | `--color-info` |
+| On Semantic | `#FFFFFF` | `--color-semantic-foreground` |
+| Focus Ring | `#176B5B` | `--color-ring` |
 
-**Color Notes:** Trust navy + premium gold [Accent adjusted from #CA8A04]
+**Color Notes:** Gunakan teal untuk aksi utama. Amber selalu dipasangkan dengan teks
+`#19312B`, bukan teks putih. Border `#DDE7E2` untuk pemisah dekoratif; batas kontrol
+interaktif memakai `#596B64` agar kontras non-teks memadai. Semua status harus memiliki
+label/ikon selain warna. Pasangan teks utama, muted, tombol, dan status telah diperiksa
+terhadap kontras WCAG 2.2 AA.
 
 ### Typography
 
-- **Heading Font:** Atkinson Hyperlegible
-- **Body Font:** Atkinson Hyperlegible
-- **Mood:** accessible, readable, inclusive, WCAG, dyslexia-friendly, clear
-- **Google Fonts:** [Atkinson Hyperlegible + Atkinson Hyperlegible](https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap)
+- **Heading Font:** Plus Jakarta Sans
+- **Body Font:** Plus Jakarta Sans
+- **Mood:** modern, clean, warm, professional, efficient
+- **Weights:** 400, 500, 600, 700
+- **Source:** Fontsource, served locally by the application
 
 **CSS Import:**
 ```css
-@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap');
+@import "@fontsource/plus-jakarta-sans/400.css";
+@import "@fontsource/plus-jakarta-sans/500.css";
+@import "@fontsource/plus-jakarta-sans/600.css";
+@import "@fontsource/plus-jakarta-sans/700.css";
 ```
 
 ### Spacing Variables
@@ -109,10 +120,10 @@ dengan bagian lain di file ini, bagian ini yang menang.
 ### Buttons
 
 ```css
-/* Primary Button — navy (lihat Dagana Project Overrides #2) */
+/* Primary Button — teal (lihat Dagana Project Overrides #2) */
 .btn-primary {
-  background: #0F172A;
-  color: white;
+  background: var(--primary);
+  color: var(--primary-foreground);
   padding: 12px 24px;
   border-radius: 8px;
   font-weight: 600;
@@ -121,13 +132,13 @@ dengan bagian lain di file ini, bagian ini yang menang.
 }
 
 .btn-primary:hover {
-  opacity: 0.9;
+  background: var(--primary-hover);
 }
 
-/* Accent CTA — emas, hanya untuk aksi "mulai/menyelesaikan" tertinggi */
+/* Accent — amber untuk highlight terbatas, bukan pengganti primary */
 .btn-accent {
-  background: #A16207;
-  color: white;
+  background: var(--accent);
+  color: var(--accent-foreground);
   padding: 12px 24px;
   border-radius: 8px;
   font-weight: 600;
@@ -136,14 +147,14 @@ dengan bagian lain di file ini, bagian ini yang menang.
 }
 
 .btn-accent:hover {
-  opacity: 0.9;
+  filter: brightness(0.96);
 }
 
 /* Secondary Button */
 .btn-secondary {
   background: transparent;
-  color: #0F172A;
-  border: 2px solid #0F172A;
+  color: var(--primary);
+  border: 2px solid var(--primary);
   padding: 12px 24px;
   border-radius: 8px;
   font-weight: 600;
@@ -156,8 +167,8 @@ dengan bagian lain di file ini, bagian ini yang menang.
 
 ```css
 .card {
-  background: #FFFFFF;
-  border: 1px solid #E2E8F0;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 24px;
   transition: border-color 200ms ease;
@@ -166,11 +177,11 @@ dengan bagian lain di file ini, bagian ini yang menang.
 /* Kartu interaktif (mis. product card di POS): TANPA transform yang
    menggeser layout (Dagana Project Overrides #8). Cukup border/elevation. */
 .card-interactive:hover {
-  border-color: #0F172A;
+  border-color: var(--primary);
 }
 
 .card-interactive:active {
-  background: #F8FAFC;
+  background: var(--canvas);
 }
 ```
 
@@ -179,16 +190,16 @@ dengan bagian lain di file ini, bagian ini yang menang.
 ```css
 .input {
   padding: 12px 16px;
-  border: 1px solid #E2E8F0;
+  border: 1px solid var(--input);
   border-radius: 8px;
   font-size: 16px;
   transition: border-color 200ms ease;
 }
 
 .input:focus {
-  border-color: #0F172A;
-  outline: none;
-  box-shadow: 0 0 0 3px #0F172A20;
+  border-color: var(--primary);
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 ```
 
@@ -201,7 +212,7 @@ dengan bagian lain di file ini, bagian ini yang menang.
 }
 
 .modal {
-  background: white;
+  background: var(--surface);
   border-radius: 16px;
   padding: 32px;
   box-shadow: var(--shadow-xl);

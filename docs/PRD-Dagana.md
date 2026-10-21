@@ -888,6 +888,17 @@ Employee Ready
 
 Owner tetap dapat menggunakan POS setelah employee ditambahkan.
 
+Owner/Admin tidak membuat kredensial atau kata sandi atas nama employee. Owner mengirim
+undangan ke alamat email dengan role, outlet access, dan permission override yang diinginkan.
+Undangan dapat dikirim ke email yang belum terdaftar maupun sudah terdaftar. Penerima
+mendaftar atau login menggunakan email yang sama, lalu menerima undangan melalui token
+acak, sekali pakai, dan memiliki masa berlaku. Membership baru aktif setelah token diterima;
+undangan yang kedaluwarsa atau dibatalkan tidak memberi akses ke business.
+
+Daftar membership dan outlet dipaginasi oleh API dengan batas jumlah per halaman yang
+terdefinisi. UI menyediakan navigasi halaman; pagination tidak boleh mengubah tenant scoping
+atau authorization.
+
 ---
 
 ## 18. Operational Model
@@ -1509,6 +1520,11 @@ Business
 ```
 
 Domain tetap sama.
+
+Owner/Admin dapat membuat, membaca, mengubah, menonaktifkan, dan mengaktifkan kembali outlet
+sesuai permission dan outlet access. Outlet tidak dihapus permanen dari alur operasional;
+menonaktifkan outlet mencegah pemakaian untuk pekerjaan baru tanpa menghapus transaksi,
+inventory movement, maupun histori yang sudah terkait.
 
 ---
 
