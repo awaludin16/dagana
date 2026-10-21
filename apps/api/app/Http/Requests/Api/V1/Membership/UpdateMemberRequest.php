@@ -4,6 +4,7 @@ namespace App\Http\Requests\Api\V1\Membership;
 
 use App\Domain\Authorization\Enums\Permission;
 use App\Domain\Authorization\Enums\RolePreset;
+use App\Domain\Outlet\Models\Outlet;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -27,7 +28,9 @@ class UpdateMemberRequest extends FormRequest
             'outlet_ids' => ['sometimes', 'array'],
             'outlet_ids.*' => [
                 'integer',
-                Rule::exists('outlets', 'id')->where('business_id', $businessId),
+                Rule::exists('outlets', 'id')
+                    ->where('business_id', $businessId)
+                    ->where('status', Outlet::STATUS_ACTIVE),
             ],
             'permission_grants' => ['sometimes', 'array'],
             'permission_grants.*' => [Rule::enum(Permission::class)],

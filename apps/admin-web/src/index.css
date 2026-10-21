@@ -1,13 +1,20 @@
-@import "@fontsource/atkinson-hyperlegible/400.css";
-@import "@fontsource/atkinson-hyperlegible/700.css";
+@import "@fontsource/plus-jakarta-sans/400.css";
+@import "@fontsource/plus-jakarta-sans/500.css";
+@import "@fontsource/plus-jakarta-sans/600.css";
+@import "@fontsource/plus-jakarta-sans/700.css";
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: "Atkinson Hyperlegible", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-text: var(--text);
+  --color-muted-text: var(--muted-text);
+  --color-control-border: var(--control-border);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -16,13 +23,24 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-soft-primary: var(--soft-primary);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--semantic-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--semantic-foreground);
+  --color-error: var(--error);
+  --color-error-foreground: var(--semantic-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--semantic-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -43,37 +61,51 @@
 
 :root {
   --radius: 0.625rem;
-  --background: #f8fafc; /* slate-50-ish sesuai MASTER.md */
-  --foreground: #020617; /* slate-950 */
-  --card: #ffffff;
-  --card-foreground: #020617;
-  --popover: #ffffff;
-  --popover-foreground: #020617;
-  --primary: #0f172a; /* navy — primary utama */
-  --primary-foreground: #ffffff;
-  --secondary: #1e3a8a; /* secondary token MASTER.md */
-  --secondary-foreground: #ffffff;
-  --muted: #e8ecf1; /* muted */
-  --muted-foreground: #475569; /* muted-foreground */
-  --accent: #a16207; /* emas — HANYA untuk CTA tertinggi */
-  --accent-foreground: #ffffff;
-  --destructive: #dc2626; /* merah eksklusif */
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: #0f172a;
-  --chart-1: #2563eb;
-  --chart-2: #16a34a;
-  --chart-3: #f59e0b;
-  --chart-4: #ea580c;
-  --chart-5: #8b5cf6;
-  --sidebar: #f8fafc;
-  --sidebar-foreground: #020617;
-  --sidebar-primary: #0f172a;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f1f5f9;
-  --sidebar-accent-foreground: #0f172a;
-  --sidebar-border: #e2e8f0;
-  --sidebar-ring: #0f172a;
+  --primary: #176B5B;
+  --primary-hover: #12564A;
+  --soft-primary: #E7F3EE;
+  --accent: #F4A340;
+  --canvas: #F7F9F7;
+  --surface: #FFFFFF;
+  --text: #19312B;
+  --muted-text: #596B64;
+  --border: #DDE7E2;
+  --control-border: var(--muted-text);
+  --success: #15803D;
+  --warning: #B45309;
+  --error: #B91C1C;
+  --info: #1D4ED8;
+  --semantic-foreground: #FFFFFF;
+
+  --background: var(--canvas);
+  --foreground: var(--text);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface);
+  --popover-foreground: var(--text);
+  --primary-foreground: #FFFFFF;
+  --secondary: var(--soft-primary);
+  --secondary-foreground: var(--primary);
+  --muted: var(--canvas);
+  --muted-foreground: var(--muted-text);
+  --accent-foreground: var(--text);
+  --destructive: var(--error);
+  --destructive-foreground: var(--semantic-foreground);
+  --input: var(--control-border);
+  --ring: var(--primary);
+  --chart-1: var(--primary);
+  --chart-2: var(--info);
+  --chart-3: var(--success);
+  --chart-4: var(--warning);
+  --chart-5: var(--accent);
+  --sidebar: var(--background);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--soft-primary);
+  --sidebar-accent-foreground: var(--primary);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
 }
 
 * {

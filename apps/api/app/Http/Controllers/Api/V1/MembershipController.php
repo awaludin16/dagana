@@ -2,18 +2,16 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Domain\Organization\Actions\AddMemberAction;
 use App\Domain\Organization\Actions\ChangeMembershipStatusAction;
 use App\Domain\Organization\Actions\UpdateMembershipAction;
 use App\Domain\Organization\Models\Business;
 use App\Domain\Organization\Models\Membership;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Api\V1\Membership\StoreMemberRequest;
 use App\Http\Requests\Api\V1\Membership\UpdateMemberRequest;
 use App\Http\Resources\Api\V1\MembershipResource;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Validation\Rule;
 
 /**
  * Employee (membership) management within a business.
@@ -30,34 +28,18 @@ class MembershipController extends Controller
     public function index(Request $request, Business $business): AnonymousResourceCollection
     {
         $this->authorize('viewEmployees', $business);
+        $validated = $request->validate([
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            'status' => ['sometimes', Rule::in(['active', 'disabled'])],
+        ]);
 
         $members = $business->memberships()
             ->with(['user', 'outlets', 'permissionOverrides'])
+            ->when($validated['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
             ->orderBy('id')
-            ->get();
+            ->paginate($validated['per_page'] ?? 20);
 
         return MembershipResource::collection($members);
-    }
-
-    public function store(StoreMemberRequest $request, Business $business, AddMemberAction $action): JsonResponse
-    {
-        $this->authorize('createEmployee', $business);
-
-        if ($request->hasPermissionOverrides()) {
-            $this->authorize('manageMembershipPermissions', $business);
-        }
-
-        $membership = $action->execute(
-            $this->actor($request, $business),
-            $business,
-            $request->email(),
-            $request->role(),
-            $request->outletIds(),
-            $request->permissionGrants(),
-            $request->permissionDenials(),
-        );
-
-        return (new MembershipResource($membership))->response()->setStatusCode(201);
     }
 
     public function update(
@@ -104,12 +86,6 @@ class MembershipController extends Controller
         return new MembershipResource($action->enable($membership));
     }
 
-    /**
-     * The acting user's active membership in the business.
-     *
-     * Authorization has already confirmed it exists and is active; this only
-     * materializes it for the domain anti-escalation checks.
-     */
     private function actor(Request $request, Business $business): Membership
     {
         /** @var Membership $actor */

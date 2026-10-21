@@ -7,9 +7,9 @@ interface StatusBadgeProps {
 }
 
 const variants = {
-  success: 'bg-green-50 text-green-700 ring-green-600/20',
-  warning: 'bg-amber-50 text-amber-800 ring-amber-600/20',
-  danger: 'bg-red-50 text-red-700 ring-red-600/20',
+  success: 'bg-success/3 text-success ring-success/20',
+  warning: 'bg-warning/3 text-warning ring-warning/20',
+  danger: 'bg-error/3 text-error ring-error/20',
   neutral: 'bg-muted text-muted-foreground ring-border',
 }
 

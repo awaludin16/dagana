@@ -36,6 +36,24 @@ class OutletPolicy
         return true;
     }
 
+    public function disable(User $user, Outlet $outlet): Response|bool
+    {
+        $membership = $this->membership($user, $outlet);
+
+        if ($membership === null
+            || ! $membership->hasPermission(Permission::OutletsDisable)
+            || ! $membership->hasOutletAccess($outlet)) {
+            return Response::denyAsNotFound();
+        }
+
+        return true;
+    }
+
+    public function enable(User $user, Outlet $outlet): Response|bool
+    {
+        return $this->disable($user, $outlet);
+    }
+
     private function membership(User $user, Outlet $outlet): ?Membership
     {
         $membership = $user->memberships()

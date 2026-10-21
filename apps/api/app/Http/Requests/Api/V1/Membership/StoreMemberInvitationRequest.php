@@ -4,12 +4,20 @@ namespace App\Http\Requests\Api\V1\Membership;
 
 use App\Domain\Authorization\Enums\Permission;
 use App\Domain\Authorization\Enums\RolePreset;
+use App\Domain\Outlet\Models\Outlet;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class StoreMemberRequest extends FormRequest
+class StoreMemberInvitationRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        if (is_string($this->input('email'))) {
+            $this->merge(['email' => mb_strtolower(trim($this->input('email')))]);
+        }
+    }
+
     public function authorize(): bool
     {
         return true;
@@ -23,12 +31,14 @@ class StoreMemberRequest extends FormRequest
         $businessId = $this->route('business')?->getKey();
 
         return [
-            'email' => ['required', 'string', 'email', 'max:255', 'exists:users,email'],
+            'email' => ['required', 'string', 'email', 'max:255'],
             'role' => ['required', Rule::enum(RolePreset::class)],
             'outlet_ids' => ['sometimes', 'array'],
             'outlet_ids.*' => [
                 'integer',
-                Rule::exists('outlets', 'id')->where('business_id', $businessId),
+                Rule::exists('outlets', 'id')
+                    ->where('business_id', $businessId)
+                    ->where('status', Outlet::STATUS_ACTIVE),
             ],
             'permission_grants' => ['sometimes', 'array'],
             'permission_grants.*' => [Rule::enum(Permission::class)],
@@ -43,11 +53,7 @@ class StoreMemberRequest extends FormRequest
             $grants = $this->input('permission_grants', []);
             $denials = $this->input('permission_denials', []);
 
-            if (! is_array($grants) || ! is_array($denials)) {
-                return;
-            }
-
-            if (array_intersect($grants, $denials) !== []) {
+            if (is_array($grants) && is_array($denials) && array_intersect($grants, $denials) !== []) {
                 $validator->errors()->add(
                     'permission_grants',
                     __('A permission cannot be both granted and denied.'),
@@ -74,19 +80,12 @@ class StoreMemberRequest extends FormRequest
         return array_map('intval', $this->input('outlet_ids', []));
     }
 
-    public function hasPermissionOverrides(): bool
-    {
-        return $this->has('permission_grants') || $this->has('permission_denials');
-    }
-
     /**
      * @return array<int, string>
      */
     public function permissionGrants(): array
     {
-        $value = $this->input('permission_grants', []);
-
-        return is_array($value) ? array_map('strval', $value) : [];
+        return array_map('strval', $this->input('permission_grants', []));
     }
 
     /**
@@ -94,8 +93,11 @@ class StoreMemberRequest extends FormRequest
      */
     public function permissionDenials(): array
     {
-        $value = $this->input('permission_denials', []);
+        return array_map('strval', $this->input('permission_denials', []));
+    }
 
-        return is_array($value) ? array_map('strval', $value) : [];
+    public function hasPermissionOverrides(): bool
+    {
+        return $this->has('permission_grants') || $this->has('permission_denials');
     }
 }

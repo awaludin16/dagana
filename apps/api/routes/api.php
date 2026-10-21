@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\Auth\RegisterController;
 use App\Http\Controllers\Api\V1\BusinessController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\MeController;
+use App\Http\Controllers\Api\V1\MemberInvitationController;
 use App\Http\Controllers\Api\V1\MembershipController;
 use App\Http\Controllers\Api\V1\OutletController;
 use App\Http\Controllers\Api\V1\PermissionController;
@@ -40,6 +41,8 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
     Route::get('/outlets/{outlet}', [OutletController::class, 'show']);
     Route::patch('/outlets/{outlet}', [OutletController::class, 'update']);
+    Route::post('/outlets/{outlet}/disable', [OutletController::class, 'disable']);
+    Route::post('/outlets/{outlet}/enable', [OutletController::class, 'enable']);
 
     // Role preset and permission catalogs for employee assignment UI.
     Route::get('/roles', [RoleController::class, 'index']);
@@ -47,7 +50,16 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
     // Employee (membership) management; {membership} is scoped to {business}.
     Route::get('/businesses/{business}/members', [MembershipController::class, 'index']);
-    Route::post('/businesses/{business}/members', [MembershipController::class, 'store']);
+    Route::get('/businesses/{business}/invitations', [MemberInvitationController::class, 'index']);
+    Route::post('/businesses/{business}/invitations', [MemberInvitationController::class, 'store'])
+        ->middleware('throttle:10,1');
+    Route::post('/businesses/{business}/invitations/{invitation}/resend', [MemberInvitationController::class, 'resend'])
+        ->scopeBindings()
+        ->middleware('throttle:10,1');
+    Route::post('/businesses/{business}/invitations/{invitation}/cancel', [MemberInvitationController::class, 'cancel'])
+        ->scopeBindings();
+    Route::post('/invitations/accept', [MemberInvitationController::class, 'accept'])
+        ->middleware('throttle:10,1');
     Route::patch('/businesses/{business}/members/{membership}', [MembershipController::class, 'update'])
         ->scopeBindings();
     Route::post('/businesses/{business}/members/{membership}/disable', [MembershipController::class, 'disable'])

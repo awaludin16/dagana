@@ -164,7 +164,7 @@ class MembershipPermissionOverrideTest extends TestCase
         $newUser = User::factory()->create(['email' => 'candidate@dagana.test']);
 
         $this->actingAs($manager->user)
-            ->postJson("/api/v1/businesses/{$business->id}/members", [
+            ->postJson("/api/v1/businesses/{$business->id}/invitations", [
                 'email' => $newUser->email,
                 'role' => RolePreset::Owner->value,
             ])

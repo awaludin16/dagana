@@ -4,10 +4,13 @@ namespace Tests\Feature\Api;
 
 use App\Domain\Authorization\Enums\RolePreset;
 use App\Domain\Organization\Models\Business;
+use App\Domain\Organization\Models\MemberInvitation;
 use App\Domain\Organization\Models\Membership;
 use App\Domain\Outlet\Models\Outlet;
+use App\Mail\MemberInvitationMail;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 /**
@@ -55,7 +58,8 @@ class MemberManagementTest extends TestCase
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.role', RolePreset::Owner->value)
             ->assertJsonPath('data.0.role_label', 'Owner')
-            ->assertJsonPath('data.0.user.email', $owner->email);
+            ->assertJsonPath('data.0.user.email', $owner->email)
+            ->assertJsonPath('meta.current_page', 1);
     }
 
     public function test_member_without_employees_read_cannot_list_members(): void
@@ -70,74 +74,184 @@ class MemberManagementTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_owner_can_add_employee_with_role_and_outlet_access(): void
+    public function test_owner_can_invite_unregistered_email_and_user_accepts_with_assigned_access(): void
     {
+        Mail::fake();
         $business = Business::factory()->create();
         $owner = $this->ownerOf($business);
         $outlet = Outlet::factory()->for($business)->create();
-        $employee = User::factory()->create(['email' => 'employee@dagana.test']);
 
-        $response = $this->actingAs($owner)->postJson("/api/v1/businesses/{$business->id}/members", [
-            'email' => $employee->email,
+        $response = $this->actingAs($owner)->postJson("/api/v1/businesses/{$business->id}/invitations", [
+            'email' => 'employee@dagana.test',
             'role' => RolePreset::Cashier->value,
             'outlet_ids' => [$outlet->id],
         ]);
 
         $response->assertCreated()
             ->assertJsonPath('data.role', RolePreset::Cashier->value)
-            ->assertJsonPath('data.status', Membership::STATUS_ACTIVE)
-            ->assertJsonPath('data.user.email', 'employee@dagana.test')
-            ->assertJsonPath('data.outlets.0.id', $outlet->id);
+            ->assertJsonPath('data.status', 'pending')
+            ->assertJsonPath('data.email', 'employee@dagana.test')
+            ->assertJsonMissingPath('data.token_hash');
 
-        $membershipId = $response->json('data.id');
-
-        $this->assertDatabaseHas('memberships', [
-            'id' => $membershipId,
+        $this->assertDatabaseCount('memberships', 1);
+        $this->assertDatabaseHas('member_invitations', [
+            'id' => $response->json('data.id'),
             'business_id' => $business->id,
+            'email' => 'employee@dagana.test',
+            'status' => 'pending',
+            'delivery_status' => 'sent',
+        ]);
+
+        $token = null;
+        Mail::assertSent(MemberInvitationMail::class, function (MemberInvitationMail $mail) use (&$token): bool {
+            $token = $mail->token;
+
+            return $mail->hasTo('employee@dagana.test');
+        });
+        $this->assertNotNull($token);
+
+        $employee = User::factory()->create(['email' => 'employee@dagana.test']);
+        $accept = $this->actingAs($employee)->postJson('/api/v1/invitations/accept', ['token' => $token]);
+
+        $accept->assertCreated()
+            ->assertJsonPath('data.role', RolePreset::Cashier->value)
+            ->assertJsonPath('data.status', Membership::STATUS_ACTIVE)
+            ->assertJsonPath('data.outlets.0.id', $outlet->id);
+        $this->assertDatabaseHas('memberships', [
+            'id' => $accept->json('data.id'),
             'user_id' => $employee->id,
-            'role' => RolePreset::Cashier->value,
             'status' => Membership::STATUS_ACTIVE,
         ]);
-
-        $this->assertDatabaseHas('membership_outlet', [
-            'membership_id' => $membershipId,
-            'outlet_id' => $outlet->id,
-        ]);
+        $this->actingAs($employee)
+            ->postJson('/api/v1/invitations/accept', ['token' => $token])
+            ->assertUnprocessable();
     }
 
-    public function test_owner_membership_ignores_explicit_outlet_grants(): void
+    public function test_owner_membership_invitation_ignores_explicit_outlet_grants(): void
     {
+        Mail::fake();
         $business = Business::factory()->create();
         $owner = $this->ownerOf($business);
         $outlet = Outlet::factory()->for($business)->create();
-        $secondOwner = User::factory()->create(['email' => 'second-owner@dagana.test']);
 
-        $response = $this->actingAs($owner)->postJson("/api/v1/businesses/{$business->id}/members", [
-            'email' => $secondOwner->email,
+        $response = $this->actingAs($owner)->postJson("/api/v1/businesses/{$business->id}/invitations", [
+            'email' => 'second-owner@dagana.test',
             'role' => RolePreset::Owner->value,
             'outlet_ids' => [$outlet->id],
         ]);
 
         $response->assertCreated()
-            ->assertJsonPath('data.business_wide_outlet_access', true);
+            ->assertJsonPath('data.role', RolePreset::Owner->value);
+        $invitation = MemberInvitation::query()
+            ->findOrFail($response->json('data.id'));
+        $this->assertSame([], $invitation->outlet_ids);
+    }
 
-        $this->assertDatabaseMissing('membership_outlet', [
-            'membership_id' => $response->json('data.id'),
+    public function test_invitation_acceptance_requires_matching_authenticated_email(): void
+    {
+        Mail::fake();
+        $business = Business::factory()->create();
+        $owner = $this->ownerOf($business);
+        $this->actingAs($owner)
+            ->postJson("/api/v1/businesses/{$business->id}/invitations", [
+                'email' => 'invited@dagana.test',
+                'role' => RolePreset::Cashier->value,
+            ])
+            ->assertCreated();
+        $token = null;
+        Mail::assertSent(MemberInvitationMail::class, function (MemberInvitationMail $mail) use (&$token): bool {
+            $token = $mail->token;
+
+            return true;
+        });
+
+        $wrongUser = User::factory()->create(['email' => 'someone-else@dagana.test']);
+        $this->actingAs($wrongUser)
+            ->postJson('/api/v1/invitations/accept', ['token' => $token])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('token');
+    }
+
+    public function test_invitations_are_paginated_and_cancelled_invitations_cannot_be_used(): void
+    {
+        Mail::fake();
+        $business = Business::factory()->create();
+        $owner = $this->ownerOf($business);
+        $first = $this->actingAs($owner)->postJson("/api/v1/businesses/{$business->id}/invitations", [
+            'email' => 'first@dagana.test',
+            'role' => RolePreset::Staff->value,
+        ])->assertCreated();
+        $second = $this->actingAs($owner)->postJson("/api/v1/businesses/{$business->id}/invitations", [
+            'email' => 'second@dagana.test',
+            'role' => RolePreset::Staff->value,
+        ])->assertCreated();
+
+        $this->actingAs($owner)
+            ->getJson("/api/v1/businesses/{$business->id}/invitations?per_page=1&page=2")
+            ->assertOk()
+            ->assertJsonPath('meta.total', 2)
+            ->assertJsonPath('meta.current_page', 2)
+            ->assertJsonCount(1, 'data');
+
+        $this->actingAs($owner)
+            ->postJson("/api/v1/businesses/{$business->id}/invitations/{$first->json('data.id')}/cancel")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'canceled');
+
+        $token = null;
+        Mail::assertSent(MemberInvitationMail::class, function (MemberInvitationMail $mail) use (&$token): bool {
+            if ($mail->invitation->email === 'first@dagana.test') {
+                $token = $mail->token;
+            }
+
+            return true;
+        });
+        $recipient = User::factory()->create(['email' => 'first@dagana.test']);
+        $this->actingAs($recipient)
+            ->postJson('/api/v1/invitations/accept', ['token' => $token])
+            ->assertUnprocessable();
+
+        $this->assertDatabaseHas('member_invitations', [
+            'id' => $second->json('data.id'),
+            'status' => 'pending',
         ]);
     }
 
-    public function test_adding_unknown_email_is_rejected(): void
+    public function test_resending_an_invitation_rotates_and_invalidates_its_previous_token(): void
     {
+        Mail::fake();
         $business = Business::factory()->create();
         $owner = $this->ownerOf($business);
+        $invitation = $this->actingAs($owner)
+            ->postJson("/api/v1/businesses/{$business->id}/invitations", [
+                'email' => 'resend@dagana.test',
+                'role' => RolePreset::Staff->value,
+            ])
+            ->assertCreated();
 
         $this->actingAs($owner)
-            ->postJson("/api/v1/businesses/{$business->id}/members", [
-                'email' => 'nobody@dagana.test',
-                'role' => RolePreset::Cashier->value,
-            ])
-            ->assertStatus(422)
-            ->assertJsonValidationErrors('email');
+            ->postJson("/api/v1/businesses/{$business->id}/invitations/{$invitation->json('data.id')}/resend")
+            ->assertOk()
+            ->assertJsonPath('data.delivery_status', 'sent');
+
+        $tokens = [];
+        Mail::assertSent(MemberInvitationMail::class, function (MemberInvitationMail $mail) use (&$tokens): bool {
+            if ($mail->invitation->email === 'resend@dagana.test') {
+                $tokens[] = $mail->token;
+            }
+
+            return true;
+        });
+        $this->assertCount(2, $tokens);
+        $this->assertNotSame($tokens[0], $tokens[1]);
+
+        $recipient = User::factory()->create(['email' => 'resend@dagana.test']);
+        $this->actingAs($recipient)
+            ->postJson('/api/v1/invitations/accept', ['token' => $tokens[0]])
+            ->assertUnprocessable();
+        $this->actingAs($recipient)
+            ->postJson('/api/v1/invitations/accept', ['token' => $tokens[1]])
+            ->assertCreated();
     }
 
     public function test_adding_existing_member_is_rejected(): void
@@ -147,7 +261,7 @@ class MemberManagementTest extends TestCase
         $existing = $this->memberOf($business, RolePreset::Cashier);
 
         $this->actingAs($owner)
-            ->postJson("/api/v1/businesses/{$business->id}/members", [
+            ->postJson("/api/v1/businesses/{$business->id}/invitations", [
                 'email' => $existing->email,
                 'role' => RolePreset::Staff->value,
             ])
@@ -165,26 +279,57 @@ class MemberManagementTest extends TestCase
         $employee = User::factory()->create();
 
         $this->actingAs($owner)
-            ->postJson("/api/v1/businesses/{$business->id}/members", [
-                'email' => $employee->email,
+            ->postJson("/api/v1/businesses/{$business->id}/invitations", [
+                'email' => 'unknown@dagana.test',
                 'role' => RolePreset::Cashier->value,
                 'outlet_ids' => [$foreignOutlet->id],
             ])
             ->assertStatus(422)
             ->assertJsonValidationErrors('outlet_ids.0');
 
-        $this->assertDatabaseMissing('memberships', ['user_id' => $employee->id]);
+        $this->assertDatabaseCount('member_invitations', 0);
+    }
+
+    public function test_disabled_outlets_cannot_be_assigned_to_members_or_invitations(): void
+    {
+        $business = Business::factory()->create();
+        $owner = $this->ownerOf($business);
+        $disabledOutlet = Outlet::factory()
+            ->for($business)
+            ->create(['status' => Outlet::STATUS_DISABLED]);
+
+        $this->actingAs($owner)
+            ->postJson("/api/v1/businesses/{$business->id}/invitations", [
+                'email' => 'candidate@dagana.test',
+                'role' => RolePreset::Staff->value,
+                'outlet_ids' => [$disabledOutlet->id],
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('outlet_ids.0');
+
+        $employee = $this->memberOf($business, RolePreset::Staff);
+        $membership = $employee->membershipFor($business);
+
+        $this->actingAs($owner)
+            ->patchJson("/api/v1/businesses/{$business->id}/members/{$membership->id}", [
+                'outlet_ids' => [$disabledOutlet->id],
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('outlet_ids.0');
+
+        $this->assertDatabaseMissing('membership_outlet', [
+            'membership_id' => $membership->id,
+            'outlet_id' => $disabledOutlet->id,
+        ]);
     }
 
     public function test_invalid_role_is_rejected(): void
     {
         $business = Business::factory()->create();
         $owner = $this->ownerOf($business);
-        $employee = User::factory()->create();
-
         $this->actingAs($owner)
-            ->postJson("/api/v1/businesses/{$business->id}/members", [
-                'email' => $employee->email,
+            ->postJson("/api/v1/businesses/{$business->id}/invitations", [
+                'email' => 'candidate@dagana.test',
                 'role' => 'superadmin',
             ])
             ->assertStatus(422)
@@ -196,16 +341,14 @@ class MemberManagementTest extends TestCase
         $business = Business::factory()->create();
         $this->ownerOf($business);
         $cashier = $this->memberOf($business, RolePreset::Cashier);
-        $employee = User::factory()->create();
-
         $this->actingAs($cashier)
-            ->postJson("/api/v1/businesses/{$business->id}/members", [
-                'email' => $employee->email,
+            ->postJson("/api/v1/businesses/{$business->id}/invitations", [
+                'email' => 'candidate@dagana.test',
                 'role' => RolePreset::Staff->value,
             ])
             ->assertForbidden();
 
-        $this->assertDatabaseMissing('memberships', ['user_id' => $employee->id]);
+        $this->assertDatabaseCount('member_invitations', 0);
     }
 
     public function test_owner_can_update_employee_role_and_outlets(): void
@@ -376,19 +519,30 @@ class MemberManagementTest extends TestCase
 
     public function test_employee_can_only_view_outlets_they_are_granted(): void
     {
+        Mail::fake();
         $business = Business::factory()->create();
         $owner = $this->ownerOf($business);
         $grantedOutlet = Outlet::factory()->for($business)->create();
         $otherOutlet = Outlet::factory()->for($business)->create();
-        $employee = User::factory()->create();
 
-        $response = $this->actingAs($owner)->postJson("/api/v1/businesses/{$business->id}/members", [
-            'email' => $employee->email,
+        $response = $this->actingAs($owner)->postJson("/api/v1/businesses/{$business->id}/invitations", [
+            'email' => 'outlet-member@dagana.test',
             'role' => RolePreset::Cashier->value,
             'outlet_ids' => [$grantedOutlet->id],
         ]);
 
         $response->assertCreated();
+        $token = null;
+        Mail::assertSent(MemberInvitationMail::class, function (MemberInvitationMail $mail) use (&$token): bool {
+            $token = $mail->token;
+
+            return true;
+        });
+        $employee = User::factory()->create(['email' => 'outlet-member@dagana.test']);
+
+        $this->actingAs($employee)
+            ->postJson('/api/v1/invitations/accept', ['token' => $token])
+            ->assertCreated();
 
         $this->actingAs($employee)
             ->getJson("/api/v1/outlets/{$grantedOutlet->id}")
@@ -401,15 +555,25 @@ class MemberManagementTest extends TestCase
 
     public function test_owner_retains_operational_access_after_employee_is_added(): void
     {
+        Mail::fake();
         $business = Business::factory()->create();
         $owner = $this->ownerOf($business);
-        $employee = User::factory()->create();
 
         $this->actingAs($owner)
-            ->postJson("/api/v1/businesses/{$business->id}/members", [
-                'email' => $employee->email,
+            ->postJson("/api/v1/businesses/{$business->id}/invitations", [
+                'email' => 'operational-member@dagana.test',
                 'role' => RolePreset::Cashier->value,
             ])
+            ->assertCreated();
+        $token = null;
+        Mail::assertSent(MemberInvitationMail::class, function (MemberInvitationMail $mail) use (&$token): bool {
+            $token = $mail->token;
+
+            return true;
+        });
+        $employee = User::factory()->create(['email' => 'operational-member@dagana.test']);
+        $this->actingAs($employee)
+            ->postJson('/api/v1/invitations/accept', ['token' => $token])
             ->assertCreated();
 
         // Employee setup must not lock the owner out of the business context.

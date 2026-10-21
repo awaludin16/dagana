@@ -348,31 +348,24 @@ Navigation harus mengikuti pekerjaan merchant.
 Primary navigation MVP:
 
 ```text
+Dashboard
 POS
 Orders
 Products
 Cash
-Inventory
-Reports
-More
+Outlets
+Employees (permission-gated)
 ```
 
-Tidak semua fitur harus tampil sebagai primary navigation.
+Owner/Admin menampilkan tautan eksplisit untuk seluruh workflow utama yang sudah tersedia.
+Jangan menyembunyikan fitur utama di halaman "More"; fitur yang belum tersedia di aplikasi
+belum ditampilkan sebagai tautan palsu. Navigasi utama tersembunyi secara default di semua
+breakpoint dan dibuka sebagai drawer kiri melalui tombol menu; drawer menutup dengan
+Escape/overlay/pemilihan tujuan dan tetap dapat dinavigasi dengan keyboard.
 
-Contoh:
-
-```text
-Employees
-Settings
-Billing
-Audit
-```
-
-dapat berada di:
-
-```text
-More / Settings
-```
+Fitur yang belum tersedia belum diberi tautan navigasi. Saat kebutuhan settings/billing/audit
+ditambahkan, tampilkan sebagai tujuan navigasi tersendiri sesuai permission-nya, bukan melalui
+halaman penampung "More".
 
 ---
 
@@ -1236,6 +1229,10 @@ Clear
 Consistent
 ```
 
+Gunakan **Plus Jakarta Sans** untuk heading dan body, dengan bobot 400, 500, 600,
+dan 700 sesuai hierarki. Ikuti design tokens frontend agar tipografi konsisten lintas
+permukaan aplikasi.
+
 Hierarchy minimal:
 
 ```text
@@ -1260,7 +1257,7 @@ Semantic colors:
 ```text
 Success
 Warning
-Danger
+Error
 Info
 Neutral
 ```
@@ -1268,17 +1265,16 @@ Neutral
 Contoh:
 
 ```text
-Success
-→ Payment berhasil
-
-Warning
-→ Low stock
-
-Danger
-→ Payment failed / destructive action
+Success → Payment berhasil
+Warning → Low stock
+Error   → Payment failed / destructive action
+Info    → Informasi atau bantuan kontekstual
 ```
 
-Jangan menggunakan warna hanya karena terlihat menarik.
+Gunakan primary teal untuk aksi utama. Amber hanya untuk highlight terbatas dan harus
+dipasangkan dengan foreground yang kontras; semantic colors bukan pengganti warna brand.
+Nilai warna dan pasangan foreground ditetapkan di `docs/frontend-standards.md` dan
+`design-system/dagana/MASTER.md`. Jangan menggunakan warna hanya karena terlihat menarik.
 
 ---
 
@@ -1631,6 +1627,9 @@ shadows
 breakpoints
 ```
 
+Palet dan font baseline Dagana ditetapkan di `docs/frontend-standards.md`; implementasi
+web mengonsumsi CSS variables dari `apps/admin-web/src/index.css`. Gunakan peran token
+yang sama pada Owner/Admin, POS, dan Customer Web tanpa memaksakan layout yang sama.
 Jangan hardcode nilai visual yang sama berkali-kali.
 
 ---
