@@ -1,28 +1,26 @@
 import { cn } from '@/lib/utils'
-import type { PosProduct } from '../mocks/products'
+import type { CatalogMenu } from '@/types/catalog.types'
 
 interface ProductCardProps {
-  product: PosProduct
-  onAdd: (product: PosProduct) => void
+  product: CatalogMenu
+  onAdd: (product: CatalogMenu) => void
 }
 
 export function ProductCard({ product, onAdd }: ProductCardProps) {
   return (
     <button
       type="button"
-      disabled={!product.available}
-      onClick={() => product.available && onAdd(product)}
+      onClick={() => onAdd(product)}
       className={cn(
         'flex flex-col items-start justify-between rounded-lg border bg-card p-3 text-left transition-colors',
         'hover:border-primary/60 active:bg-accent/30',
-        'disabled:cursor-not-allowed disabled:opacity-50',
         'min-h-24'
       )}
     >
       <div>
         <p className="text-sm font-medium leading-tight">{product.name}</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          {product.available ? 'Tersedia' : 'Tidak tersedia'}
+          {product.category?.name ?? 'Tanpa kategori'}
         </p>
       </div>
       <p className="mt-2 text-sm font-semibold">

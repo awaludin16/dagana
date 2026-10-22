@@ -39,6 +39,46 @@ class BusinessPolicy
         return $this->membership($user, $business)?->hasPermission(Permission::MembersInvite) ?? false;
     }
 
+    public function viewCategories(User $user, Business $business): bool
+    {
+        return $this->membership($user, $business)?->hasPermission(Permission::CategoriesRead) ?? false;
+    }
+
+    public function createCategory(User $user, Business $business): bool
+    {
+        return $this->membership($user, $business)?->hasPermission(Permission::CategoriesCreate) ?? false;
+    }
+
+    public function updateCategory(User $user, Business $business): bool
+    {
+        return $this->membership($user, $business)?->hasPermission(Permission::CategoriesUpdate) ?? false;
+    }
+
+    public function archiveCategory(User $user, Business $business): bool
+    {
+        return $this->membership($user, $business)?->hasPermission(Permission::CategoriesArchive) ?? false;
+    }
+
+    public function viewProducts(User $user, Business $business): bool
+    {
+        return $this->membership($user, $business)?->hasPermission(Permission::ProductsRead) ?? false;
+    }
+
+    public function createProduct(User $user, Business $business): bool
+    {
+        return $this->membership($user, $business)?->hasPermission(Permission::ProductsCreate) ?? false;
+    }
+
+    public function updateProduct(User $user, Business $business): bool
+    {
+        return $this->membership($user, $business)?->hasPermission(Permission::ProductsUpdate) ?? false;
+    }
+
+    public function archiveProduct(User $user, Business $business): bool
+    {
+        return $this->membership($user, $business)?->hasPermission(Permission::ProductsArchive) ?? false;
+    }
+
     public function manageMembershipPermissions(User $user, Business $business): bool
     {
         return $this->membership($user, $business)?->hasPermission(Permission::PermissionsManageMembership) ?? false;
