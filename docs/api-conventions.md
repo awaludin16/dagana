@@ -93,6 +93,18 @@ Aturan:
 | PATCH | `/api/v1/businesses/{business}/members/{membership}` | Ya | Ubah role, outlet access, dan/atau override permission (permission `members.update`, plus `permissions.manage_membership` bila override diubah) |
 | POST | `/api/v1/businesses/{business}/members/{membership}/disable` | Ya | Nonaktifkan membership (permission `members.disable`) |
 | POST | `/api/v1/businesses/{business}/members/{membership}/enable` | Ya | Aktifkan kembali membership (permission `members.update`) |
+| GET/POST | `/api/v1/businesses/{business}/categories` | Ya | Daftar kategori terpaginasikan / membuat kategori (`categories.read` / `categories.create`) |
+| GET | `/api/v1/businesses/{business}/categories/{category}` | Ya | Detail kategori (`categories.read`) |
+| PATCH | `/api/v1/businesses/{business}/categories/{category}` | Ya | Mengubah kategori (`categories.update`) |
+| POST | `/api/v1/businesses/{business}/categories/{category}/disable` | Ya | Menonaktifkan kategori tanpa menghapus histori (`categories.archive`) |
+| POST | `/api/v1/businesses/{business}/categories/{category}/enable` | Ya | Mengaktifkan kembali kategori (`categories.archive`) |
+| GET/POST | `/api/v1/businesses/{business}/menus` | Ya | Daftar menu terpaginasikan / membuat menu (`products.read` / `products.create`) |
+| GET | `/api/v1/businesses/{business}/menus/{menu}` | Ya | Detail menu (`products.read`) |
+| PATCH | `/api/v1/businesses/{business}/menus/{menu}` | Ya | Mengubah menu, harga, kategori, atau ketersediaan (`products.update`) |
+| POST | `/api/v1/businesses/{business}/menus/{menu}/disable` | Ya | Menonaktifkan menu tanpa menghapus histori (`products.archive`) |
+| POST | `/api/v1/businesses/{business}/menus/{menu}/enable` | Ya | Mengaktifkan kembali menu (`products.archive`) |
+| GET | `/api/v1/outlets/{outlet}/categories` | Ya | Kategori aktif untuk katalog POS; outlet harus aktif dan dapat diakses |
+| GET | `/api/v1/outlets/{outlet}/menus` | Ya | Menu aktif dan tersedia untuk outlet yang diakses; harga berlaku di seluruh outlet Business |
 
 Catatan employee management:
 
@@ -107,7 +119,17 @@ Catatan employee management:
 - Sebuah business wajib menyisakan **minimal satu Owner aktif**. Upaya menurunkan role atau menonaktifkan Owner terakhir ditolak dengan `409 Conflict`.
 - `{membership}` di-scope ke `{business}` melalui route model binding; membership milik tenant lain menghasilkan `404`.
 
-### 5.1 Override permission per membership (D-04)
+### 5.1 Catalog (Phase 3)
+
+- Endpoint catalog mengambil Business dari route yang terikat ke membership aktif; `business_id` tidak diterima dari payload. Resource yang bukan milik Business pada URL menghasilkan `404`.
+- Menu dapat tidak memiliki kategori. Kategori yang dipilih harus aktif dan milik Business yang sama. Harga adalah integer rupiah positif; `is_available` adalah boolean tingkat Business, bukan jadwal atau override outlet.
+- Daftar kategori/menu menerima `page` dan `per_page` (default 20, maksimum 100) serta mengembalikan pagination Laravel. Daftar manajemen menerima `status=active|disabled|all` (default `active`); menu juga mendukung pencarian nama tanpa membedakan kapital (maksimum 100 karakter) dan `category_id`.
+- Endpoint POS `/outlets/{outlet}/menus` memeriksa outlet aktif, akses outlet, dan permission baca; hasilnya hanya menu `status=active` dan `is_available=true`. Kategori POS hanya menampilkan kategori aktif.
+- Kategori/menu dinonaktifkan tanpa menghapus record. Menonaktifkan kategori hanya menghilangkan kategorinya dari filter POS; menu di dalamnya tidak otomatis dinonaktifkan. Ketersediaan menu dapat diubah dengan `PATCH` melalui `is_available`.
+
+**Kontrak snapshot Phase 4:** checkout wajib memuat ulang tiap menu dalam Business yang terotorisasi, menolak menu yang tidak aktif atau tidak tersedia, dan tidak mempercayai nama/harga dari payload klien. Saat order disimpan, salin `menu_id` (bila masih relevan), nama snapshot, kuantitas, dan harga satuan snapshot integer ke item order. Receipt/histori harus membaca snapshot item, bukan relasi catalog saat ini; perubahan menu berikutnya tidak boleh mengubah order lama.
+
+### 5.2 Override permission per membership (D-04)
 
 `POST` dan `PATCH` membership menerima dua field opsional:
 

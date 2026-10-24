@@ -25,9 +25,9 @@ import daganaLogo from "../../../../../design-system/dagana/dagana-logo.png";
 
 const baseNavItems = [
   { to: "/", label: "Dasbor", icon: House, perm: null },
-  { to: "/pos", label: "POS", icon: ShoppingCart, perm: null },
+  { to: "/pos", label: "POS", icon: ShoppingCart, perm: "products.read" },
   { to: "/orders", label: "Pesanan", icon: ClipboardText, perm: null },
-  { to: "/products", label: "Produk", icon: Warehouse, perm: null },
+  { to: "/products", label: "Produk", icon: Warehouse, perm: "products.read" },
   { to: "/cash", label: "Kas", icon: Coins, perm: null },
   { to: "/outlets", label: "Outlet", icon: Storefront, perm: "outlets.read" },
   { to: "/members", label: "Anggota", icon: UsersThree, perm: "members.read" },
@@ -92,8 +92,11 @@ export function RootLayout() {
                   <List className="size-5" aria-hidden="true" />
                 </button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-[min(20rem,85vw)] gap-0 p-0">
-                <SheetHeader className="border-b px-4 py-3">
+              <SheetContent
+                side="left"
+                className="w-[min(16rem,85vw)] gap-0 p-0"
+              >
+                <SheetHeader className="border-b px-4 py-2.5">
                   <SheetTitle>
                     <DaganaLogo />
                   </SheetTitle>

@@ -2,13 +2,13 @@ import { Button } from '@/components/ui/button'
 import { Minus, Plus, Trash } from '@phosphor-icons/react'
 
 interface CartItemProps {
-  id: string
+  id: number
   name: string
   price: number
   qty: number
-  onInc: (id: string) => void
-  onDec: (id: string) => void
-  onRemove: (id: string) => void
+  onInc: (id: number) => void
+  onDec: (id: number) => void
+  onRemove: (id: number) => void
 }
 
 export function CartItem({ id, name, price, qty, onInc, onDec, onRemove }: CartItemProps) {

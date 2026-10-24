@@ -36,9 +36,23 @@ export const router = createBrowserRouter([
             errorElement: <NotFoundPage />,
             children: [
               { index: true, element: <DashboardPage /> },
-              { path: 'pos', element: <PosPage /> },
+              {
+                path: 'pos',
+                element: (
+                  <RequirePermission permission="products.read">
+                    <PosPage />
+                  </RequirePermission>
+                ),
+              },
               { path: 'orders', element: <OrdersPage /> },
-              { path: 'products', element: <ProductsPage /> },
+              {
+                path: 'products',
+                element: (
+                  <RequirePermission permission="products.read">
+                    <ProductsPage />
+                  </RequirePermission>
+                ),
+              },
               { path: 'cash', element: <CashPage /> },
               {
                 path: 'outlets',

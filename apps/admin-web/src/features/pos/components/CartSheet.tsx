@@ -6,9 +6,9 @@ import type { CartItem as CartItemType } from '../pages/PosPage'
 
 interface CartSheetProps {
   items: CartItemType[]
-  onInc: (id: string) => void
-  onDec: (id: string) => void
-  onRemove: (id: string) => void
+  onInc: (id: number) => void
+  onDec: (id: number) => void
+  onRemove: (id: number) => void
   onCheckout: () => void
 }
 
