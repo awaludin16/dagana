@@ -59,7 +59,64 @@ Fokus: pengelolaan employee, role preset, katalog permission, dan switch ke otor
 - [ ] Audit log untuk perubahan membership/role/permission penting — menunggu modul Audit (Phase 11). Dicatat sebagai dependency di ADR-0006.
 - [ ] Konfigurasi provider email/queue yang sesuai environment diperlukan untuk pengiriman undangan di luar local/test.
 
-## Integrasi frontend Phase 0–2
+## Phase 3 — Catalog
+
+Fokus: pengelolaan kategori, menu, harga, status, dan ketersediaan dasar tanpa mewajibkan
+setup inventory atau modifier.
+
+- [x] User dengan permission yang sesuai dapat membuat, membaca, memperbarui,
+  menonaktifkan, dan mengaktifkan kembali kategori/menu melalui API.
+- [x] Nama wajib dan harga integer rupiah positif divalidasi di backend; input tidak
+  valid ditolak tanpa mengubah data.
+- [x] Katalog POS hanya menampilkan menu aktif dan tersedia serta kategori aktif untuk
+  outlet aktif yang dapat diakses membership.
+- [x] API checkout memvalidasi ulang menu aktif/tersedia dan harga server-side;
+  menu nonaktif/tidak tersedia ditolak meski request dibuat langsung.
+- [x] Data kategori/menu di-scope ke Business; akses lintas Business menghasilkan
+  `404` dan foreign category tidak dapat dipasang ke menu.
+- [x] Kontrak snapshot Phase 4 terdokumentasi di `docs/api-conventions.md` §5.1:
+  checkout memvalidasi ulang menu di server dan order menyimpan snapshot nama/harga,
+  sehingga perubahan catalog tidak mengubah histori; test snapshot ada di Phase 4.
+- [x] Daftar kategori/menu menggunakan pagination dan batas `per_page` maksimal 100;
+  default daftar Business adalah 20, default menu POS 20, dan default kategori POS 100.
+  Kontrak terdokumentasi di `docs/api-conventions.md` §5.1.
+- [x] Feature test mencakup CRUD, validasi, perubahan status/ketersediaan, permission,
+  pagination, dan isolasi lintas Business (`CatalogTest`).
+
+Phase 3 telah memenuhi acceptance criteria katalog. Snapshot transaksi diuji pada Phase 4.
+
+## Phase 4 — POS + Payment
+
+Fokus: checkout POS yang menghitung harga di backend, menyimpan order/payment secara
+atomik, dan mempertahankan snapshot receipt.
+
+- [x] Operator dengan `orders.create`, `payments.create`, dan akses outlet dapat membuat
+  order dari menu aktif/tersedia pada outlet tersebut.
+- [x] Backend memuat ulang dan memvalidasi menu/harga; quantity dibatasi; total dihitung
+  server-side memakai integer rupiah dan input total client diabaikan.
+- [x] Item order menyimpan nama menu, kuantitas, harga satuan, dan total snapshot; histori
+  tetap memakai snapshot setelah menu katalog diubah.
+- [x] Status order/payment tidak dapat diubah melalui payload umum. Cash dibayar saat
+  checkout; metode non-tunai menunggu konfirmasi melalui endpoint khusus yang memerlukan
+  `payments.create` dan mencatat actor/timestamp.
+- [x] Order, item, dan payment dibuat dalam satu transaksi database; test kegagalan
+  penulisan payment setelah order dan item dibuat memastikan seluruh record rollback.
+- [x] `Idempotency-Key` wajib untuk checkout; key + scope business/outlet unik di database,
+  request identik mengembalikan order yang sama, dan payload berbeda dengan key sama
+  menghasilkan `409 Conflict`.
+- [x] Constraint unik database mencegah order ganda pada retry/race untuk key yang sama.
+- [x] Payment mencatat order, metode, amount, status, reference (opsional), waktu, actor,
+  dan actor konfirmasi.
+- [x] Feature test mencakup checkout, input/menu tidak valid, rollback, idempotency,
+  permission, isolasi outlet, pagination histori, dan snapshot.
+- [x] Riwayat/receipt menampilkan snapshot item dan total transaksi; endpoint list
+  memakai pagination default 20 dan batas 100.
+
+Catatan batas Phase 4: belum ada integrasi gateway/webhook, Cash Session, refund, maupun
+transisi `FAILED`/`REFUNDED`/`PARTIALLY_REFUNDED`. Metode non-tunai memerlukan konfirmasi
+manual operator yang berwenang; status tersebut tidak dapat dikirim langsung oleh client.
+
+## Integrasi frontend Phase 0–4
 
 Bagian ini mencatat cakupan UI Owner/Admin (`apps/admin-web`), bukan mengganti acceptance
 criteria backend di atas. Health check Phase 0 adalah endpoint operasional dan tidak
@@ -96,6 +153,20 @@ memerlukan layar khusus merchant.
   menyediakan navigasi halaman dan state loading, empty, error, serta retry.
 - [x] UI menangani status loading, empty, error, dan konflik Owner terakhir; otorisasi,
   validasi, serta anti-eskalasi tetap ditegakkan oleh API.
+
+### Phase 3
+
+- [x] Halaman Produk dan Kategori menyediakan pengelolaan menu, kategori, harga,
+  ketersediaan, serta status aktif/nonaktif dengan kontrol yang mengikuti permission.
+- [x] Daftar menu/kategori menggunakan pagination API; halaman katalog menangani
+  loading, empty, error, dan retry untuk pemuatan menu.
+
+### Phase 4
+
+- [x] POS mengirim item dan metode pembayaran ke checkout API dengan idempotency key;
+  cart hanya dikosongkan setelah server berhasil membuat order.
+- [x] Halaman Riwayat Transaksi menampilkan receipt dari snapshot API dan menyediakan
+  konfirmasi pembayaran tertunda bagi user dengan permission yang sesuai.
 
 ### Shell Owner/Admin
 

@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
+import { DaganaLogo } from '@/components/layout/DaganaLogo'
 
 export function RegisterPage() {
   const { register, isLoading } = useAuth()
@@ -32,16 +33,17 @@ export function RegisterPage() {
           ? `/accept-invitation?token=${encodeURIComponent(invitationToken)}`
           : '/',
       )
-    } catch (err) {
+    } catch {
       setError('Gagal mendaftar. Cek kembali data Anda.')
     }
   }
 
   return (
     <main className="min-h-dvh flex items-center justify-center p-4">
-      <div className="w-full max-w-sm space-y-6 rounded-lg border bg-card p-6 shadow-sm">
-        <div className="space-y-1 text-center">
-          <h1 className="text-lg font-semibold tracking-tight">Daftar Dagana</h1>
+      <div className="w-full max-w-sm space-y-6 rounded-lg border bg-card p-6">
+        <div className="space-y-3">
+          <DaganaLogo />
+          <h1 className="app-page-title">Daftar Dagana</h1>
           <p className="text-sm text-muted-foreground">
             Mulai kelola operasional bisnis F&B Anda.
           </p>
@@ -65,6 +67,7 @@ export function RegisterPage() {
               id="email"
               type="email"
               autoComplete="email"
+              spellCheck={false}
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -101,10 +104,10 @@ export function RegisterPage() {
             </p>
           )}
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? 'Memproses...' : 'Daftar'}
+            {isLoading ? 'Memproses…' : 'Daftar'}
           </Button>
         </form>
-        <p className="text-center text-xs text-muted-foreground">
+        <p className="text-center text-sm text-muted-foreground">
           Sudah punya akun?{' '}
           <Link
             to={invitationToken ? `/login?inviteToken=${encodeURIComponent(invitationToken)}` : '/login'}

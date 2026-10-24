@@ -10,7 +10,7 @@ export function ProtectedRoute() {
   if (isLoading) {
     return (
       <div className="min-h-dvh flex items-center justify-center p-4">
-        <p className="text-sm text-muted-foreground">Memuat...</p>
+        <p className="text-sm text-muted-foreground">Memuat…</p>
       </div>
     )
   }

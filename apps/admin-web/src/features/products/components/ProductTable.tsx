@@ -50,7 +50,7 @@ export function ProductTable({
               </Badge>
             </div>
             {(canUpdate || canArchive) && (
-              <div className="flex flex-wrap gap-2 border-t pt-2">
+              <div className="flex flex-wrap gap-2 pt-2">
                 {canUpdate && (
                   <>
                     <Button

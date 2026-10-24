@@ -7,10 +7,10 @@ interface StatusBadgeProps {
 }
 
 const variants = {
-  success: 'bg-success/3 text-success ring-success/20',
-  warning: 'bg-warning/3 text-warning ring-warning/20',
-  danger: 'bg-error/3 text-error ring-error/20',
-  neutral: 'bg-muted text-muted-foreground ring-border',
+  success: 'bg-pill-success text-pill-success-ink ring-pill-success-border',
+  warning: 'bg-pill-warning text-pill-warning-ink ring-pill-warning-border',
+  danger: 'bg-pill-danger text-pill-danger-ink ring-pill-danger-border',
+  neutral: 'bg-pill-neutral text-pill-neutral-ink ring-pill-neutral-border',
 }
 
 export function StatusBadge({ label, variant = 'neutral', className }: StatusBadgeProps) {

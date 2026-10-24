@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
+import { DaganaLogo } from "@/components/layout/DaganaLogo";
 
 export function LoginPage() {
   const { login, isLoading } = useAuth();
@@ -13,7 +14,9 @@ export function LoginPage() {
   const from =
     (location.state as { from?: { pathname?: string } } | null)?.from
       ?.pathname || "/";
-  const invitationToken = new URLSearchParams(location.search).get('inviteToken')
+  const invitationToken = new URLSearchParams(location.search).get(
+    "inviteToken",
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -30,20 +33,19 @@ export function LoginPage() {
           : from,
         { replace: true },
       );
-    } catch (err) {
+    } catch {
       setError("Email atau kata sandi tidak valid.");
     }
   };
 
   return (
     <main className="min-h-dvh flex items-center justify-center p-4">
-      <div className="w-full max-w-sm space-y-6 rounded-lg border bg-card p-6 shadow-sm">
-        <div className="space-y-1 text-center">
-          <h1 className="text-lg font-semibold tracking-tight">
-            Masuk ke Dagana
-          </h1>
+      <div className="w-full max-w-sm space-y-6 rounded-lg border bg-card p-6">
+        <div className="space-y-3">
+          <DaganaLogo />
+          <h1 className="app-page-title">Masuk ke Dagana</h1>
           <p className="text-sm text-muted-foreground">
-            Kelola operasional bisnis Anda.
+            Kelola menu, tim, dan transaksi bisnis Anda.
           </p>
         </div>
         <form onSubmit={onSubmit} className="space-y-4">
@@ -53,6 +55,7 @@ export function LoginPage() {
               id="email"
               type="email"
               autoComplete="email"
+              spellCheck={false}
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -77,13 +80,17 @@ export function LoginPage() {
             </p>
           )}
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Memproses..." : "Masuk"}
+            {isLoading ? "Memproses…" : "Masuk"}
           </Button>
         </form>
-        <p className="text-center text-xs text-muted-foreground">
+        <p className="text-center text-sm text-muted-foreground">
           Belum punya akun?{" "}
           <Link
-            to={invitationToken ? `/register?inviteToken=${encodeURIComponent(invitationToken)}` : '/register'}
+            to={
+              invitationToken
+                ? `/register?inviteToken=${encodeURIComponent(invitationToken)}`
+                : "/register"
+            }
             className="underline underline-offset-4"
           >
             Daftar

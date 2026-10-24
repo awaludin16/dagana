@@ -2,7 +2,6 @@ import { createBrowserRouter } from 'react-router-dom'
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage'
 import { ProductsPage } from '@/features/products/pages/ProductsPage'
 import { OrdersPage } from '@/features/orders/pages/OrdersPage'
-import { CashPage } from '@/features/cash/pages/CashPage'
 import { PosPage } from '@/features/pos/pages/PosPage'
 import { OutletsPage } from '@/features/outlets/pages/OutletsPage'
 import { RootLayout } from '@/components/layout/RootLayout'
@@ -44,7 +43,14 @@ export const router = createBrowserRouter([
                   </RequirePermission>
                 ),
               },
-              { path: 'orders', element: <OrdersPage /> },
+              {
+                path: 'orders',
+                element: (
+                  <RequirePermission permission="orders.read">
+                    <OrdersPage />
+                  </RequirePermission>
+                ),
+              },
               {
                 path: 'products',
                 element: (
@@ -53,7 +59,6 @@ export const router = createBrowserRouter([
                   </RequirePermission>
                 ),
               },
-              { path: 'cash', element: <CashPage /> },
               {
                 path: 'outlets',
                 element: (

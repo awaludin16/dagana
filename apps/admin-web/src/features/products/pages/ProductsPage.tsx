@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from 'react'
-import { isAxiosError } from 'axios'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { MagnifyingGlass, Package, Plus } from '@phosphor-icons/react'
 import { toast } from 'sonner'
@@ -9,7 +8,9 @@ import { EmptyState } from '@/components/states/EmptyState'
 import { ErrorState } from '@/components/states/ErrorState'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { PaginationBar } from '@/components/ui/pagination-bar'
 import { api } from '@/lib/api'
+import { apiErrorMessage } from '@/lib/api-errors'
 import { useBusiness } from '@/providers/business-provider'
 import type {
   CatalogCategory,
@@ -23,14 +24,6 @@ interface MenuForm {
   price: string
   categoryId: string
   isAvailable: boolean
-}
-
-function apiErrorMessage(error: unknown): string {
-  if (isAxiosError<{ message?: string; errors?: Record<string, string[]> }>(error)) {
-    const details = Object.values(error.response?.data?.errors ?? {}).flat()
-    return details[0] ?? error.response?.data?.message ?? 'Permintaan catalog gagal.'
-  }
-  return error instanceof Error ? error.message : 'Permintaan catalog gagal.'
 }
 
 export function ProductsPage() {
@@ -184,7 +177,7 @@ export function ProductsPage() {
       context?.previous.forEach(([queryKey, data]) => {
         queryClient.setQueryData(queryKey, data)
       })
-      toast.error(apiErrorMessage(error))
+      toast.error(apiErrorMessage(error, 'Status kategori belum dapat diperbarui. Coba lagi.'))
     },
     onSuccess: (response, { category }) => {
       const updatedCategory = response.data.data
@@ -228,14 +221,44 @@ export function ProductsPage() {
   }
 
   if (menusQuery.isPending) {
-    return <Skeleton className="h-72 w-full" />
+    return (
+      <div className="space-y-6" aria-label="Memuat katalog" aria-busy="true">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-52" />
+            <Skeleton className="h-4 w-64 max-w-full" />
+          </div>
+          <Skeleton className="h-11 w-36" />
+        </div>
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-6 w-16" />
+            <Skeleton className="h-10 w-full max-w-xs" />
+          </div>
+          <div className="rounded-lg border">
+            <div className="flex items-center gap-3 border-b p-3">
+              {[0, 1, 2, 3].map((col) => (
+                <Skeleton key={col} className="h-5 flex-1" />
+              ))}
+            </div>
+            {[0, 1, 2].map((row) => (
+              <div key={row} className="flex items-center gap-3 p-3">
+                {[0, 1, 2, 3].map((col) => (
+                  <Skeleton key={col} className="h-5 flex-1" />
+                ))}
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+    )
   }
 
   if (menusQuery.isError) {
     return (
       <ErrorState
         title="Katalog tidak dapat dimuat"
-        description={apiErrorMessage(menusQuery.error)}
+        description={apiErrorMessage(menusQuery.error, 'Permintaan katalog gagal. Periksa koneksi lalu coba lagi.')}
         action={<Button onClick={() => void menusQuery.refetch()}>Coba lagi</Button>}
       />
     )
@@ -248,9 +271,9 @@ export function ProductsPage() {
     <div className="space-y-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-lg font-semibold tracking-tight">Produk dan kategori</h1>
+          <h1 className="app-page-title">Produk dan kategori</h1>
           <p className="text-sm text-muted-foreground">
-            Kelola menu, harga, dan ketersediaan untuk seluruh outlet Business.
+            Kelola menu, harga, dan ketersediaan untuk seluruh outlet bisnis Anda.
           </p>
         </div>
         {can('products.create') && (
@@ -330,12 +353,12 @@ export function ProductsPage() {
           </label>
           {saveMenu.isError && (
             <p className="text-sm text-destructive sm:col-span-2" role="alert">
-              {apiErrorMessage(saveMenu.error)}
+              {apiErrorMessage(saveMenu.error, 'Menu belum dapat disimpan. Periksa kembali data lalu coba lagi.')}
             </p>
           )}
           <div className="flex gap-2 sm:col-span-2">
             <Button type="submit" disabled={saveMenu.isPending}>
-              {saveMenu.isPending ? 'Menyimpan...' : 'Simpan'}
+              {saveMenu.isPending ? 'Menyimpan…' : 'Simpan'}
             </Button>
             <Button
               type="button"
@@ -358,8 +381,9 @@ export function ProductsPage() {
           <div className="relative w-full sm:max-w-xs">
             <MagnifyingGlass className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
             <Input
+              type="search"
               maxLength={100}
-              placeholder="Cari menu..."
+              placeholder="Cari menu…"
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value)
@@ -400,36 +424,22 @@ export function ProductsPage() {
           />
         )}
         {changeMenu.isError && (
-          <p className="text-sm text-destructive" role="alert">{apiErrorMessage(changeMenu.error)}</p>
+          <p className="text-sm text-destructive" role="alert">
+            {apiErrorMessage(changeMenu.error, 'Status menu belum dapat diperbarui. Coba lagi.')}
+          </p>
         )}
-        {menusQuery.data.meta.last_page > 1 && (
-          <div className="flex items-center justify-between text-sm">
-            <span>Halaman {menusQuery.data.meta.current_page} dari {menusQuery.data.meta.last_page}</span>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                className="min-h-11"
-                disabled={page <= 1}
-                onClick={() => setPage((current) => current - 1)}
-              >
-                Sebelumnya
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={page >= menusQuery.data.meta.last_page}
-                onClick={() => setPage((current) => current + 1)}
-              >
-                Berikutnya
-              </Button>
-            </div>
-          </div>
-        )}
+        <PaginationBar
+          page={menusQuery.data.meta.current_page}
+          lastPage={menusQuery.data.meta.last_page}
+          total={menusQuery.data.meta.total}
+          perPage={menusQuery.data.meta.per_page}
+          noun="menu"
+          onPageChange={setPage}
+        />
       </section>
 
       {canReadCategories && (
-        <section className="space-y-3 border-t pt-5">
+        <section className="space-y-3 pt-5">
           <div>
             <h2 className="text-base font-semibold">Kategori</h2>
             <p className="text-sm text-muted-foreground">Kategori bersifat opsional untuk setiap menu.</p>
@@ -463,16 +473,34 @@ export function ProductsPage() {
             </form>
           ) : null}
           {saveCategory.isError && (
-            <p className="text-sm text-destructive" role="alert">{apiErrorMessage(saveCategory.error)}</p>
+            <p className="text-sm text-destructive" role="alert">
+              {apiErrorMessage(saveCategory.error, 'Kategori belum dapat disimpan. Periksa kembali data lalu coba lagi.')}
+            </p>
           )}
           {categoriesQuery.isError ? (
             <ErrorState
               title="Kategori tidak dapat dimuat"
-              description={apiErrorMessage(categoriesQuery.error)}
+              description={apiErrorMessage(categoriesQuery.error, 'Permintaan kategori gagal. Periksa koneksi lalu coba lagi.')}
               action={<Button onClick={() => void categoriesQuery.refetch()}>Coba lagi</Button>}
             />
           ) : categoriesQuery.isPending ? (
-            <Skeleton className="h-24 w-full" />
+            <div className="rounded-lg border">
+              {[0, 1].map((row) => (
+                <div
+                  key={row}
+                  className="flex items-center justify-between gap-2 border-b p-3 last:border-b-0"
+                >
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-5 w-32" />
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                  </div>
+                  <div className="flex gap-2">
+                    <Skeleton className="h-8 w-16" />
+                    <Skeleton className="h-8 w-24" />
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : categories.length === 0 ? (
             <p className="text-sm text-muted-foreground">Belum ada kategori.</p>
           ) : (
@@ -520,7 +548,7 @@ export function ProductsPage() {
                       >
                         {changeCategory.isPending
                           && changeCategory.variables?.category.id === category.id
-                          ? 'Menyimpan...'
+                          ? 'Menyimpan…'
                           : category.status === 'active' ? 'Nonaktifkan' : 'Aktifkan'}
                       </Button>
                     )}
@@ -530,34 +558,19 @@ export function ProductsPage() {
             </div>
           )}
           {changeCategory.isError && (
-            <p className="text-sm text-destructive" role="alert">{apiErrorMessage(changeCategory.error)}</p>
+            <p className="text-sm text-destructive" role="alert">
+              {apiErrorMessage(changeCategory.error, 'Status kategori belum dapat diperbarui. Coba lagi.')}
+            </p>
           )}
-          {categoriesQuery.data && categoriesQuery.data.meta.last_page > 1 && (
-            <div className="flex items-center justify-between text-sm">
-              <span>
-                Halaman {categoriesQuery.data.meta.current_page} dari {categoriesQuery.data.meta.last_page}
-              </span>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="min-h-11"
-                  disabled={categoryPage <= 1}
-                  onClick={() => setCategoryPage((current) => current - 1)}
-                >
-                  Sebelumnya
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="min-h-11"
-                  disabled={categoryPage >= categoriesQuery.data.meta.last_page}
-                  onClick={() => setCategoryPage((current) => current + 1)}
-                >
-                  Berikutnya
-                </Button>
-              </div>
-            </div>
+          {categoriesQuery.data && (
+            <PaginationBar
+              page={categoriesQuery.data.meta.current_page}
+              lastPage={categoriesQuery.data.meta.last_page}
+              total={categoriesQuery.data.meta.total}
+              perPage={categoriesQuery.data.meta.per_page}
+              noun="kategori"
+              onPageChange={setCategoryPage}
+            />
           )}
         </section>
       )}

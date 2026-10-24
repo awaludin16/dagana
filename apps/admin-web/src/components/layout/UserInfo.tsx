@@ -19,7 +19,7 @@ export function UserInfo() {
   };
 
   return (
-    <div className="mt-auto border-t p-3">
+    <div className="mt-auto p-3">
       <p className="mb-2 truncate px-3 text-xs font-medium text-muted-foreground">
         {user.name}
         {memberships.map((membership) => (

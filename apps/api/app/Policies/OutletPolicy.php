@@ -50,6 +50,50 @@ class OutletPolicy
             : Response::denyAsNotFound();
     }
 
+    public function viewOrders(User $user, Outlet $outlet): Response|bool
+    {
+        $membership = $this->membership($user, $outlet);
+
+        if ($membership === null
+            || ! $membership->hasPermission(Permission::OutletsRead)
+            || ! $membership->hasPermission(Permission::OrdersRead)
+            || ! $membership->hasOutletAccess($outlet)) {
+            return Response::denyAsNotFound();
+        }
+
+        return true;
+    }
+
+    public function createOrder(User $user, Outlet $outlet): Response|bool
+    {
+        $membership = $this->membership($user, $outlet);
+
+        if ($outlet->status !== Outlet::STATUS_ACTIVE
+            || $membership === null
+            || ! $membership->hasPermission(Permission::OutletsRead)
+            || ! $membership->hasPermission(Permission::OrdersCreate)
+            || ! $membership->hasPermission(Permission::PaymentsCreate)
+            || ! $membership->hasOutletAccess($outlet)) {
+            return Response::denyAsNotFound();
+        }
+
+        return true;
+    }
+
+    public function confirmOrderPayment(User $user, Outlet $outlet): Response|bool
+    {
+        $membership = $this->membership($user, $outlet);
+
+        if ($membership === null
+            || ! $membership->hasPermission(Permission::OutletsRead)
+            || ! $membership->hasPermission(Permission::PaymentsCreate)
+            || ! $membership->hasOutletAccess($outlet)) {
+            return Response::denyAsNotFound();
+        }
+
+        return true;
+    }
+
     public function update(User $user, Outlet $outlet): Response|bool
     {
         $membership = $this->membership($user, $outlet);

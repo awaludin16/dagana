@@ -9,9 +9,19 @@ interface CartItemProps {
   onInc: (id: number) => void
   onDec: (id: number) => void
   onRemove: (id: number) => void
+  disabled: boolean
 }
 
-export function CartItem({ id, name, price, qty, onInc, onDec, onRemove }: CartItemProps) {
+export function CartItem({
+  id,
+  name,
+  price,
+  qty,
+  onInc,
+  onDec,
+  onRemove,
+  disabled,
+}: CartItemProps) {
   const subtotal = price * qty
 
   return (
@@ -22,16 +32,39 @@ export function CartItem({ id, name, price, qty, onInc, onDec, onRemove }: CartI
           Rp {price.toLocaleString('id-ID')} × {qty}
         </p>
       </div>
-      <div className="flex items-center gap-1">
-        <Button variant="outline" size="icon" className="size-7" onClick={() => onDec(id)} disabled={qty <= 1}>
-          <Minus className="size-3.5" />
+      <div className="flex items-center gap-1.5">
+        <Button
+          variant="outline"
+          size="icon"
+          className="size-9"
+          onClick={() => onDec(id)}
+          disabled={disabled || qty <= 1}
+          aria-label="Kurangi jumlah"
+        >
+          <Minus className="size-4" aria-hidden="true" />
         </Button>
-        <span className="w-8 text-center text-sm tabular-nums">{qty}</span>
-        <Button variant="outline" size="icon" className="size-7" onClick={() => onInc(id)}>
-          <Plus className="size-3.5" />
+        <span className="w-8 text-center text-sm tabular-nums" aria-live="polite">
+          {qty}
+        </span>
+        <Button
+          variant="outline"
+          size="icon"
+          className="size-9"
+          onClick={() => onInc(id)}
+          disabled={disabled}
+          aria-label="Tambah jumlah"
+        >
+          <Plus className="size-4" aria-hidden="true" />
         </Button>
-        <Button variant="ghost" size="icon" className="size-7 text-destructive" onClick={() => onRemove(id)}>
-          <Trash className="size-3.5" />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-9 text-destructive"
+          onClick={() => onRemove(id)}
+          disabled={disabled}
+          aria-label="Hapus dari keranjang"
+        >
+          <Trash className="size-4" aria-hidden="true" />
         </Button>
       </div>
       <p className="w-20 text-right text-sm font-semibold tabular-nums">
