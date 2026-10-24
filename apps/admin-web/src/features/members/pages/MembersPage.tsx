@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PaginationBar } from "@/components/ui/pagination-bar";
 import { api } from "@/lib/api";
 import { useBusiness } from "@/providers/business-provider";
 import { useAuth } from "@/hooks/use-auth";
@@ -343,7 +344,7 @@ function MemberEditor({
             </p>
             <div className="space-y-3">
               {groupedPermissions.map(([group, groupPermissions]) => (
-                <fieldset key={group} className="space-y-2 border-t pt-3">
+                <fieldset key={group} className="space-y-2 pt-3">
                   <legend className="text-sm font-medium">
                     {permissionGroupNames[group] ?? group}
                   </legend>
@@ -388,7 +389,7 @@ function MemberEditor({
                             }`}
                           >
                             <span
-                              className={`pointer-events-none inline-block size-5 rounded-full bg-white shadow-sm transition-transform duration-200 motion-reduce:transition-none ${
+                              className={`pointer-events-none inline-block size-5 rounded-full bg-white transition-transform duration-200 motion-reduce:transition-none ${
                                 permissionIsEnabled(permission)
                                   ? "translate-x-5"
                                   : "translate-x-0.5"
@@ -426,7 +427,7 @@ function MemberEditor({
           disabled={isSaving || selectableRoles.length === 0}
         >
           {isSaving
-            ? "Menyimpan..."
+            ? "Menyimpan…"
             : member
               ? "Simpan perubahan"
               : "Kirim undangan"}
@@ -682,7 +683,7 @@ export function MembersPage() {
     <div className="space-y-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Anggota</h1>
+          <h1 className="app-page-title">Anggota</h1>
           <p className="text-sm text-muted-foreground">
             Atur peran, akses outlet, dan izin anggota {activeBusiness.name}.
           </p>
@@ -871,33 +872,15 @@ export function MembersPage() {
           })}
         </div>
       )}
-      {membersQuery.data && membersQuery.data.meta.last_page > 1 && (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-muted-foreground">
-            Halaman {membersQuery.data.meta.current_page} dari{" "}
-            {membersQuery.data.meta.last_page}
-            {" · "}
-            {membersQuery.data.meta.total} anggota
-          </p>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              disabled={membersPage <= 1}
-              onClick={() =>
-                setMembersPage((current) => Math.max(1, current - 1))
-              }
-            >
-              Sebelumnya
-            </Button>
-            <Button
-              variant="outline"
-              disabled={membersPage >= membersQuery.data.meta.last_page}
-              onClick={() => setMembersPage((current) => current + 1)}
-            >
-              Berikutnya
-            </Button>
-          </div>
-        </div>
+      {membersQuery.data && (
+        <PaginationBar
+          page={membersQuery.data.meta.current_page}
+          lastPage={membersQuery.data.meta.last_page}
+          total={membersQuery.data.meta.total}
+          perPage={membersQuery.data.meta.per_page}
+          noun="anggota"
+          onPageChange={setMembersPage}
+        />
       )}
 
       <section className="space-y-3" aria-label="Undangan anggota">
@@ -990,35 +973,15 @@ export function MembersPage() {
             </article>
           ))
         )}
-        {invitationsQuery.data && invitationsQuery.data.meta.last_page > 1 && (
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-muted-foreground">
-              Halaman {invitationsQuery.data.meta.current_page} dari{" "}
-              {invitationsQuery.data.meta.last_page}
-              {" · "}
-              {invitationsQuery.data.meta.total} undangan
-            </p>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                disabled={invitationsPage <= 1}
-                onClick={() =>
-                  setInvitationsPage((current) => Math.max(1, current - 1))
-                }
-              >
-                Sebelumnya
-              </Button>
-              <Button
-                variant="outline"
-                disabled={
-                  invitationsPage >= invitationsQuery.data.meta.last_page
-                }
-                onClick={() => setInvitationsPage((current) => current + 1)}
-              >
-                Berikutnya
-              </Button>
-            </div>
-          </div>
+        {invitationsQuery.data && (
+          <PaginationBar
+            page={invitationsQuery.data.meta.current_page}
+            lastPage={invitationsQuery.data.meta.last_page}
+            total={invitationsQuery.data.meta.total}
+            perPage={invitationsQuery.data.meta.per_page}
+            noun="undangan"
+            onPageChange={setInvitationsPage}
+          />
         )}
       </section>
       {isMutating && (

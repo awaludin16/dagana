@@ -3,6 +3,8 @@
 namespace App\Domain\Organization\Models;
 
 use App\Domain\Authorization\Enums\RolePreset;
+use App\Domain\Catalog\Models\Category;
+use App\Domain\Catalog\Models\Menu;
 use App\Domain\Outlet\Models\Outlet;
 use App\Policies\BusinessPolicy;
 use Database\Factories\BusinessFactory;
@@ -29,6 +31,22 @@ class Business extends Model
     public function outlets(): HasMany
     {
         return $this->hasMany(Outlet::class);
+    }
+
+    /**
+     * @return HasMany<Category, $this>
+     */
+    public function categories(): HasMany
+    {
+        return $this->hasMany(Category::class);
+    }
+
+    /**
+     * @return HasMany<Menu, $this>
+     */
+    public function menus(): HasMany
+    {
+        return $this->hasMany(Menu::class);
     }
 
     /**

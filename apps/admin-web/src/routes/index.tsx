@@ -2,7 +2,6 @@ import { createBrowserRouter } from 'react-router-dom'
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage'
 import { ProductsPage } from '@/features/products/pages/ProductsPage'
 import { OrdersPage } from '@/features/orders/pages/OrdersPage'
-import { CashPage } from '@/features/cash/pages/CashPage'
 import { PosPage } from '@/features/pos/pages/PosPage'
 import { OutletsPage } from '@/features/outlets/pages/OutletsPage'
 import { RootLayout } from '@/components/layout/RootLayout'
@@ -36,10 +35,30 @@ export const router = createBrowserRouter([
             errorElement: <NotFoundPage />,
             children: [
               { index: true, element: <DashboardPage /> },
-              { path: 'pos', element: <PosPage /> },
-              { path: 'orders', element: <OrdersPage /> },
-              { path: 'products', element: <ProductsPage /> },
-              { path: 'cash', element: <CashPage /> },
+              {
+                path: 'pos',
+                element: (
+                  <RequirePermission permission="products.read">
+                    <PosPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'orders',
+                element: (
+                  <RequirePermission permission="orders.read">
+                    <OrdersPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: 'products',
+                element: (
+                  <RequirePermission permission="products.read">
+                    <ProductsPage />
+                  </RequirePermission>
+                ),
+              },
               {
                 path: 'outlets',
                 element: (

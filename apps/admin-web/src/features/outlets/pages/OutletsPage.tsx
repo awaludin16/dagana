@@ -9,6 +9,7 @@ import { EmptyState } from '@/components/states/EmptyState'
 import { ErrorState } from '@/components/states/ErrorState'
 import { StatusBadge } from '@/components/states/StatusBadge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { PaginationBar } from '@/components/ui/pagination-bar'
 import { api } from '@/lib/api'
 import { useBusiness } from '@/providers/business-provider'
 import type { ApiPaginatedCollection } from '@/types/organization.types'
@@ -126,7 +127,7 @@ export function OutletsPage() {
     <div className="space-y-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Outlet</h1>
+          <h1 className="app-page-title">Outlet</h1>
           <p className="text-sm text-muted-foreground">
             Kelola lokasi operasional {activeBusiness.name}.
           </p>
@@ -219,17 +220,14 @@ export function OutletsPage() {
               </div>
             </article>
           ))}
-          {pagination.last_page > 1 && (
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-              <p className="text-sm text-muted-foreground">
-                Halaman {pagination.current_page} dari {pagination.last_page} · {pagination.total} outlet
-              </p>
-              <div className="flex gap-2">
-                <Button variant="outline" disabled={pagination.current_page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>Sebelumnya</Button>
-                <Button variant="outline" disabled={pagination.current_page >= pagination.last_page} onClick={() => setPage((current) => current + 1)}>Berikutnya</Button>
-              </div>
-            </div>
-          )}
+          <PaginationBar
+            page={pagination.current_page}
+            lastPage={pagination.last_page}
+            total={pagination.total}
+            perPage={pagination.per_page}
+            noun="outlet"
+            onPageChange={setPage}
+          />
         </section>
       )}
     </div>

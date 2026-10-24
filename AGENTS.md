@@ -92,6 +92,7 @@ A possible domain-oriented layout is `app/Domain/<Domain>/{Actions,DTOs,Events,E
 
 ## 8. Testing and quality gates
 
+- Configure PHPUnit to use an in-memory SQLite database via `phpunit.xml`; ensure that `RefreshDatabase` does not point to a local PostgreSQL instance used for development data (see `development-environment.md` §5).
 - Add or update tests whenever behavior changes. Do not weaken/remove a test only to make a change pass; explain and replace it when the expected behavior truly changed.
 - Minimum critical coverage: validation, permissions, tenant isolation, checkout atomicity/rollback, idempotency, payment state transitions, cash reconciliation arithmetic, and inventory movement whenever those areas change.
 - Prefer feature tests for HTTP/API behavior and unit tests for isolated calculations/rules. Test failure paths as well as happy paths.

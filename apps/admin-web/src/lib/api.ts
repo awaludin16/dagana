@@ -13,7 +13,8 @@ export const api = axios.create({
 // Ambil XSRF-TOKEN dari cookie (Sanctum SPA)
 function getCsrfToken() {
   const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/)
-  return match ? decodeURIComponent(match[1]) : undefined
+  const raw = match?.[1]
+  return raw ? decodeURIComponent(raw) : undefined
 }
 
 let csrfPromise: Promise<void> | null = null

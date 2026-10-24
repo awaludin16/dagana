@@ -4,6 +4,7 @@ import { isAxiosError } from "axios";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { DaganaLogo } from "@/components/layout/DaganaLogo";
 import { useAuth } from "@/hooks/use-auth";
 import { api } from "@/lib/api";
 
@@ -45,10 +46,10 @@ export function AcceptInvitationPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-lg items-center px-4 py-8">
-      <section className="w-full space-y-5 rounded-lg border bg-card p-6 shadow-sm">
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-primary">Undangan Dagana</p>
-          <h1 className="text-xl font-semibold">Bergabung ke bisnis</h1>
+      <section className="w-full space-y-5 rounded-lg border bg-card p-6">
+        <div className="space-y-3">
+          <DaganaLogo />
+          <h1 className="app-page-title">Bergabung ke bisnis</h1>
           <p className="text-sm text-muted-foreground">
             Buat akun menggunakan alamat email yang menerima undangan.
           </p>

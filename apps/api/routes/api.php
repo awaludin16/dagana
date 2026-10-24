@@ -4,10 +4,13 @@ use App\Http\Controllers\Api\V1\Auth\LoginController;
 use App\Http\Controllers\Api\V1\Auth\LogoutController;
 use App\Http\Controllers\Api\V1\Auth\RegisterController;
 use App\Http\Controllers\Api\V1\BusinessController;
+use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\MeController;
 use App\Http\Controllers\Api\V1\MemberInvitationController;
 use App\Http\Controllers\Api\V1\MembershipController;
+use App\Http\Controllers\Api\V1\MenuController;
+use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\OutletController;
 use App\Http\Controllers\Api\V1\PermissionController;
 use App\Http\Controllers\Api\V1\RoleController;
@@ -39,7 +42,37 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('/businesses/{business}/outlets', [OutletController::class, 'index']);
     Route::post('/businesses/{business}/outlets', [OutletController::class, 'store']);
 
+    Route::get('/businesses/{business}/categories', [CategoryController::class, 'index']);
+    Route::post('/businesses/{business}/categories', [CategoryController::class, 'store']);
+    Route::get('/businesses/{business}/categories/{category}', [CategoryController::class, 'show'])
+        ->scopeBindings();
+    Route::patch('/businesses/{business}/categories/{category}', [CategoryController::class, 'update'])
+        ->scopeBindings();
+    Route::post('/businesses/{business}/categories/{category}/disable', [CategoryController::class, 'disable'])
+        ->scopeBindings();
+    Route::post('/businesses/{business}/categories/{category}/enable', [CategoryController::class, 'enable'])
+        ->scopeBindings();
+
+    Route::get('/businesses/{business}/menus', [MenuController::class, 'index']);
+    Route::post('/businesses/{business}/menus', [MenuController::class, 'store']);
+    Route::get('/businesses/{business}/menus/{menu}', [MenuController::class, 'show'])
+        ->scopeBindings();
+    Route::patch('/businesses/{business}/menus/{menu}', [MenuController::class, 'update'])
+        ->scopeBindings();
+    Route::post('/businesses/{business}/menus/{menu}/disable', [MenuController::class, 'disable'])
+        ->scopeBindings();
+    Route::post('/businesses/{business}/menus/{menu}/enable', [MenuController::class, 'enable'])
+        ->scopeBindings();
+
     Route::get('/outlets/{outlet}', [OutletController::class, 'show']);
+    Route::get('/outlets/{outlet}/categories', [MenuController::class, 'outletCategories']);
+    Route::get('/outlets/{outlet}/menus', [MenuController::class, 'outletMenus']);
+    Route::get('/outlets/{outlet}/orders', [OrderController::class, 'index']);
+    Route::post('/outlets/{outlet}/orders', [OrderController::class, 'store']);
+    Route::get('/outlets/{outlet}/orders/{order}', [OrderController::class, 'show'])
+        ->scopeBindings();
+    Route::post('/outlets/{outlet}/orders/{order}/confirm-payment', [OrderController::class, 'confirmPayment'])
+        ->scopeBindings();
     Route::patch('/outlets/{outlet}', [OutletController::class, 'update']);
     Route::post('/outlets/{outlet}/disable', [OutletController::class, 'disable']);
     Route::post('/outlets/{outlet}/enable', [OutletController::class, 'enable']);

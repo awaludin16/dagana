@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { DaganaLogo } from '@/components/layout/DaganaLogo'
 import { api } from '@/lib/api'
 import { useAuth } from '@/hooks/use-auth'
 import type { BusinessPayload } from '@/types/organization.types'
@@ -44,10 +45,10 @@ export function OnboardingPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-xl items-center px-4 py-8">
-      <section className="w-full space-y-6 rounded-lg border bg-card p-6 shadow-sm">
-        <header className="space-y-2">
-          <p className="text-sm font-medium text-primary">Langkah pertama</p>
-          <h1 className="text-2xl font-semibold tracking-tight">Siapkan bisnis Anda</h1>
+      <section className="w-full space-y-6 rounded-lg border bg-card p-6">
+        <header className="space-y-3">
+          <DaganaLogo />
+          <h1 className="app-page-title">Siapkan bisnis Anda</h1>
           <p className="text-sm text-muted-foreground">
             Buat business dan, jika siap, outlet pertama. Karyawan dapat ditambahkan nanti.
           </p>
@@ -98,7 +99,7 @@ export function OnboardingPage() {
             </p>
           )}
           <Button type="submit" className="w-full" disabled={isSaving}>
-            {isSaving ? 'Menyimpan...' : 'Simpan dan lanjut'}
+            {isSaving ? 'Menyimpan…' : 'Simpan dan lanjut'}
           </Button>
         </form>
       </section>
