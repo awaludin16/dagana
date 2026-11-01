@@ -1,0 +1,23 @@
+# Development-only PHP image for the Dagana API. Not a production build.
+FROM php:8.5-cli
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl git libicu-dev libpq-dev unzip \
+    && docker-php-ext-install intl pdo_pgsql \
+    && pecl install redis \
+    && docker-php-ext-enable redis \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+WORKDIR /var/www/api
+
+COPY docker/php/entrypoint.sh /usr/local/bin/api-entrypoint
+RUN chmod +x /usr/local/bin/api-entrypoint
+
+ENTRYPOINT ["api-entrypoint"]
+# Built-in server started directly (not via `artisan serve`) so the process
+# inherits the container environment; `artisan serve` spawns a child with a
+# cleaned env and would fall back to the bind-mounted apps/api/.env.
+CMD ["php", "-S", "0.0.0.0:8000", "-t", "public", "public/index.php"]

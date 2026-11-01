@@ -1,0 +1,9 @@
+# Local environment files (never commit real credentials)
+.env
+.env.docker
+
+# Agent-local tooling
+.opencode/
+
+# Dependency/cache directories at any level
+node_modules/
