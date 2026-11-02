@@ -99,6 +99,31 @@ Rules:
 - Keep shared `components/ui` limited to generic, reusable primitives. Feature-specific composition belongs in the feature.
 - Permission-based visibility is a UX aid only. The backend remains the security boundary.
 
+### Current `apps/admin-web` convention
+
+The repository adapts the structure above into a flat, category-based layout so that feature work stays easy to find without a large migration:
+
+```text
+apps/admin-web/src/
+├── auth/                    # session context + provider
+├── components/
+│   ├── layout/              # app shell/sidebar and auth shell
+│   └── ui/                  # shared primitives (button, badge, dialog, alert-dialog)
+├── lib/                     # typed API client, env, query client, utils
+├── pages/
+│   ├── auth/                # login, register
+│   ├── onboarding/          # first-Business setup
+│   └── workspace/           # home, business, members, profile, not-found
+├── test/                    # feature-flow tests + setup
+├── types/                   # shared domain/API types (auth, access, business)
+├── router.tsx
+└── main.tsx
+```
+
+- Keep shared domain types in `src/types/` and import them through the barrel; do not redeclare API entities inside pages.
+- Put cross-feature flow tests in `src/test/`; keep component-level tests beside the component only when they are truly local.
+- Use `components/ui/dialog.tsx` and `components/ui/alert-dialog.tsx` for modal forms and destructive confirmations so the overlay, focus trap, and backdrop blur stay consistent.
+
 ## 5. Component rules
 
 - Build on shadcn/ui primitives and Dagana tokens. Wrap/compose them where the product needs a consistent default; do not fork component styling separately in each app.

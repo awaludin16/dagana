@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { SessionContext } from '@/auth/session-context'
 import { queryClient } from '@/lib/query-client'
-import type { User } from '@/lib/api'
+import type { User } from '@/types'
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null)

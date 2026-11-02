@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react'
 
-import type { User } from '@/lib/api'
+import type { User } from '@/types'
 
 export type SessionContextValue = {
   token: string | null

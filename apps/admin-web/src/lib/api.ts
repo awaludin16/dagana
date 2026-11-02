@@ -1,32 +1,14 @@
 import { env } from '@/lib/env'
-
-export type User = {
-  id: number
-  name: string
-  email: string
-  email_verified_at: string | null
-  created_at?: string
-  updated_at?: string
-}
-
-export type Business = {
-  id: number
-  name: string
-  phone: string | null
-  address: string | null
-  created_at?: string
-  updated_at?: string
-}
-
-export type Outlet = {
-  id: number
-  business_id: number
-  name: string
-  phone: string | null
-  address: string | null
-  created_at?: string
-  updated_at?: string
-}
+import type {
+  Business,
+  CreateMemberInput,
+  Me,
+  Member,
+  Outlet,
+  RoleCatalog,
+  UpdateMemberInput,
+  User,
+} from '@/types'
 
 type ApiEnvelope<T> = { data: T }
 type ApiErrorResponse = { message?: string; errors?: Record<string, string[]> }
@@ -44,7 +26,7 @@ export class ApiError extends Error {
 }
 
 type RequestOptions = {
-  method?: 'GET' | 'POST' | 'PATCH'
+  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'
   token?: string
   body?: unknown
 }
@@ -112,7 +94,7 @@ export const api = {
   },
 
   async profile(token: string) {
-    return data<User>(await request('/me', { token }))
+    return data<Me>(await request('/me', { token }))
   },
 
   async outlets(token: string) {
@@ -151,5 +133,25 @@ export const api = {
     return data<{ business: Business; outlet: Outlet }>(
       await request('/businesses', { method: 'POST', token, body: input }),
     )
+  },
+
+  async members(token: string) {
+    return data<Member[]>(await request('/members', { token }))
+  },
+
+  async createMember(token: string, input: CreateMemberInput) {
+    return data<Member>(await request('/members', { method: 'POST', token, body: input }))
+  },
+
+  async updateMember(token: string, id: number, input: UpdateMemberInput) {
+    return data<Member>(await request(`/members/${id}`, { method: 'PATCH', token, body: input }))
+  },
+
+  async removeMember(token: string, id: number) {
+    await request(`/members/${id}`, { method: 'DELETE', token })
+  },
+
+  async roles(token: string) {
+    return data<RoleCatalog[]>(await request('/roles', { token }))
   },
 }
