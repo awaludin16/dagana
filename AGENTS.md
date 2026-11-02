@@ -17,7 +17,7 @@ Gunakan prinsip respons di atas secara konsisten; jangan mengklaim test atau per
 
 ## 1. Source of truth and first steps
 
-Dokumentasi dipisahkan berdasarkan tanggung jawab: PRD untuk product context, `docs/requirements/` untuk behavior/requirement, `docs/architecture/` untuk technical design, `docs/planning/` untuk keputusan dan delivery targets, `docs/engineering/` untuk praktik kode, serta `docs/operations/` untuk local environment. Gunakan `docs/README.md` sebagai peta dan jangan menyalin seluruh isi dokumen lain ke PRD.
+Dokumentasi dipisahkan berdasarkan tanggung jawab: PRD untuk product context, `docs/requirements/` untuk behavior/requirement, `docs/architecture/` untuk technical design, `docs/planning/` untuk keputusan dan delivery targets, `docs/engineering/` untuk praktik kode, `docs/design-system/` untuk tampilan/UX frontend, serta `docs/operations/` untuk local environment. Gunakan `docs/README.md` sebagai peta dan jangan menyalin seluruh isi dokumen lain ke PRD.
 
 1. Read this file, `docs/README.md`, the relevant PRD/product requirements, and applicable architecture/planning documents before making changes.
 2. Read `docs/planning/decision-log.md` before making decisions that touch an item from the relevant decision entry. Treat it as a proposal/decision register and check whether the relevant baseline has been approved; production gates are not considered satisfied without evidence.
@@ -105,10 +105,14 @@ A possible domain-oriented layout is `app/Domain/<Domain>/{Actions,DTOs,Events,E
 ## 9. Frontend boundaries: React Web and Flutter
 
 - Use TypeScript for React Web. The POS mobile app uses Flutter + Dart; follow the pinned Flutter/Dart SDK versions and repository lint rules.
-- Keep API calls in a consistent API/client layer and use TanStack Query for server state when established in the project. Use Zustand only for cross-screen client state that needs it; avoid duplicating server state in global stores. Do not scatter fetch logic throughout unrelated UI components.
+- React Web uses TanStack Query for server state and local React state for local UI state. Do not add a global client-state library unless a real cross-route requirement is documented and approved. Avoid duplicating server state in a second store. Do not scatter fetch logic throughout unrelated UI components.
 - Keep financial totals and authorization decisions authoritative on the backend; client calculations are previews only and must be revalidated by the API.
 - Build mobile-first and responsive interfaces with loading, empty, error, disabled, and success states. Preserve keyboard accessibility and semantic controls.
 - Keep reusable UI components generic only when reuse is real; do not create an abstraction for a single trivial screen without a clear benefit.
+- Follow `docs/design-system/visual-foundation.md` and platform-specific frontend standards. Share color, typography, spacing, radius, status, and accessibility tokens; do not invent feature-specific palettes or hardcode visual values.
+- React Web must use `docs/design-system/web-theme.css` as the semantic token baseline with Tailwind/shadcn. Flutter must use Dagana Material 3 tokens from `docs/design-system/flutter/dagana_theme.dart`.
+- Use Plus Jakarta Sans consistently on Web and Flutter. Bundle font assets locally; do not require runtime font downloads for operational or offline use.
+- Implement loading, empty, error, disabled, success, and offline/pending-sync states where relevant. Ensure visible keyboard focus on Web, semantic labels, and accessible touch targets on Mobile.
 - Flutter POS is a client of the same API/domain. Do not create a separate set of business rules for checkout, payments, cash, or inventory in the mobile app. Keep HTTP/API access in a dedicated data layer, use Riverpod for app state/dependency injection where appropriate, and verify plugin compatibility with the pinned Flutter/Dart SDK before adding native dependencies.
 
 ## 10. Git and collaboration rules
@@ -145,6 +149,7 @@ Do not claim the application is production-ready solely because it compiles or t
 - Permission names follow `resource.action`. Add `delete` permissions only for resources where logical deletion is appropriate. Prefer soft-delete/archive/deactivation for master data with historical references. Never hard-delete completed orders, payments, cash movements, stock movements, or audit logs; use cancel/refund/reversal/adjustment flows.
 - `business.delete` is Owner-only and must be a guarded soft-delete/deactivation workflow with dependency checks and an audit trail. Employee removal must revoke access without erasing historical attribution.
 - Keep web and mobile UI implementations platform-appropriate. shadcn/ui is for React Web and must not be treated as a Flutter dependency. Keep shared design tokens and domain/API contracts aligned without forcing web components into mobile.
+- Treat `docs/design-system/` as the single source of truth for palette, typography, spacing, radii, responsive rules, and frontend behavior. Update both platform token implementations when a shared token changes.
 
 ## 14. Clean project initialization
 
@@ -152,4 +157,4 @@ Do not claim the application is production-ready solely because it compiles or t
 - For an empty/new repository, scaffold only the workspaces and tooling required by Phase 0: `apps/api` (Laravel), `apps/admin-web` (React), `apps/customer-web` (React), and `apps/pos-mobile` (Flutter). Keep shared documentation/configuration at repository root where appropriate.
 - Do not copy old application code, migrations, database dumps, credentials, build artifacts, or lockfiles from an earlier project unless the user explicitly identifies them as approved source material.
 - Do not delete, reset, clean, or overwrite an existing repository to simulate a fresh start. If the target repository is not empty or contains user work, inspect and report the state first; ask before destructive replacement.
-- Initialize Flutter with the standard Flutter project tooling, pin/document the SDK version, commit `pubspec.lock`, and verify `flutter analyze` and `flutter test` for the created app. Flutter/Android SDK tooling normally runs on the host; do not force it into the Laravel Docker image.
+- Initialize Flutter with the standard Flutter project tooling, pin/document the SDK version, commit `pubspec.lock`, add the Dagana Material 3 theme and bundled Plus Jakarta Sans family mapping, and verify `flutter analyze` and `flutter test` for the created app. Initialize the Web theme CSS tokens and shared layout/component baseline as part of frontend Phase 0. Flutter/Android SDK tooling normally runs on the host; do not force it into the Laravel Docker image.

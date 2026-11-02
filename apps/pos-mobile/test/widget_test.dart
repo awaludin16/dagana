@@ -1,9 +1,30 @@
 import 'package:dagana_pos/app.dart';
 import 'package:dagana_pos/router.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('menggunakan theme Dagana dan font lokal', (tester) async {
+    await tester.pumpWidget(DaganaPosApp(router: createRouter()));
+    final app = tester.widget<MaterialApp>(find.byType(MaterialApp));
+
+    expect(app.theme?.useMaterial3, isTrue);
+    expect(app.theme?.textTheme.bodyMedium?.fontFamily, 'PlusJakartaSans');
+    expect(app.theme?.colorScheme.primary, const Color(0xFF176B52));
+    expect(app.darkTheme?.colorScheme.primary, const Color(0xFF77CBAA));
+
+    for (final weight in [
+      'Regular',
+      'Medium',
+      'SemiBold',
+      'Bold',
+      'ExtraBold',
+    ]) {
+      await rootBundle.load('assets/fonts/PlusJakartaSans-$weight.ttf');
+    }
+  });
+
   testWidgets('menampilkan beranda POS beserta API base URL', (tester) async {
     await tester.pumpWidget(DaganaPosApp(router: createRouter()));
     await tester.pumpAndSettle();

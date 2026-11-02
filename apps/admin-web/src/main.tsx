@@ -5,13 +5,16 @@ import { RouterProvider } from 'react-router'
 
 import { queryClient } from '@/lib/query-client'
 import { router } from '@/router'
+import { SessionProvider } from '@/auth/session-provider'
 
 import './index.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <SessionProvider>
+        <RouterProvider router={router} />
+      </SessionProvider>
     </QueryClientProvider>
   </StrictMode>,
 )

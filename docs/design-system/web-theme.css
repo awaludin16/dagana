@@ -1,0 +1,235 @@
+/* Dagana semantic theme tokens for React + Tailwind CSS + shadcn/ui.
+   Bundle Plus Jakarta Sans locally; do not make runtime font downloads a requirement. */
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/fonts/PlusJakartaSans-Latin-Ext.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
+    U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/fonts/PlusJakartaSans-Latin.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
+    U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  color-scheme: light;
+  --font-sans: "Plus Jakarta Sans", Inter, Roboto, Arial, sans-serif;
+
+  --background: #f6f8f5;
+  --foreground: #18231e;
+  --card: #ffffff;
+  --card-foreground: #18231e;
+  --popover: #ffffff;
+  --popover-foreground: #18231e;
+  --primary: #176b52;
+  --primary-foreground: #ffffff;
+  --secondary: #edf2ee;
+  --secondary-foreground: #18231e;
+  --muted: #edf2ee;
+  --muted-foreground: #5d6b63;
+  --accent: #fff1d6;
+  --accent-foreground: #2d2417;
+  --destructive: #b42318;
+  --destructive-foreground: #ffffff;
+  --border: #e3e8e4;
+  --input: #d5ded8;
+  --ring: #176b52;
+  --radius: 0.75rem;
+
+  /* Dagana brand and semantic tokens */
+  --dagana-primary: #176b52;
+  --dagana-primary-hover: #12543f;
+  --dagana-primary-soft: #dcefe7;
+  --dagana-amber: #e8a23a;
+  --dagana-amber-foreground: #2d2417;
+  --dagana-terracotta: #a94f36;
+  --dagana-terracotta-foreground: #ffffff;
+  --dagana-success: #18794e;
+  --dagana-success-container: #e1f3e8;
+  --dagana-warning: #a15c00;
+  --dagana-warning-container: #fff1d6;
+  --dagana-danger: #b42318;
+  --dagana-danger-container: #fce8e6;
+  --dagana-info: #245e9b;
+  --dagana-info-container: #e7f0fa;
+  --dagana-surface-subtle: #edf2ee;
+  --dagana-text-muted: #5d6b63;
+  --dagana-focus: #176b52;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+}
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", Inter, Roboto, Arial, sans-serif;
+
+  --text-display: clamp(2rem, 4vw, 2.25rem);
+  --text-display--line-height: 1.22;
+  --text-display--font-weight: 700;
+  --text-page-title: clamp(1.5rem, 3vw, 1.75rem);
+  --text-page-title--line-height: 1.29;
+  --text-page-title--font-weight: 700;
+  --text-section-title: clamp(1.125rem, 2vw, 1.25rem);
+  --text-section-title--line-height: 1.4;
+  --text-section-title--font-weight: 600;
+  --text-card-title: 1rem;
+  --text-card-title--line-height: 1.5;
+  --text-card-title--font-weight: 600;
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.57;
+  --text-body-large: 1rem;
+  --text-body-large--line-height: 1.5;
+  --text-label: 0.875rem;
+  --text-label--line-height: 1.54;
+  --text-label--font-weight: 600;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.5;
+  --text-caption--font-weight: 500;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-dagana-primary: var(--dagana-primary);
+  --color-dagana-primary-hover: var(--dagana-primary-hover);
+  --color-dagana-primary-soft: var(--dagana-primary-soft);
+  --color-dagana-amber: var(--dagana-amber);
+  --color-dagana-amber-foreground: var(--dagana-amber-foreground);
+  --color-dagana-terracotta: var(--dagana-terracotta);
+  --color-dagana-terracotta-foreground: var(--dagana-terracotta-foreground);
+  --color-dagana-success: var(--dagana-success);
+  --color-dagana-success-container: var(--dagana-success-container);
+  --color-dagana-warning: var(--dagana-warning);
+  --color-dagana-warning-container: var(--dagana-warning-container);
+  --color-dagana-danger: var(--dagana-danger);
+  --color-dagana-danger-container: var(--dagana-danger-container);
+  --color-dagana-info: var(--dagana-info);
+  --color-dagana-info-container: var(--dagana-info-container);
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 0.25rem);
+}
+
+.dark {
+  color-scheme: dark;
+  --background: #101a16;
+  --foreground: #f2f6f3;
+  --card: #17231d;
+  --card-foreground: #f2f6f3;
+  --popover: #1e2d25;
+  --popover-foreground: #f2f6f3;
+  --primary: #77cbaa;
+  --primary-foreground: #0c2d20;
+  --secondary: #25372d;
+  --secondary-foreground: #f2f6f3;
+  --muted: #25372d;
+  --muted-foreground: #b2c0b7;
+  --accent: #f1b756;
+  --accent-foreground: #30200a;
+  --destructive: #ff8a80;
+  --destructive-foreground: #30150e;
+  --border: #34463b;
+  --input: #34463b;
+  --ring: #77cbaa;
+
+  --dagana-primary: #77cbaa;
+  --dagana-primary-hover: #9adbbe;
+  --dagana-primary-soft: #204c3b;
+  --dagana-amber: #f1b756;
+  --dagana-amber-foreground: #30200a;
+  --dagana-terracotta: #f0a087;
+  --dagana-terracotta-foreground: #30150e;
+  --dagana-success: #63d5a2;
+  --dagana-success-container: #153c2b;
+  --dagana-warning: #f1b756;
+  --dagana-warning-container: #49310f;
+  --dagana-danger: #ff8a80;
+  --dagana-danger-container: #4a1e1b;
+  --dagana-info: #80b8f0;
+  --dagana-info-container: #18334d;
+  --dagana-surface-subtle: #25372d;
+  --dagana-text-muted: #b2c0b7;
+  --dagana-focus: #77cbaa;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html {
+    font-family: var(--font-sans);
+    font-variant-numeric: tabular-nums;
+    scroll-padding-top: 4.5rem;
+  }
+
+  body {
+    background: var(--background);
+    color: var(--foreground);
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--dagana-focus);
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

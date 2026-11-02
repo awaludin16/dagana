@@ -4,11 +4,12 @@ Dokumen ini berisi **dua prompt untuk setiap fase (Phase 0–12)**: satu untuk c
 
 ## Cara menggunakan
 
-1. Pastikan dokumentasi sudah ditempatkan sesuai struktur pada `docs/README.md`. Dokumen acuan minimal: `PRD-Dagana.md`, requirement spesifik fase di `docs/requirements/`, dokumen architecture yang relevan di `docs/architecture/`, `AGENTS.md`, `docs/engineering/engineering-standards.md`, `docs/planning/phase-targets.md`, dan `docs/planning/decision-log.md`.
+1. Pastikan dokumentasi sudah ditempatkan sesuai struktur pada `docs/README.md`. Dokumen acuan minimal: `PRD-Dagana.md`, requirement spesifik fase di `docs/requirements/`, dokumen architecture yang relevan di `docs/architecture/`, dokumen visual dan frontend di `docs/design-system/` untuk semua task UI, `AGENTS.md`, `docs/engineering/engineering-standards.md`, `docs/planning/phase-targets.md`, dan `docs/planning/decision-log.md`.
 2. Jalankan fase sesuai dependency. Jangan otomatis menjalankan seluruh fase sekaligus.
 3. Untuk setiap fase, jalankan prompt Backend terlebih dahulu bila frontend membutuhkan endpoint/kontrak baru. Setelah kontrak API tersedia atau dikonfirmasi, jalankan prompt Frontend.
 4. Satu fase boleh dibagi menjadi task atau pull request kecil. Pilih satu unit pekerjaan yang dapat diuji dan direview.
-5. Project Dagana dimulai ulang dari baseline baru. Untuk repository kosong, scaffold workspace sesuai Phase 0. Jika repository berisi kode/perubahan pengguna, jangan hapus atau overwrite; laporkan kondisinya dan minta persetujuan sebelum tindakan destruktif.
+5. Semua pekerjaan frontend wajib mengikuti `docs/design-system/visual-foundation.md`, `docs/design-system/tokens.json`, serta standar platform `docs/design-system/web-frontend-standards.md` atau `docs/design-system/mobile-frontend-standards.md`. Jangan membuat palet, font, spacing, atau komponen visual alternatif tanpa memperbarui design system.
+6. Project Dagana dimulai ulang dari baseline baru. Untuk repository kosong, scaffold workspace sesuai Phase 0. Jika repository berisi kode/perubahan pengguna, jangan hapus atau overwrite; laporkan kondisinya dan minta persetujuan sebelum tindakan destruktif.
 
 ## Aturan umum yang berlaku untuk semua prompt
 
@@ -18,7 +19,9 @@ Dokumen ini berisi **dua prompt untuk setiap fase (Phase 0–12)**: satu untuk c
 - Jangan mengarang formula, tarif, payment gateway, aturan stok, atau kebijakan yang belum diputuskan. Laporkan blocker secara spesifik.
 - Model MVP: satu User hanya terhubung ke satu Business; satu Business dapat memiliki banyak Outlet. Role hanya `OWNER`, `MANAGER`, dan `CASHIER`.
 - Authorization tenant dan outlet harus ditegakkan backend untuk request, query, export, job, event, dan realtime channel. Frontend permission gating hanya untuk UX, bukan security boundary.
-- Gunakan Laravel modular monolith untuk backend. Business logic berada pada Service/Action sesuai `AGENTS.md`; controller tetap tipis. Frontend memakai TypeScript dan mengikuti batas platform Web vs Flutter.
+- Gunakan Laravel modular monolith untuk backend. Business logic berada pada Service/Action sesuai `AGENTS.md`; controller tetap tipis. Frontend memakai TypeScript untuk Web dan Dart untuk Flutter, mengikuti standar platform masing-masing.
+- Semua implementasi UI mengikuti `docs/design-system/`; Web menggunakan semantic CSS tokens + Tailwind/shadcn, sedangkan Flutter menggunakan Material 3 Dagana theme. Plus Jakarta Sans adalah font bersama.
+- Setiap implementasi pakai skill `ponytail` untuk membuat code seminimal mungkin; Gunakan juga skill `ui-ux-pro-max` untuk implementasi UI. gunakan juga skill `find-skills` untuk mencari skill yang diperlukan.
 - Gunakan migration untuk perubahan schema. Jangan mengubah migration yang mungkin sudah dijalankan pada environment bersama; buat migration baru.
 - Soft delete/archive/deactivation untuk master data yang memiliki histori. Jangan hard-delete completed orders, payments, cash movements, stock movements, atau audit logs.
 - Uji happy path dan failure path. Jangan menyatakan test, build, atau acceptance criteria lulus bila belum benar-benar diverifikasi.
@@ -38,7 +41,6 @@ Sebelum mengubah kode:
 2. Periksa struktur repository, branch, status Git, implementasi, test, dan kontrak API yang sudah ada. Jangan berasumsi repository masih kosong.
 3. Cocokkan task dengan target serta acceptance criteria Phase 0. Identifikasi dependency, file yang akan terdampak, dan risiko kompatibilitas.
 4. Jika ada konflik requirement, keputusan yang belum disetujui, atau dependency yang belum tersedia, jelaskan terlebih dahulu. Jangan memilih kebijakan bisnis sendiri.
-5. Gunakan inti konsep skill `ponytail`. jika diperlukan, cari skill yang dibutuhkan menggunakan skill `find-skills` sesuai kubutuhan task.
 
 **Tujuan:** menyiapkan fondasi repository dan environment development.
 
@@ -74,11 +76,10 @@ Sebelum mengubah kode:
 2. Periksa struktur repository, branch, status Git, implementasi, test, dan kontrak API yang sudah ada. Jangan berasumsi repository masih kosong.
 3. Cocokkan task dengan target serta acceptance criteria Phase 0. Identifikasi dependency, file yang akan terdampak, dan risiko kompatibilitas.
 4. Jika ada konflik requirement, keputusan yang belum disetujui, atau dependency yang belum tersedia, jelaskan terlebih dahulu. Jangan memilih kebijakan bisnis sendiri.
-5. Gunakan inti konsep skill `ponytail`, skill `ui-ux-pro-max` untuk implementasi frontend. jika diperlukan, cari skill yang dibutuhkan menggunakan skill `find-skills` sesuai kubutuhan task.
 
 **Tujuan:** menyiapkan fondasi frontend di dalam monorepo sesuai struktur aktual.
 
-Untuk repository baru/kosong, inisialisasi scaffold workspace `apps/api`, `apps/admin-web`, `apps/customer-web`, dan `apps/pos-mobile` dari awal sesuai stack yang ditetapkan. Jangan menyalin kode, migration, dump database, secret, atau build artifact project lama tanpa persetujuan eksplisit. Jika repository ternyata berisi pekerjaan pengguna, jangan hapus atau overwrite; laporkan dan minta persetujuan sebelum tindakan destruktif. Web menggunakan React + TypeScript + Vite, Tailwind CSS, shadcn/ui, dan TanStack Query. Mobile menggunakan Flutter + Dart + go_router. Siapkan konfigurasi environment berbasis contoh, routing dasar, struktur folder minimal, lint/format/type-check/test, serta dokumentasi cara menjalankan masing-masing app.
+Untuk repository baru/kosong, inisialisasi scaffold workspace `apps/api`, `apps/admin-web`, `apps/customer-web`, dan `apps/pos-mobile` dari awal sesuai stack yang ditetapkan. Jangan menyalin kode, migration, dump database, secret, atau build artifact project lama tanpa persetujuan eksplisit. Jika repository ternyata berisi pekerjaan pengguna, jangan hapus atau overwrite; laporkan dan minta persetujuan sebelum tindakan destruktif. Web menggunakan React + TypeScript + Vite, Tailwind CSS, shadcn/ui, dan TanStack Query. Mobile menggunakan Flutter + Dart + go_router. Siapkan konfigurasi environment berbasis contoh, routing dasar, struktur folder minimal, lint/format/type-check/test, serta dokumentasi cara menjalankan masing-masing app. Implementasikan fondasi design system: semantic CSS tokens dari `docs/design-system/web-theme.css`, token warna/font/spacing bersama, dan `ThemeData` Flutter dari `docs/design-system/flutter/dagana_theme.dart`. Daftarkan Plus Jakarta Sans sebagai font asset lokal (file font disediakan/ditambahkan sesuai lisensi dan prosedur proyek), tanpa runtime font fetching. Jangan membangun halaman bisnis penuh pada Phase 0.
 
 **Batasan:** jangan memasukkan seluruh dependency rekomendasi sekaligus. Untuk dependency Flutter/native gunakan `flutter pub add` dan periksa kompatibilitas. Jangan mengimpor komponen shadcn/ui ke Flutter. Belum perlu membuat halaman bisnis.
 
@@ -114,7 +115,6 @@ Sebelum mengubah kode:
 2. Periksa struktur repository, branch, status Git, implementasi, test, dan kontrak API yang sudah ada. Jangan berasumsi repository masih kosong.
 3. Cocokkan task dengan target serta acceptance criteria Phase 1. Identifikasi dependency, file yang akan terdampak, dan risiko kompatibilitas.
 4. Jika ada konflik requirement, keputusan yang belum disetujui, atau dependency yang belum tersedia, jelaskan terlebih dahulu. Jangan memilih kebijakan bisnis sendiri.
-5. Gunakan inti konsep skill `ponytail`, skill `ui-ux-pro-max` untuk implementasi frontend. jika diperlukan, cari skill yang dibutuhkan menggunakan skill `find-skills` sesuai kubutuhan task.
 
 **Tujuan:** membangun API identitas dan onboarding merchant.
 
@@ -150,7 +150,6 @@ Sebelum mengubah kode:
 2. Periksa struktur repository, branch, status Git, implementasi, test, dan kontrak API yang sudah ada. Jangan berasumsi repository masih kosong.
 3. Cocokkan task dengan target serta acceptance criteria Phase 1. Identifikasi dependency, file yang akan terdampak, dan risiko kompatibilitas.
 4. Jika ada konflik requirement, keputusan yang belum disetujui, atau dependency yang belum tersedia, jelaskan terlebih dahulu. Jangan memilih kebijakan bisnis sendiri.
-5. Gunakan inti konsep skill `ponytail`, skill `ui-ux-pro-max` untuk implementasi frontend. jika diperlukan, cari skill yang dibutuhkan menggunakan skill `find-skills` sesuai kubutuhan task.
 
 **Tujuan:** membangun antarmuka autentikasi dan onboarding merchant berdasarkan kontrak API Phase 1.
 
@@ -190,7 +189,6 @@ Sebelum mengubah kode:
 2. Periksa struktur repository, branch, status Git, implementasi, test, dan kontrak API yang sudah ada. Jangan berasumsi repository masih kosong.
 3. Cocokkan task dengan target serta acceptance criteria Phase 2. Identifikasi dependency, file yang akan terdampak, dan risiko kompatibilitas.
 4. Jika ada konflik requirement, keputusan yang belum disetujui, atau dependency yang belum tersedia, jelaskan terlebih dahulu. Jangan memilih kebijakan bisnis sendiri.
-5. Gunakan inti konsep skill `ponytail`, skill `ui-ux-pro-max` untuk implementasi frontend. jika diperlukan, cari skill yang dibutuhkan menggunakan skill `find-skills` sesuai kubutuhan task.
 
 **Tujuan:** membangun membership, preset role, permission, dan outlet access pada backend.
 
@@ -226,7 +224,6 @@ Sebelum mengubah kode:
 2. Periksa struktur repository, branch, status Git, implementasi, test, dan kontrak API yang sudah ada. Jangan berasumsi repository masih kosong.
 3. Cocokkan task dengan target serta acceptance criteria Phase 2. Identifikasi dependency, file yang akan terdampak, dan risiko kompatibilitas.
 4. Jika ada konflik requirement, keputusan yang belum disetujui, atau dependency yang belum tersedia, jelaskan terlebih dahulu. Jangan memilih kebijakan bisnis sendiri.
-5. Gunakan inti konsep skill `ponytail`, skill `ui-ux-pro-max` untuk implementasi frontend. jika diperlukan, cari skill yang dibutuhkan menggunakan skill `find-skills` sesuai kubutuhan task.
 
 **Tujuan:** menyediakan UI pengelolaan tim, role, dan cakupan outlet sesuai kontrak API Phase 2.
 
@@ -266,7 +263,6 @@ Sebelum mengubah kode:
 2. Periksa struktur repository, branch, status Git, implementasi, test, dan kontrak API yang sudah ada. Jangan berasumsi repository masih kosong.
 3. Cocokkan task dengan target serta acceptance criteria Phase 3. Identifikasi dependency, file yang akan terdampak, dan risiko kompatibilitas.
 4. Jika ada konflik requirement, keputusan yang belum disetujui, atau dependency yang belum tersedia, jelaskan terlebih dahulu. Jangan memilih kebijakan bisnis sendiri.
-5. Gunakan inti konsep skill `ponytail`, skill `ui-ux-pro-max` untuk implementasi frontend. jika diperlukan, cari skill yang dibutuhkan menggunakan skill `find-skills` sesuai kubutuhan task.
 
 **Tujuan:** membangun API catalog sederhana untuk kategori dan menu/produk.
 
@@ -302,7 +298,6 @@ Sebelum mengubah kode:
 2. Periksa struktur repository, branch, status Git, implementasi, test, dan kontrak API yang sudah ada. Jangan berasumsi repository masih kosong.
 3. Cocokkan task dengan target serta acceptance criteria Phase 3. Identifikasi dependency, file yang akan terdampak, dan risiko kompatibilitas.
 4. Jika ada konflik requirement, keputusan yang belum disetujui, atau dependency yang belum tersedia, jelaskan terlebih dahulu. Jangan memilih kebijakan bisnis sendiri.
-5. Gunakan inti konsep skill `ponytail`, skill `ui-ux-pro-max` untuk implementasi frontend. jika diperlukan, cari skill yang dibutuhkan menggunakan skill `find-skills` sesuai kubutuhan task.
 
 **Tujuan:** membangun UI pengelolaan catalog untuk Owner/Manager dan UI pemilihan menu dasar untuk POS.
 
@@ -342,7 +337,6 @@ Sebelum mengubah kode:
 2. Periksa struktur repository, branch, status Git, implementasi, test, dan kontrak API yang sudah ada. Jangan berasumsi repository masih kosong.
 3. Cocokkan task dengan target serta acceptance criteria Phase 4. Identifikasi dependency, file yang akan terdampak, dan risiko kompatibilitas.
 4. Jika ada konflik requirement, keputusan yang belum disetujui, atau dependency yang belum tersedia, jelaskan terlebih dahulu. Jangan memilih kebijakan bisnis sendiri.
-5. Gunakan inti konsep skill `ponytail`, skill `ui-ux-pro-max` untuk implementasi frontend. jika diperlukan, cari skill yang dibutuhkan menggunakan skill `find-skills` sesuai kubutuhan task.
 
 **Tujuan:** membangun Order Engine dan API transaksi inti.
 
@@ -378,7 +372,6 @@ Sebelum mengubah kode:
 2. Periksa struktur repository, branch, status Git, implementasi, test, dan kontrak API yang sudah ada. Jangan berasumsi repository masih kosong.
 3. Cocokkan task dengan target serta acceptance criteria Phase 4. Identifikasi dependency, file yang akan terdampak, dan risiko kompatibilitas.
 4. Jika ada konflik requirement, keputusan yang belum disetujui, atau dependency yang belum tersedia, jelaskan terlebih dahulu. Jangan memilih kebijakan bisnis sendiri.
-5. Gunakan inti konsep skill `ponytail`, skill `ui-ux-pro-max` untuk implementasi frontend. jika diperlukan, cari skill yang dibutuhkan menggunakan skill `find-skills` sesuai kubutuhan task.
 
 **Tujuan:** membangun pengalaman POS dan tampilan transaksi yang menggunakan Order Engine API.
 
@@ -418,7 +411,6 @@ Sebelum mengubah kode:
 2. Periksa struktur repository, branch, status Git, implementasi, test, dan kontrak API yang sudah ada. Jangan berasumsi repository masih kosong.
 3. Cocokkan task dengan target serta acceptance criteria Phase 5. Identifikasi dependency, file yang akan terdampak, dan risiko kompatibilitas.
 4. Jika ada konflik requirement, keputusan yang belum disetujui, atau dependency yang belum tersedia, jelaskan terlebih dahulu. Jangan memilih kebijakan bisnis sendiri.
-5. Gunakan inti konsep skill `ponytail`, skill `ui-ux-pro-max` untuk implementasi frontend. jika diperlukan, cari skill yang dibutuhkan menggunakan skill `find-skills` sesuai kubutuhan task.
 
 **Tujuan:** membangun API Cash Session untuk kontrol kas operasional.
 
@@ -454,7 +446,6 @@ Sebelum mengubah kode:
 2. Periksa struktur repository, branch, status Git, implementasi, test, dan kontrak API yang sudah ada. Jangan berasumsi repository masih kosong.
 3. Cocokkan task dengan target serta acceptance criteria Phase 5. Identifikasi dependency, file yang akan terdampak, dan risiko kompatibilitas.
 4. Jika ada konflik requirement, keputusan yang belum disetujui, atau dependency yang belum tersedia, jelaskan terlebih dahulu. Jangan memilih kebijakan bisnis sendiri.
-5. Gunakan inti konsep skill `ponytail`, skill `ui-ux-pro-max` untuk implementasi frontend. jika diperlukan, cari skill yang dibutuhkan menggunakan skill `find-skills` sesuai kubutuhan task.
 
 **Tujuan:** membangun UI operasional pembukaan, pemantauan, dan penutupan kas.
 
@@ -494,7 +485,6 @@ Sebelum mengubah kode:
 2. Periksa struktur repository, branch, status Git, implementasi, test, dan kontrak API yang sudah ada. Jangan berasumsi repository masih kosong.
 3. Cocokkan task dengan target serta acceptance criteria Phase 6. Identifikasi dependency, file yang akan terdampak, dan risiko kompatibilitas.
 4. Jika ada konflik requirement, keputusan yang belum disetujui, atau dependency yang belum tersedia, jelaskan terlebih dahulu. Jangan memilih kebijakan bisnis sendiri.
-5. Gunakan inti konsep skill `ponytail`, skill `ui-ux-pro-max` untuk implementasi frontend. jika diperlukan, cari skill yang dibutuhkan menggunakan skill `find-skills` sesuai kubutuhan task.
 
 **Tujuan:** membangun inventory dasar yang opsional.
 
@@ -530,7 +520,6 @@ Sebelum mengubah kode:
 2. Periksa struktur repository, branch, status Git, implementasi, test, dan kontrak API yang sudah ada. Jangan berasumsi repository masih kosong.
 3. Cocokkan task dengan target serta acceptance criteria Phase 6. Identifikasi dependency, file yang akan terdampak, dan risiko kompatibilitas.
 4. Jika ada konflik requirement, keputusan yang belum disetujui, atau dependency yang belum tersedia, jelaskan terlebih dahulu. Jangan memilih kebijakan bisnis sendiri.
-5. Gunakan inti konsep skill `ponytail`, skill `ui-ux-pro-max` untuk implementasi frontend. jika diperlukan, cari skill yang dibutuhkan menggunakan skill `find-skills` sesuai kubutuhan task.
 
 **Tujuan:** menyediakan antarmuka inventory dasar yang opsional.
 
@@ -570,7 +559,6 @@ Sebelum mengubah kode:
 2. Periksa struktur repository, branch, status Git, implementasi, test, dan kontrak API yang sudah ada. Jangan berasumsi repository masih kosong.
 3. Cocokkan task dengan target serta acceptance criteria Phase 7. Identifikasi dependency, file yang akan terdampak, dan risiko kompatibilitas.
 4. Jika ada konflik requirement, keputusan yang belum disetujui, atau dependency yang belum tersedia, jelaskan terlebih dahulu. Jangan memilih kebijakan bisnis sendiri.
-5. Gunakan inti konsep skill `ponytail`, skill `ui-ux-pro-max` untuk implementasi frontend. jika diperlukan, cari skill yang dibutuhkan menggunakan skill `find-skills` sesuai kubutuhan task.
 
 **Tujuan:** membangun API reporting MVP berdasarkan sumber transaksi yang sudah tersedia.
 
@@ -606,7 +594,6 @@ Sebelum mengubah kode:
 2. Periksa struktur repository, branch, status Git, implementasi, test, dan kontrak API yang sudah ada. Jangan berasumsi repository masih kosong.
 3. Cocokkan task dengan target serta acceptance criteria Phase 7. Identifikasi dependency, file yang akan terdampak, dan risiko kompatibilitas.
 4. Jika ada konflik requirement, keputusan yang belum disetujui, atau dependency yang belum tersedia, jelaskan terlebih dahulu. Jangan memilih kebijakan bisnis sendiri.
-5. Gunakan inti konsep skill `ponytail`, skill `ui-ux-pro-max` untuk implementasi frontend. jika diperlukan, cari skill yang dibutuhkan menggunakan skill `find-skills` sesuai kubutuhan task.
 
 **Tujuan:** membangun dashboard dan halaman laporan MVP di web.
 
@@ -646,7 +633,6 @@ Sebelum mengubah kode:
 2. Periksa struktur repository, branch, status Git, implementasi, test, dan kontrak API yang sudah ada. Jangan berasumsi repository masih kosong.
 3. Cocokkan task dengan target serta acceptance criteria Phase 8. Identifikasi dependency, file yang akan terdampak, dan risiko kompatibilitas.
 4. Jika ada konflik requirement, keputusan yang belum disetujui, atau dependency yang belum tersedia, jelaskan terlebih dahulu. Jangan memilih kebijakan bisnis sendiri.
-5. Gunakan inti konsep skill `ponytail`, skill `ui-ux-pro-max` untuk implementasi frontend. jika diperlukan, cari skill yang dibutuhkan menggunakan skill `find-skills` sesuai kubutuhan task.
 
 **Tujuan:** membangun backend QR Ordering sebagai channel tambahan dengan Order Engine yang sama.
 
@@ -682,7 +668,6 @@ Sebelum mengubah kode:
 2. Periksa struktur repository, branch, status Git, implementasi, test, dan kontrak API yang sudah ada. Jangan berasumsi repository masih kosong.
 3. Cocokkan task dengan target serta acceptance criteria Phase 8. Identifikasi dependency, file yang akan terdampak, dan risiko kompatibilitas.
 4. Jika ada konflik requirement, keputusan yang belum disetujui, atau dependency yang belum tersedia, jelaskan terlebih dahulu. Jangan memilih kebijakan bisnis sendiri.
-5. Gunakan inti konsep skill `ponytail`, skill `ui-ux-pro-max` untuk implementasi frontend. jika diperlukan, cari skill yang dibutuhkan menggunakan skill `find-skills` sesuai kubutuhan task.
 
 **Tujuan:** membangun customer-facing QR ordering dan pengelolaan QR dasar.
 
@@ -722,7 +707,6 @@ Sebelum mengubah kode:
 2. Periksa struktur repository, branch, status Git, implementasi, test, dan kontrak API yang sudah ada. Jangan berasumsi repository masih kosong.
 3. Cocokkan task dengan target serta acceptance criteria Phase 9. Identifikasi dependency, file yang akan terdampak, dan risiko kompatibilitas.
 4. Jika ada konflik requirement, keputusan yang belum disetujui, atau dependency yang belum tersedia, jelaskan terlebih dahulu. Jangan memilih kebijakan bisnis sendiri.
-5. Gunakan inti konsep skill `ponytail`, skill `ui-ux-pro-max` untuk implementasi frontend. jika diperlukan, cari skill yang dibutuhkan menggunakan skill `find-skills` sesuai kubutuhan task.
 
 **Tujuan:** menambahkan event delivery untuk perubahan operasional.
 
@@ -758,7 +742,6 @@ Sebelum mengubah kode:
 2. Periksa struktur repository, branch, status Git, implementasi, test, dan kontrak API yang sudah ada. Jangan berasumsi repository masih kosong.
 3. Cocokkan task dengan target serta acceptance criteria Phase 9. Identifikasi dependency, file yang akan terdampak, dan risiko kompatibilitas.
 4. Jika ada konflik requirement, keputusan yang belum disetujui, atau dependency yang belum tersedia, jelaskan terlebih dahulu. Jangan memilih kebijakan bisnis sendiri.
-5. Gunakan inti konsep skill `ponytail`, skill `ui-ux-pro-max` untuk implementasi frontend. jika diperlukan, cari skill yang dibutuhkan menggunakan skill `find-skills` sesuai kubutuhan task.
 
 **Tujuan:** mengintegrasikan UI web/mobile dengan event realtime yang disediakan backend.
 
@@ -798,7 +781,6 @@ Sebelum mengubah kode:
 2. Periksa struktur repository, branch, status Git, implementasi, test, dan kontrak API yang sudah ada. Jangan berasumsi repository masih kosong.
 3. Cocokkan task dengan target serta acceptance criteria Phase 10. Identifikasi dependency, file yang akan terdampak, dan risiko kompatibilitas.
 4. Jika ada konflik requirement, keputusan yang belum disetujui, atau dependency yang belum tersedia, jelaskan terlebih dahulu. Jangan memilih kebijakan bisnis sendiri.
-5. Gunakan inti konsep skill `ponytail`, skill `ui-ux-pro-max` untuk implementasi frontend. jika diperlukan, cari skill yang dibutuhkan menggunakan skill `find-skills` sesuai kubutuhan task.
 
 **Tujuan:** membangun domain billing platform yang terpisah dari payment pelanggan.
 
@@ -834,7 +816,6 @@ Sebelum mengubah kode:
 2. Periksa struktur repository, branch, status Git, implementasi, test, dan kontrak API yang sudah ada. Jangan berasumsi repository masih kosong.
 3. Cocokkan task dengan target serta acceptance criteria Phase 10. Identifikasi dependency, file yang akan terdampak, dan risiko kompatibilitas.
 4. Jika ada konflik requirement, keputusan yang belum disetujui, atau dependency yang belum tersedia, jelaskan terlebih dahulu. Jangan memilih kebijakan bisnis sendiri.
-5. Gunakan inti konsep skill `ponytail`, skill `ui-ux-pro-max` untuk implementasi frontend. jika diperlukan, cari skill yang dibutuhkan menggunakan skill `find-skills` sesuai kubutuhan task.
 
 **Tujuan:** menyediakan UI owner untuk melihat konfigurasi dan statement billing platform.
 
@@ -874,7 +855,6 @@ Sebelum mengubah kode:
 2. Periksa struktur repository, branch, status Git, implementasi, test, dan kontrak API yang sudah ada. Jangan berasumsi repository masih kosong.
 3. Cocokkan task dengan target serta acceptance criteria Phase 11. Identifikasi dependency, file yang akan terdampak, dan risiko kompatibilitas.
 4. Jika ada konflik requirement, keputusan yang belum disetujui, atau dependency yang belum tersedia, jelaskan terlebih dahulu. Jangan memilih kebijakan bisnis sendiri.
-5. Gunakan inti konsep skill `ponytail`, skill `ui-ux-pro-max` untuk implementasi frontend. jika diperlukan, cari skill yang dibutuhkan menggunakan skill `find-skills` sesuai kubutuhan task.
 
 **Tujuan:** menstabilkan backend untuk release scope yang telah disepakati.
 
@@ -910,7 +890,6 @@ Sebelum mengubah kode:
 2. Periksa struktur repository, branch, status Git, implementasi, test, dan kontrak API yang sudah ada. Jangan berasumsi repository masih kosong.
 3. Cocokkan task dengan target serta acceptance criteria Phase 11. Identifikasi dependency, file yang akan terdampak, dan risiko kompatibilitas.
 4. Jika ada konflik requirement, keputusan yang belum disetujui, atau dependency yang belum tersedia, jelaskan terlebih dahulu. Jangan memilih kebijakan bisnis sendiri.
-5. Gunakan inti konsep skill `ponytail`, skill `ui-ux-pro-max` untuk implementasi frontend. jika diperlukan, cari skill yang dibutuhkan menggunakan skill `find-skills` sesuai kubutuhan task.
 
 **Tujuan:** menstabilkan seluruh frontend yang masuk release scope.
 
@@ -950,7 +929,6 @@ Sebelum mengubah kode:
 2. Periksa struktur repository, branch, status Git, implementasi, test, dan kontrak API yang sudah ada. Jangan berasumsi repository masih kosong.
 3. Cocokkan task dengan target serta acceptance criteria Phase 12. Identifikasi dependency, file yang akan terdampak, dan risiko kompatibilitas.
 4. Jika ada konflik requirement, keputusan yang belum disetujui, atau dependency yang belum tersedia, jelaskan terlebih dahulu. Jangan memilih kebijakan bisnis sendiri.
-5. Gunakan inti konsep skill `ponytail`, skill `ui-ux-pro-max` untuk implementasi frontend. jika diperlukan, cari skill yang dibutuhkan menggunakan skill `find-skills` sesuai kubutuhan task.
 
 **Tujuan:** mengembangkan domain F&B lanjutan hanya berdasarkan satu subfase yang dipilih: 12A Recipe & BOM, 12B Advanced Inventory/Stock Opname/Waste, 12C COGS & Inventory Costing, atau 12D Modifier & Variant.
 
@@ -986,7 +964,6 @@ Sebelum mengubah kode:
 2. Periksa struktur repository, branch, status Git, implementasi, test, dan kontrak API yang sudah ada. Jangan berasumsi repository masih kosong.
 3. Cocokkan task dengan target serta acceptance criteria Phase 12. Identifikasi dependency, file yang akan terdampak, dan risiko kompatibilitas.
 4. Jika ada konflik requirement, keputusan yang belum disetujui, atau dependency yang belum tersedia, jelaskan terlebih dahulu. Jangan memilih kebijakan bisnis sendiri.
-5. Gunakan inti konsep skill `ponytail`, skill `ui-ux-pro-max` untuk implementasi frontend. jika diperlukan, cari skill yang dibutuhkan menggunakan skill `find-skills` sesuai kubutuhan task.
 
 **Tujuan:** membangun UI untuk satu subfase lanjutan yang dipilih dari Phase 12: 12A Recipe & BOM, 12B Advanced Inventory/Stock Opname/Waste, 12C COGS & Inventory Costing, atau 12D Modifier & Variant.
 

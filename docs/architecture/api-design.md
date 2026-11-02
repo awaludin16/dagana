@@ -70,3 +70,42 @@ Sebelum endpoint digunakan oleh lebih dari satu client, dokumentasikan minimal: 
 - Callback payment tidak boleh dianggap sukses hanya dari redirect client; verifikasi signature/webhook server-side.
 
 Requirement produk yang mendasari API: `docs/requirements/identity-and-access.md`, `payments-and-cash.md`, dan `platform-quality.md`.
+
+## 7. Phase 1 contract — identity, business, outlet
+
+Autentikasi memakai Laravel Sanctum personal access token (`Authorization: Bearer <token>`). Token hanya dikembalikan sekali pada register/login dan disimpan client di secure storage. Semua response resource memakai envelope `data`.
+
+| Method | Path | Auth | Keterangan |
+|---|---|---|---|
+| `POST` | `/api/v1/auth/register` | publik, throttle 6/menit | Membuat user dan token; tidak membuat business. |
+| `POST` | `/api/v1/auth/login` | publik, throttle 6/menit | Menukar kredensial dengan token. |
+| `POST` | `/api/v1/auth/logout` | bearer | Menghapus token yang sedang dipakai; `204`. |
+| `GET` | `/api/v1/me` | bearer | Profil user; tidak memuat password/remember token. |
+| `POST` | `/api/v1/businesses` | bearer | Onboarding atomik: business + outlet pertama + owner membership. |
+| `GET` | `/api/v1/businesses/{business}` | bearer, membership aktif | 404 bila business bukan milik user. |
+| `PATCH` | `/api/v1/businesses/{business}` | bearer, membership aktif | Update pengaturan dasar business. |
+| `GET` | `/api/v1/outlets` | bearer, membership aktif | Hanya outlet milik business user. |
+| `GET` | `/api/v1/outlets/{outlet}` | bearer, membership aktif | 404 bila outlet di luar scope. |
+| `PATCH` | `/api/v1/outlets/{outlet}` | bearer, membership aktif | Update pengaturan dasar outlet. |
+
+Field pengaturan dasar: `name` wajib; `phone` dan `address` opsional. Contoh onboarding:
+
+```json
+{
+  "business": { "name": "Warung Budi", "phone": "081234567890", "address": "Jl. Merdeka No. 1" },
+  "outlet": { "name": "Outlet Pusat", "phone": "081298765432", "address": "Jl. Merdeka No. 1" }
+}
+```
+
+Response sukses onboarding (`201`):
+
+```json
+{
+  "data": {
+    "business": { "id": 1, "name": "Warung Budi", "phone": "081234567890", "address": "Jl. Merdeka No. 1" },
+    "outlet": { "id": 1, "business_id": 1, "name": "Outlet Pusat", "phone": "081298765432", "address": "Jl. Merdeka No. 1" }
+  }
+}
+```
+
+Error yang dipakai: `401` tanpa token valid, `404` untuk resource di luar scope tenant (tanpa membocorkan keberadaannya), `422` untuk validasi termasuk user yang sudah punya business, dan `429` untuk throttle register/login. Bentuk error validasi mengikuti default Laravel `{ "message": ..., "errors": { ... } }`.

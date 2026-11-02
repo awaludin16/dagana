@@ -56,7 +56,7 @@ docker compose exec api ./vendor/bin/pint --test   # cek format
 docker compose exec api ./vendor/bin/pint          # perbaiki format
 ```
 
-Test memakai database `dagana_test` (lihat `apps/api/phpunit.xml`), sehingga `RefreshDatabase` tidak menyentuh schema development.
+Test memakai database `dagana_test` (lihat `apps/api/phpunit.xml`), sehingga `RefreshDatabase` tidak menyentuh schema development. Nilai `APP_ENV`, `DB_DATABASE`, dan `CACHE_STORE` dipaksa lewat elemen `<server force="true">` agar environment Compose tidak menimpa konfigurasi test; rate limit test tidak memakai Redis development.
 
 ### Catatan penting
 

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import 'theme/dagana_theme.dart';
+
 class DaganaPosApp extends StatelessWidget {
   const DaganaPosApp({required this.router, super.key});
 
@@ -11,7 +13,8 @@ class DaganaPosApp extends StatelessWidget {
     return MaterialApp.router(
       title: 'Dagana POS',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(),
+      theme: DaganaTheme.light(),
+      darkTheme: DaganaTheme.dark(),
       routerConfig: router,
     );
   }

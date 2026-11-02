@@ -12,6 +12,12 @@
 - **Router web:** `react-router` 8.5.1 disetujui sebagai router `apps/admin-web` dan `apps/customer-web`. Route awal `/` dengan fallback `*`; versi mengikuti `package-lock.json`.
 - **Komponen web:** shadcn/ui dengan Tailwind CSS v4. Komponen ditambahkan memakai `npx shadcn@latest add` dan disimpan di `src/components/ui`. Registry default CLI v4 menghasilkan import `cn`/`radix-ui` yang belum dipakai proyek, sehingga komponen diambil dari registry `new-york` (`https://ui.shadcn.com/r/styles/new-york/<component>.json`) sampai baseline dependency diperbarui.
 
+## Konfirmasi teknis backend Phase 1 (2026-11-01)
+
+- **Autentikasi API:** Laravel Sanctum personal access token (`Authorization: Bearer`). Login mengembalikan token yang disimpan client di secure storage; logout menghapus token aktif. Session cookie tidak dipakai untuk klien API/mobile.
+- **Pengaturan dasar Phase 1:** business dan outlet memakai `name` (wajib), `phone`, dan `address` (opsional). Field pengaturan lain menunggu requirement yang lebih spesifik.
+- **Relasi awal onboarding:** `business_memberships` dibuat dengan unique `user_id` dan role `OWNER`; ini fondasi minimum untuk tenant scoping. Permission catalog, role preset lain, dan outlet access tetap menjadi scope Phase 2.
+
  — Rekomendasi v1
 
 > **Status dokumen:** usulan baseline untuk ditinjau Product Owner. Keputusan teknis dapat dijadikan default implementasi setelah disetujui. Keputusan komersial, kontraktual, kebijakan, dan perangkat nyata tetap memiliki gate yang dijelaskan di bawah.

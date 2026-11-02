@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 export function NotFoundPage() {
   return (
     <section className="space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight">Halaman tidak ditemukan</h1>
+      <h1 className="text-page-title tracking-tight">Halaman tidak ditemukan</h1>
       <p className="text-sm text-muted-foreground">
         Alamat yang Anda buka tidak tersedia di aplikasi admin.
       </p>

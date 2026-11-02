@@ -1,28 +1,32 @@
 import { render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { describe, expect, it } from 'vitest'
 
+import { SessionProvider } from '@/auth/session-provider'
 import { routes } from '@/router'
 
 function renderAt(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] })
+  const queryClient = new QueryClient()
 
-  return render(<RouterProvider router={router} />)
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <SessionProvider>
+        <RouterProvider router={router} />
+      </SessionProvider>
+    </QueryClientProvider>,
+  )
 }
 
-describe('admin web shell', () => {
-  it('renders the home page inside a main landmark', async () => {
+describe('admin web routes', () => {
+  it('requires a session to enter the workspace', async () => {
     renderAt('/')
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Dagana Admin' }),
-    ).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Masuk ke Dagana' })).toBeVisible()
     expect(screen.getByRole('main')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Lewati ke konten utama' })).toHaveAttribute(
-      'href',
-      '#main',
-    )
-    expect(screen.getByRole('link', { name: 'Dagana Admin' })).toHaveAttribute('href', '/')
+    expect(screen.getByLabelText('Email')).toBeRequired()
+    expect(screen.getByLabelText('Kata sandi')).toHaveAttribute('type', 'password')
   })
 
   it('renders a not-found page for unknown routes', async () => {

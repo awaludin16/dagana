@@ -21,3 +21,6 @@ npm run format:check
 ```
 
 Panduan lengkap: `docs/operations/development-environment.md`.
+
+The Customer Web uses the shared Dagana theme from `docs/design-system/web-theme.css` and bundles
+Plus Jakarta Sans locally under `public/fonts`.
