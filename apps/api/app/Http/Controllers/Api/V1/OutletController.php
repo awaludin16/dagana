@@ -14,20 +14,20 @@ class OutletController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         return OutletResource::collection(
-            Outlet::visibleTo($request->user())->orderBy('name')->get(),
+            Outlet::accessibleTo($request->user())->orderBy('name')->get(),
         );
     }
 
     public function show(Request $request, int $outlet): OutletResource
     {
         return new OutletResource(
-            Outlet::visibleTo($request->user())->findOrFail($outlet),
+            Outlet::accessibleTo($request->user())->findOrFail($outlet),
         );
     }
 
     public function update(UpdateOutletRequest $request, int $outlet): OutletResource
     {
-        $outlet = Outlet::visibleTo($request->user())->findOrFail($outlet);
+        $outlet = Outlet::accessibleTo($request->user())->findOrFail($outlet);
         $outlet->update($request->validated());
 
         return new OutletResource($outlet);

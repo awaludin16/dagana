@@ -12,6 +12,15 @@
 - **Router web:** `react-router` 8.5.1 disetujui sebagai router `apps/admin-web` dan `apps/customer-web`. Route awal `/` dengan fallback `*`; versi mengikuti `package-lock.json`.
 - **Komponen web:** shadcn/ui dengan Tailwind CSS v4. Komponen ditambahkan memakai `npx shadcn@latest add` dan disimpan di `src/components/ui`. Registry default CLI v4 menghasilkan import `cn`/`radix-ui` yang belum dipakai proyek, sehingga komponen diambil dari registry `new-york` (`https://ui.shadcn.com/r/styles/new-york/<component>.json`) sampai baseline dependency diperbarui.
 
+## Konfirmasi teknis backend Phase 2 (2026-11-02)
+
+- **Katalog permission dan role preset:** implementasi mengikuti baseline D-03 sampai D-05. Status D-03–D-05 tetap **rekomendasi v1 yang menunggu persetujuan Product Owner**, sehingga katalog permission, batas Manager, dan model outlet access dapat direvisi bila keputusan final berbeda. Tidak ada custom role atau permission override.
+- **Outlet access:** Owner memperoleh seluruh outlet secara implisit; Manager dan Cashier memakai baris eksplisit pada `outlet_accesses`. Manager tidak dapat memberikan outlet di luar aksesnya sendiri.
+- **Penambahan employee:** `POST /api/v1/members` membuat akun employee langsung dengan password awal dari operator. Alur undangan via email (token, kedaluwarsa, pengiriman) belum diputuskan dan belum diimplementasikan.
+- **Penonaktifan member:** `DELETE /api/v1/members/{membership}` mengubah status menjadi `INACTIVE`, menghapus outlet access, dan mencabut token. Record membership tidak dihapus agar atribusi historis tetap ada. Reaktivasi member belum disediakan.
+- **Audit:** perubahan role/akses belum dicatat ke audit log karena modul audit belum tersedia; ini dependency D-28.
+- **Business delete:** permission `business.delete` masuk katalog Owner, tetapi endpoint guarded soft-delete belum dibangun pada fase ini.
+
 ## Konfirmasi teknis backend Phase 1 (2026-11-01)
 
 - **Autentikasi API:** Laravel Sanctum personal access token (`Authorization: Bearer`). Login mengembalikan token yang disimpan client di secure storage; logout menghapus token aktif. Session cookie tidak dipakai untuk klien API/mobile.

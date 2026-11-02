@@ -30,4 +30,24 @@ class Outlet extends Model
     {
         $query->whereHas('business', fn (Builder $query) => $query->visibleTo($user));
     }
+
+    /**
+     * Outlets an active membership may operate on: all for owners, explicit
+     * outlet_accesses for managers and cashiers (D-05).
+     *
+     * @param  Builder<Outlet>  $query
+     */
+    public function scopeAccessibleTo(Builder $query, User $user): void
+    {
+        $query->whereHas('business.memberships', function (Builder $query) use ($user): void {
+            $query->where('user_id', $user->id)
+                ->where('status', BusinessMembership::STATUS_ACTIVE)
+                ->where(function (Builder $query): void {
+                    $query->where('role', BusinessMembership::ROLE_OWNER)
+                        ->orWhereHas('outletAccesses', function (Builder $query): void {
+                            $query->whereColumn('outlet_accesses.outlet_id', 'outlets.id');
+                        });
+                });
+        });
+    }
 }

@@ -109,3 +109,34 @@ Response sukses onboarding (`201`):
 ```
 
 Error yang dipakai: `401` tanpa token valid, `404` untuk resource di luar scope tenant (tanpa membocorkan keberadaannya), `422` untuk validasi termasuk user yang sudah punya business, dan `429` untuk throttle register/login. Bentuk error validasi mengikuti default Laravel `{ "message": ..., "errors": { ... } }`.
+
+## 8. Phase 2 contract — membership, role, permission
+
+Authorization memakai middleware `permission:<resource.action>` yang memeriksa membership aktif dan permission preset. Tidak ada custom role atau permission override. `403` dipakai bila membership tidak aktif atau permission tidak dimiliki; `404` dipakai bila resource di luar Business/Outlet scope agar keberadaan data tenant lain tidak terbocorkan.
+
+| Method | Path | Permission | Keterangan |
+|---|---|---|---|
+| `GET` | `/api/v1/me` | bearer | Menambahkan `data.membership` berisi role, status, `business`, `outlets`, dan permission efektif. `null` bila user belum punya membership. |
+| `GET` | `/api/v1/members` | `members.read` | Daftar membership pada Business user, termasuk Owner. |
+| `POST` | `/api/v1/members` | `members.invite` | Membuat akun employee dan membership aktif langsung. Role hanya `MANAGER` atau `CASHIER`. |
+| `PATCH` | `/api/v1/members/{membership}` | `members.update` | Ubah role preset dan/atau set outlet access. |
+| `DELETE` | `/api/v1/members/{membership}` | `members.remove` | Menonaktifkan membership (`INACTIVE`), menghapus outlet access, dan mencabut token. Record membership dipertahankan. |
+| `GET` | `/api/v1/roles` | `members.read` | Katalog tiga role preset beserta permission-nya untuk kebutuhan UI. |
+
+Owner memiliki seluruh permission katalog dan akses ke semua outlet secara implisit. Manager dan Cashier hanya dapat mengakses outlet yang tercatat di `outlet_accesses`. Manager tidak dapat mengubah/menghapus Owner, mengubah aksesnya sendiri, memberi role `OWNER`, atau memberi outlet access di luar outlet yang ia akses. Owner tidak dapat diubah melalui endpoint member karena Business harus tetap memiliki tepat satu Owner.
+
+Contoh penambahan employee:
+
+```json
+{
+  "name": "Kasir Satu",
+  "email": "kasir@example.com",
+  "password": "password123",
+  "role": "CASHIER",
+  "outlet_ids": [1]
+}
+```
+
+Response `201` memakai envelope `data` berisi `id`, `user_id`, `business_id`, `role`, `status`, `user`, `business`, `outlets`, dan `permissions`. Katalog role mengembalikan `data` berisi `[{ "role": "OWNER", "permissions": [...] }]`. `POST`/`PATCH` memakai `422` untuk role di luar preset, email duplikat, atau `outlet_ids` yang bukan milik Business.
+
+Catatan: alur undangan via email belum diputuskan; implementasi saat ini adalah penambahan employee langsung dengan password awal dari operator. Perubahan membership belum masuk audit log karena modul audit belum dibangun.
