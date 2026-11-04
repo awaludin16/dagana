@@ -11,8 +11,9 @@ class UpdateMemberAction
 {
     /**
      * Managers may manage employees, but never the owner or their own access.
+     * Status changes are updates: INACTIVE revokes tokens, ACTIVE restores access.
      *
-     * @param  array{role?: string, outlet_ids?: list<int>}  $data
+     * @param  array{role?: string, status?: string, outlet_ids?: list<int>}  $data
      */
     public function execute(BusinessMembership $actor, BusinessMembership $target, array $data): BusinessMembership
     {
@@ -33,6 +34,14 @@ class UpdateMemberAction
         return DB::transaction(function () use ($target, $data): BusinessMembership {
             if (array_key_exists('role', $data)) {
                 $target->update(['role' => $data['role']]);
+            }
+
+            if (array_key_exists('status', $data)) {
+                $target->update(['status' => $data['status']]);
+
+                if ($data['status'] === BusinessMembership::STATUS_INACTIVE) {
+                    $target->user->tokens()->delete();
+                }
             }
 
             if (array_key_exists('outlet_ids', $data)) {

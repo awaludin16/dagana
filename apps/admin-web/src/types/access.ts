@@ -29,5 +29,6 @@ export type CreateMemberInput = {
 
 export type UpdateMemberInput = {
   role?: Exclude<Role, 'OWNER'>
+  status?: MembershipStatus
   outlet_ids?: number[]
 }

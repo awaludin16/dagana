@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Business;
 
+use App\Support\Address;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -20,12 +21,10 @@ class StoreBusinessRequest extends FormRequest
         return [
             'business' => ['required', 'array'],
             'business.name' => ['required', 'string', 'max:255'],
-            'business.phone' => ['nullable', 'string', 'max:30'],
-            'business.address' => ['nullable', 'string', 'max:1000'],
             'outlet' => ['required', 'array'],
             'outlet.name' => ['required', 'string', 'max:255'],
             'outlet.phone' => ['nullable', 'string', 'max:30'],
-            'outlet.address' => ['nullable', 'string', 'max:1000'],
+            ...Address::rules('outlet.address'),
         ];
     }
 

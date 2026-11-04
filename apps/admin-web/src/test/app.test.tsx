@@ -1,9 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { SessionProvider } from '@/auth/session-provider'
+import { SessionProvider } from '@/auth/SessionProvider'
 import { routes } from '@/router'
 
 function renderAt(path: string) {
@@ -20,6 +20,13 @@ function renderAt(path: string) {
 }
 
 describe('admin web routes', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(null, { status: 401 })),
+    )
+  })
+
   it('requires a session to enter the workspace', async () => {
     renderAt('/')
 

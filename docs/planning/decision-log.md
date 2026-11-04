@@ -4,7 +4,7 @@
 
 - **Satu User = satu Business** untuk MVP. Business dapat memiliki banyak Outlet; employee juga terikat ke Business yang sama. Enforce dengan unique constraint dan test, bukan hanya validasi UI.
 - **Role MVP hanya `OWNER`, `MANAGER`, `CASHIER`.** Tidak ada custom role atau role `INVENTORY`/`KITCHEN`/`STAFF` sampai requirement produk direvisi.
-- **Delete permission:** gunakan `business.delete` (Owner-only, guarded soft-delete), `outlets.delete`, `categories.delete`, dan `products.delete` untuk soft-delete/archive/deactivation; `members.remove` untuk mencabut akses. Jangan sediakan delete permanen untuk order/payment/cash movement/stock movement/audit log.
+- **Delete permission:** `delete` berarti menghapus record, bukan soft-delete. Katalog MVP memakai `outlets.delete`, `members.delete`, `categories.delete`, dan `products.delete`; tidak ada `business.delete`. Untuk master data yang masih punya referensi historis, gunakan perubahan status/deaktivasi melalui permission `update` dan method `PATCH`. Jangan sediakan delete permanen untuk order/payment/cash movement/stock movement/audit log.
 - **Mobile stack:** Flutter + Dart. Baseline library: Riverpod, go_router, Dio, flutter_secure_storage, Drift/SQLite, connectivity_plus, flutter_test/integration_test; gunakan plugin tambahan hanya bila dibutuhkan dan kompatibel dengan SDK yang dipatok.
 
 ## Konfirmasi teknis frontend (2026-11-01)
@@ -17,17 +17,19 @@
 - **Katalog permission dan role preset:** implementasi mengikuti baseline D-03 sampai D-05. Status D-03–D-05 tetap **rekomendasi v1 yang menunggu persetujuan Product Owner**, sehingga katalog permission, batas Manager, dan model outlet access dapat direvisi bila keputusan final berbeda. Tidak ada custom role atau permission override.
 - **Outlet access:** Owner memperoleh seluruh outlet secara implisit; Manager dan Cashier memakai baris eksplisit pada `outlet_accesses`. Manager tidak dapat memberikan outlet di luar aksesnya sendiri.
 - **Penambahan employee:** `POST /api/v1/members` membuat akun employee langsung dengan password awal dari operator. Alur undangan via email (token, kedaluwarsa, pengiriman) belum diputuskan dan belum diimplementasikan.
-- **Penonaktifan member:** `DELETE /api/v1/members/{membership}` mengubah status menjadi `INACTIVE`, menghapus outlet access, dan mencabut token. Record membership tidak dihapus agar atribusi historis tetap ada. Reaktivasi member belum disediakan.
+- **Penonaktifan dan hard delete member:** `PATCH /api/v1/members/{membership}` dengan field `status` (`ACTIVE`/`INACTIVE`) memakai permission `members.update`; deaktivasi mencabut token tetapi mempertahankan record membership dan outlet access. `DELETE /api/v1/members/{membership}` memakai `members.delete` untuk hard delete membership employee; hanya Owner yang boleh, tidak dapat menghapus Owner atau dirinya sendiri, dan token user dicabut. User dipertahankan untuk atribusi historis.
 - **Audit:** perubahan role/akses belum dicatat ke audit log karena modul audit belum tersedia; ini dependency D-28.
-- **Business delete:** permission `business.delete` masuk katalog Owner, tetapi endpoint guarded soft-delete belum dibangun pada fase ini.
+- **Business delete:** `business.delete` tidak ada di katalog MVP dan endpoint penghapusan Business belum dibangun. Perubahan pengaturan memakai `business.update`.
 
 ## Konfirmasi teknis backend Phase 1 (2026-11-01)
 
-- **Autentikasi API:** Laravel Sanctum personal access token (`Authorization: Bearer`). Login mengembalikan token yang disimpan client di secure storage; logout menghapus token aktif. Session cookie tidak dipakai untuk klien API/mobile.
-- **Pengaturan dasar Phase 1:** business dan outlet memakai `name` (wajib), `phone`, dan `address` (opsional). Field pengaturan lain menunggu requirement yang lebih spesifik.
+- **Autentikasi API:** klien mobile memakai Laravel Sanctum personal access token (`Authorization: Bearer`) dan wajib menyimpannya di secure storage. Admin web memakai Sanctum SPA session: login/register melalui `/api/v1/auth/web/*`, sesi disimpan pada cookie `dagana-session` yang `HttpOnly`, dan request mutasi mengirim `X-XSRF-TOKEN` dari cookie `XSRF-TOKEN` setelah `GET /sanctum/csrf-cookie`. Token tidak disimpan di `localStorage`. Logout web menghapus session; logout mobile menghapus token aktif.
+- **Pengaturan dasar Phase 1:** business hanya memakai `name` (wajib). Outlet memakai `name` (wajib), `phone`, dan alamat komposit `address` (`street`, `village`, `district`, `regency`, `province`, `postal_code`) yang opsional. Field pengaturan lain menunggu requirement yang lebih spesifik.
+- **Onboarding:** `phone` dan alamat diinput pada outlet; `business` hanya memuat `name`. Business tidak menerima input `phone`/`address` terpisah.
+- **Data wilayah:** backend memakai API wilayah Indonesia dengan cache (fresh 1 hari, stale hingga 7 hari) dan circuit breaker (3 kegagalan berturut-turut membuka breaker selama 1 menit). Data lama tetap dilayani saat sumber eksternal bermasalah; frontend tidak memanggil penyedia wilayah secara langsung.
 - **Relasi awal onboarding:** `business_memberships` dibuat dengan unique `user_id` dan role `OWNER`; ini fondasi minimum untuk tenant scoping. Permission catalog, role preset lain, dan outlet access tetap menjadi scope Phase 2.
 
- — Rekomendasi v1
+— Rekomendasi v1
 
 > **Status dokumen:** usulan baseline untuk ditinjau Product Owner. Keputusan teknis dapat dijadikan default implementasi setelah disetujui. Keputusan komersial, kontraktual, kebijakan, dan perangkat nyata tetap memiliki gate yang dijelaskan di bawah.
 >
@@ -54,10 +56,10 @@
 **Keputusan:** gunakan permission eksplisit berbentuk `resource.action`. Katalog awal:
 
 - `business.read`, `business.update`
-- `outlets.read`, `outlets.create`, `outlets.update`, `outlets.delete` (soft delete/deactivation)
-- `members.read`, `members.invite`, `members.update`, `members.remove`
-- `categories.read`, `categories.create`, `categories.update`, `categories.delete` (soft delete/archive)
-- `products.read`, `products.create`, `products.update`, `products.delete` (soft delete/archive)
+- `outlets.read`, `outlets.create`, `outlets.update`, `outlets.delete`
+- `members.read`, `members.invite`, `members.update`, `members.delete`
+- `categories.read`, `categories.create`, `categories.update`, `categories.delete`
+- `products.read`, `products.create`, `products.update`, `products.delete`
 - `orders.read`, `orders.create`, `orders.update`, `orders.cancel`
 - `payments.read`, `payments.create`, `payments.refund`
 - `cash.read`, `cash.open`, `cash.cash_in`, `cash.cash_out`, `cash.close`, `cash.reconcile`
@@ -275,14 +277,14 @@ Setiap order lokal memiliki UUID/client-generated idempotency key yang unik, wak
 
 Keputusan-keputusan di atas memberi arah yang cukup untuk desain dan pengembangan, tetapi item berikut membutuhkan bukti atau persetujuan khusus:
 
-| Gate | Pemilik keputusan | Bukti sebelum ditutup |
-|---|---|---|
-| Tarif platform fee, pajak, dan ketentuan merchant | Product Owner/business | Pricing approval, contoh statement, syarat penggunaan dan perlakuan refund disetujui |
-| Live payment dan settlement ke merchant | Product Owner + provider/payment integrator | Verifikasi kontrak/onboarding, alur settlement, refund, webhook, serta sandbox tests |
-| Provider object storage dan infrastruktur backup | Technical owner | Environment produksi, access policy, backup/restore test |
-| Printer yang didukung | Product/QA + pemilik perangkat pilot | Hasil pengujian model fisik pada perangkat target |
-| Kebijakan audit/privacy retention | Product Owner + reviewer legal/security | Kebijakan tertulis sebelum auto-purge dan produksi |
-| Target RPO/RTO jika infrastruktur tidak mendukung baseline | Technical owner + Product Owner | Persetujuan risiko tertulis |
+| Gate                                                       | Pemilik keputusan                           | Bukti sebelum ditutup                                                                |
+| ---------------------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Tarif platform fee, pajak, dan ketentuan merchant          | Product Owner/business                      | Pricing approval, contoh statement, syarat penggunaan dan perlakuan refund disetujui |
+| Live payment dan settlement ke merchant                    | Product Owner + provider/payment integrator | Verifikasi kontrak/onboarding, alur settlement, refund, webhook, serta sandbox tests |
+| Provider object storage dan infrastruktur backup           | Technical owner                             | Environment produksi, access policy, backup/restore test                             |
+| Printer yang didukung                                      | Product/QA + pemilik perangkat pilot        | Hasil pengujian model fisik pada perangkat target                                    |
+| Kebijakan audit/privacy retention                          | Product Owner + reviewer legal/security     | Kebijakan tertulis sebelum auto-purge dan produksi                                   |
+| Target RPO/RTO jika infrastruktur tidak mendukung baseline | Technical owner + Product Owner             | Persetujuan risiko tertulis                                                          |
 
 ## 10. Aturan Pemeliharaan Keputusan
 
@@ -296,10 +298,10 @@ Saat mengubah keputusan:
 
 Coding agent boleh mengusulkan alternatif yang didukung alasan teknis, namun tidak boleh mengubah baseline atau menganggap gate produksi telah lulus tanpa bukti.
 
-
 ## Keputusan clean rebuild (2026-10-31)
 
 Dagana akan diinisialisasi ulang dari baseline project baru. Ini adalah keputusan proses/engineering, bukan perubahan scope produk:
+
 - Pertahankan scope, workflow, model data, aturan tenant, role, permission, fase, dan acceptance criteria pada requirement produk.
 - Inisialisasi ulang workspace `apps/api`, `apps/admin-web`, `apps/customer-web`, dan `apps/pos-mobile` dari scaffold resmi masing-masing stack.
 - Jangan migrasikan kode lama, migration lama, database dump, build output, atau secret secara otomatis.

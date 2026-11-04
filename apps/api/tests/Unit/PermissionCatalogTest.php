@@ -30,12 +30,15 @@ class PermissionCatalogTest extends TestCase
     public function test_owner_receives_every_permission_and_manager_cannot_escalate(): void
     {
         $this->assertSame(PermissionCatalog::PERMISSIONS, PermissionCatalog::forRole(BusinessMembership::ROLE_OWNER));
+        $this->assertContains('members.delete', PermissionCatalog::PERMISSIONS);
+        $this->assertNotContains('members.remove', PermissionCatalog::PERMISSIONS);
+        $this->assertNotContains('business.delete', PermissionCatalog::PERMISSIONS);
 
         $manager = PermissionCatalog::forRole(BusinessMembership::ROLE_MANAGER);
 
         $this->assertContains('members.update', $manager);
         $this->assertContains('orders.create', $manager);
-        $this->assertNotContains('business.delete', $manager);
+        $this->assertNotContains('members.delete', $manager);
         $this->assertNotContains('billing.manage_settings', $manager);
         $this->assertNotContains('audit.read', $manager);
 
@@ -47,5 +50,6 @@ class PermissionCatalogTest extends TestCase
         $this->assertNotContains('members.read', $cashier);
         $this->assertNotContains('products.create', $cashier);
         $this->assertNotContains('reports.read', $cashier);
+        $this->assertNotContains('settings.read', $cashier);
     }
 }

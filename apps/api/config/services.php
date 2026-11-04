@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'regions' => [
+        'base_url' => env('REGION_API_BASE_URL', 'https://www.emsifa.com/api-wilayah-indonesia/v2'),
+        'timeout' => (int) env('REGION_API_TIMEOUT', 5),
+    ],
+
 ];

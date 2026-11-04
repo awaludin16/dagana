@@ -1,12 +1,15 @@
 import { createContext, useContext } from 'react'
 
-import type { User } from '@/types'
+import type { Me } from '@/types'
 
 export type SessionContextValue = {
-  token: string | null
-  user: User | null
+  user: Me | null
+  isAuthenticated: boolean
+  isPending: boolean
+  isError: boolean
+  refetch: () => void
   message: string | null
-  startSession: (token: string, user: User) => void
+  startSession: (user: Me) => void
   endSession: (message?: string) => void
 }
 

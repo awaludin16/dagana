@@ -1,12 +1,15 @@
-import { ArrowRight, KeyRound } from 'lucide-react'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
-import type { FormEvent } from 'react'
+import { ArrowRight, KeyRound, LoaderCircle } from 'lucide-react'
+import { useForm } from 'react-hook-form'
 import { Link, useLocation, useNavigate } from 'react-router'
 
-import { useSession } from '@/auth/session-context'
-import { FormField } from '@/components/form-field'
+import { useSession } from '@/auth/SessionContext'
+import { FormField } from '@/components/FormField'
 import { Button } from '@/components/ui/button'
-import { ApiError, api } from '@/lib/api'
+import { api } from '@/lib/api'
+import { apiErrorMessage, applyApiErrors, getFieldError, hasFieldErrors } from '@/lib/form-errors'
+import { loginSchema, type LoginFormValues } from '@/lib/validation'
 
 export function LoginPage() {
   const { startSession, message: sessionMessage } = useSession()
@@ -20,26 +23,32 @@ export function LoginPage() {
       ? location.state.notice
       : null
 
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: '', password: '' },
+    mode: 'onBlur',
+  })
+
   const login = useMutation({
     mutationFn: api.login,
-    onSuccess: ({ token, user }) => {
-      startSession(token, user)
+    onSuccess: (profile) => {
+      startSession(profile)
       navigate('/', { replace: true })
     },
   })
 
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const form = new FormData(event.currentTarget)
-
-    login.mutate({
-      email: String(form.get('email')).trim(),
-      password: String(form.get('password')),
-      device_name: 'dagana-admin-web',
+  const submit = handleSubmit((values) => {
+    login.mutate(values, {
+      onError: (error) => {
+        applyApiErrors(error, setError)
+      },
     })
-  }
-
-  const errors = login.error instanceof ApiError ? login.error.errors : {}
+  })
 
   return (
     <section aria-labelledby="login-title" className="rounded-lg border bg-card p-6 sm:p-9">
@@ -61,36 +70,47 @@ export function LoginPage() {
           {sessionMessage ?? routeNotice}
         </p>
       ) : null}
-      {login.isError ? (
+      {login.isError && !hasFieldErrors(login.error) ? (
         <p
           role="alert"
           className="mb-5 rounded-lg border border-destructive/30 bg-destructive/5 px-3.5 py-3 text-sm text-destructive"
         >
-          {login.error.message}
+          {apiErrorMessage(
+            login.error,
+            'Masuk belum berhasil. Periksa kembali email dan kata sandi.',
+          )}
         </p>
       ) : null}
 
-      <form className="space-y-5" onSubmit={submit}>
+      <form className="space-y-5" onSubmit={submit} noValidate aria-busy={login.isPending}>
         <FormField
-          name="email"
+          {...register('email')}
           label="Email"
           type="email"
           autoComplete="email"
           placeholder="nama@bisnis.id"
           required
           maxLength={255}
-          error={errors.email?.[0]}
+          disabled={login.isPending}
+          error={getFieldError(errors, 'email')}
         />
         <FormField
-          name="password"
+          {...register('password')}
           label="Kata sandi"
           type="password"
           autoComplete="current-password"
           placeholder="Masukkan kata sandi"
           required
-          error={errors.password?.[0]}
+          disabled={login.isPending}
+          error={getFieldError(errors, 'password')}
         />
         <Button type="submit" className="h-11 w-full gap-2" disabled={login.isPending}>
+          {login.isPending ? (
+            <LoaderCircle
+              aria-hidden="true"
+              className="size-4 animate-spin motion-reduce:animate-none"
+            />
+          ) : null}
           {login.isPending ? 'Memeriksa akun...' : 'Masuk'}
           {!login.isPending ? <ArrowRight aria-hidden="true" className="size-4" /> : null}
         </Button>

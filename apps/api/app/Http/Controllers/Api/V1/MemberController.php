@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Access\Actions\CreateMemberAction;
-use App\Domain\Access\Actions\RemoveMemberAction;
+use App\Domain\Access\Actions\DeleteMemberAction;
 use App\Domain\Access\Actions\UpdateMemberAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Member\StoreMemberRequest;
@@ -47,9 +47,12 @@ class MemberController extends Controller
         );
     }
 
-    public function destroy(Request $request, int $membership, RemoveMemberAction $action): JsonResponse
+    public function destroy(Request $request, int $membership, DeleteMemberAction $action): JsonResponse
     {
-        $action->execute($request->user()->membership, $this->scopedMembership($request, $membership));
+        $action->execute(
+            $request->user()->membership,
+            $this->scopedMembership($request, $membership),
+        );
 
         return response()->json(null, 204);
     }

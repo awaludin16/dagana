@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { SessionProvider } from '@/auth/session-provider'
+import { SessionProvider } from '@/auth/SessionProvider'
 import { routes } from '@/router'
 
 const user = {
@@ -12,14 +12,34 @@ const user = {
   email: 'ayu@example.com',
   email_verified_at: null,
 }
-const business = { id: 12, name: 'Kedai Pagi', phone: null, address: null }
+const address = {
+  street: 'Jl. Merdeka No. 1',
+  village: 'Kelurahan Menteng',
+  district: 'Kecamatan Menteng',
+  regency: 'Jakarta Pusat',
+  province: 'DKI JAKARTA',
+  postal_code: '10310',
+}
+const business = { id: 12, name: 'Kedai Pagi' }
 const outlet = {
   id: 23,
   business_id: business.id,
   name: 'Outlet Utama',
-  phone: null,
-  address: null,
+  phone: '081298765432',
+  address,
 }
+const permissions = [
+  'business.read',
+  'business.update',
+  'members.read',
+  'members.invite',
+  'members.update',
+  'members.delete',
+  'outlets.read',
+  'outlets.create',
+  'outlets.update',
+  'outlets.delete',
+]
 
 const ownerMembership = {
   id: 1,
@@ -30,17 +50,7 @@ const ownerMembership = {
   user,
   business,
   outlets: [outlet],
-  permissions: [
-    'members.read',
-    'members.invite',
-    'members.update',
-    'members.remove',
-    'outlets.read',
-    'outlets.update',
-    'orders.create',
-    'orders.read',
-    'payments.create',
-  ],
+  permissions,
 }
 
 const cashierMember = {
@@ -52,7 +62,7 @@ const cashierMember = {
   user: { id: 9, name: 'Budi Santoso', email: 'budi@example.com', email_verified_at: null },
   business,
   outlets: [outlet],
-  permissions: ['orders.create', 'orders.read', 'payments.create'],
+  permissions: ['business.read', 'outlets.read', 'orders.create', 'orders.read'],
 }
 
 const managerMembership = {
@@ -64,7 +74,7 @@ const managerMembership = {
   user: { id: 10, name: 'Citra Dewi', email: 'citra@example.com', email_verified_at: null },
   business,
   outlets: [outlet],
-  permissions: ['members.read', 'members.update', 'orders.read'],
+  permissions: ['business.read', 'members.read', 'members.update', 'outlets.read', 'orders.read'],
 }
 
 const rolesCatalog = [
@@ -80,11 +90,11 @@ function jsonResponse(data: unknown, status = 200) {
   })
 }
 
-function renderWithFetch() {
+function renderAt(path = '/members') {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
-  const router = createMemoryRouter(routes, { initialEntries: ['/login'] })
+  const router = createMemoryRouter(routes, { initialEntries: [path] })
 
   return render(
     <QueryClientProvider client={queryClient}>
@@ -95,15 +105,22 @@ function renderWithFetch() {
   )
 }
 
-async function loginAsOwner() {
-  fireEvent.change(screen.getByLabelText('Email'), { target: { value: user.email } })
-  fireEvent.change(screen.getByLabelText('Kata sandi'), {
-    target: { value: 'password123' },
-  })
-  fireEvent.click(screen.getByRole('button', { name: 'Masuk' }))
+function sessionMock(
+  handler: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response | null>,
+) {
+  const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input)
 
-  await waitFor(() => expect(screen.getByText('Kedai Pagi')).toBeVisible())
-  fireEvent.click(screen.getByRole('link', { name: 'Anggota' }))
+    if (url.endsWith('/sanctum/csrf-cookie')) return new Response(null, { status: 204 })
+
+    const response = await handler(input, init)
+    if (response) return response
+
+    throw new Error(`Unexpected request: ${init?.method ?? 'GET'} ${url}`)
+  })
+
+  vi.stubGlobal('fetch', fetchMock)
+  return fetchMock
 }
 
 describe('manajemen anggota tim (Phase 2)', () => {
@@ -113,27 +130,20 @@ describe('manajemen anggota tim (Phase 2)', () => {
   })
 
   it('menampilkan daftar anggota dan ringkasan hak akses bagi Owner', async () => {
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    sessionMock(async (input) => {
       const url = String(input)
 
-      if (url.endsWith('/auth/login')) {
-        return jsonResponse({ data: { user, token: 'test-token' } })
-      }
       if (url.endsWith('/me')) {
         return jsonResponse({ data: { ...user, membership: ownerMembership } })
       }
       if (url.endsWith('/outlets')) return jsonResponse({ data: [outlet] })
       if (url.endsWith('/roles')) return jsonResponse({ data: rolesCatalog })
       if (url.endsWith('/members')) return jsonResponse({ data: [ownerMembership, cashierMember] })
-      if (url.endsWith(`/businesses/${business.id}`)) return jsonResponse({ data: business })
 
-      throw new Error(`Unexpected request: ${url}`)
+      return null
     })
-    vi.stubGlobal('fetch', fetchMock)
 
-    renderWithFetch()
-
-    await loginAsOwner()
+    renderAt()
 
     const table = await screen.findByRole('table')
     expect(within(table).getByText('Ayu')).toBeInTheDocument()
@@ -141,62 +151,72 @@ describe('manajemen anggota tim (Phase 2)', () => {
     expect(within(table).getByText('Owner')).toBeInTheDocument()
     expect(within(table).getAllByText('Aktif')).toHaveLength(2)
     expect(within(table).getByText('Outlet Utama')).toBeInTheDocument()
+    expect(within(table).getByRole('button', { name: 'Hapus Budi Santoso' })).toBeInTheDocument()
 
     expect(screen.getByRole('heading', { name: 'Ringkasan role & hak akses' })).toBeVisible()
     expect(screen.getByText('semua izin')).toBeInTheDocument()
-
     expect(localStorage.length).toBe(0)
   })
 
-  it('menolak akses anggota bila tidak memiliki permission members.read', async () => {
+  it('menyembunyikan menu anggota bila tidak memiliki permission members.read', async () => {
     const noMemberPerm = {
       ...ownerMembership,
-      permissions: ['orders.read', 'orders.create'],
+      permissions: ['business.read', 'outlets.read', 'orders.read', 'orders.create'],
     }
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+
+    sessionMock(async (input) => {
       const url = String(input)
 
-      if (url.endsWith('/auth/login')) {
-        return jsonResponse({ data: { user, token: 'test-token' } })
-      }
       if (url.endsWith('/me')) {
         return jsonResponse({ data: { ...user, membership: noMemberPerm } })
       }
       if (url.endsWith('/outlets')) return jsonResponse({ data: [outlet] })
       if (url.endsWith(`/businesses/${business.id}`)) return jsonResponse({ data: business })
 
-      throw new Error(`Unexpected request: ${url}`)
+      return null
     })
-    vi.stubGlobal('fetch', fetchMock)
 
-    renderWithFetch()
+    renderAt('/outlets')
 
-    await loginAsOwner()
+    expect(await screen.findByRole('heading', { name: 'Outlet' })).toBeVisible()
+    expect(screen.queryByRole('link', { name: 'Anggota' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Outlet' })).toBeVisible()
+  })
 
-    await waitFor(() =>
-      expect(
-        screen.getByText('Anda tidak memiliki izin untuk mengelola anggota tim.'),
-      ).toBeVisible(),
-    )
+  it('menolak membuka route anggota tanpa permission members.read', async () => {
+    const noMemberPerm = {
+      ...ownerMembership,
+      permissions: ['business.read', 'outlets.read', 'orders.read', 'orders.create'],
+    }
+
+    sessionMock(async (input) => {
+      if (String(input).endsWith('/me')) {
+        return jsonResponse({ data: { ...user, membership: noMemberPerm } })
+      }
+
+      return null
+    })
+
+    renderAt('/members')
+
+    expect(
+      await screen.findByText('Anda tidak memiliki izin untuk membuka halaman ini.'),
+    ).toBeVisible()
   })
 
   it('menambah anggota baru melalui modal', async () => {
-    let created = false
     let members = [ownerMembership, cashierMember]
-    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+
+    sessionMock(async (input, init) => {
       const url = String(input)
       const method = init?.method ?? 'GET'
 
-      if (url.endsWith('/auth/login')) {
-        return jsonResponse({ data: { user, token: 'test-token' } })
-      }
       if (url.endsWith('/me')) {
         return jsonResponse({ data: { ...user, membership: ownerMembership } })
       }
       if (url.endsWith('/outlets')) return jsonResponse({ data: [outlet] })
       if (url.endsWith('/roles')) return jsonResponse({ data: rolesCatalog })
       if (url.endsWith('/members') && method === 'POST') {
-        created = true
         const createdMember = {
           id: 4,
           user_id: 11,
@@ -217,18 +237,13 @@ describe('manajemen anggota tim (Phase 2)', () => {
         return jsonResponse({ data: createdMember }, 201)
       }
       if (url.endsWith('/members')) return jsonResponse({ data: members })
-      if (url.endsWith(`/businesses/${business.id}`)) return jsonResponse({ data: business })
 
-      throw new Error(`Unexpected request: ${method} ${url}`)
+      return null
     })
-    vi.stubGlobal('fetch', fetchMock)
 
-    renderWithFetch()
-
-    await loginAsOwner()
+    renderAt()
 
     fireEvent.click(await screen.findByRole('button', { name: 'Tambah Anggota' }))
-
     expect(await screen.findByRole('heading', { name: 'Tambah anggota tim' })).toBeVisible()
 
     fireEvent.change(screen.getByLabelText('Nama lengkap'), {
@@ -243,7 +258,6 @@ describe('manajemen anggota tim (Phase 2)', () => {
     fireEvent.click(screen.getByLabelText('Outlet Utama'))
     fireEvent.click(screen.getByRole('button', { name: 'Buat Anggota' }))
 
-    await waitFor(() => expect(created).toBe(true))
     expect(await screen.findByRole('status')).toHaveTextContent(
       'Anggota baru berhasil ditambahkan.',
     )
@@ -251,13 +265,11 @@ describe('manajemen anggota tim (Phase 2)', () => {
 
   it('mengubah role dan akses outlet anggota melalui modal', async () => {
     let updated = false
-    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+
+    sessionMock(async (input, init) => {
       const url = String(input)
       const method = init?.method ?? 'GET'
 
-      if (url.endsWith('/auth/login')) {
-        return jsonResponse({ data: { user, token: 'test-token' } })
-      }
       if (url.endsWith('/me')) {
         return jsonResponse({ data: { ...user, membership: ownerMembership } })
       }
@@ -267,20 +279,16 @@ describe('manajemen anggota tim (Phase 2)', () => {
         updated = true
         return jsonResponse({ data: { ...managerMembership, role: 'CASHIER' } })
       }
-      if (url.endsWith('/members'))
+      if (url.endsWith('/members')) {
         return jsonResponse({ data: [ownerMembership, managerMembership] })
-      if (url.endsWith(`/businesses/${business.id}`)) return jsonResponse({ data: business })
+      }
 
-      throw new Error(`Unexpected request: ${method} ${url}`)
+      return null
     })
-    vi.stubGlobal('fetch', fetchMock)
 
-    renderWithFetch()
-
-    await loginAsOwner()
+    renderAt()
 
     fireEvent.click(await screen.findByRole('button', { name: 'Ubah' }))
-
     expect(await screen.findByRole('heading', { name: 'Ubah role & akses outlet' })).toBeVisible()
 
     fireEvent.click(screen.getByRole('button', { name: 'Simpan Perubahan' }))
@@ -288,43 +296,38 @@ describe('manajemen anggota tim (Phase 2)', () => {
     await waitFor(() => expect(updated).toBe(true))
   })
 
-  it('menonaktifkan akses anggota setelah konfirmasi', async () => {
-    let removed = false
-    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+  it('menghapus anggota secara permanen setelah konfirmasi', async () => {
+    let deleted = false
+    let members = [ownerMembership, cashierMember]
+
+    sessionMock(async (input, init) => {
       const url = String(input)
       const method = init?.method ?? 'GET'
 
-      if (url.endsWith('/auth/login')) {
-        return jsonResponse({ data: { user, token: 'test-token' } })
-      }
       if (url.endsWith('/me')) {
         return jsonResponse({ data: { ...user, membership: ownerMembership } })
       }
       if (url.endsWith('/outlets')) return jsonResponse({ data: [outlet] })
       if (url.endsWith('/roles')) return jsonResponse({ data: rolesCatalog })
       if (url.endsWith('/members/2') && method === 'DELETE') {
-        removed = true
+        deleted = true
+        members = [ownerMembership]
         return new Response(null, { status: 204 })
       }
-      if (url.endsWith('/members')) return jsonResponse({ data: [ownerMembership, cashierMember] })
-      if (url.endsWith(`/businesses/${business.id}`)) return jsonResponse({ data: business })
+      if (url.endsWith('/members')) return jsonResponse({ data: members })
 
-      throw new Error(`Unexpected request: ${method} ${url}`)
+      return null
     })
-    vi.stubGlobal('fetch', fetchMock)
 
-    renderWithFetch()
+    renderAt()
 
-    await loginAsOwner()
+    fireEvent.click(await screen.findByRole('button', { name: 'Hapus Budi Santoso' }))
+    expect(await screen.findByRole('heading', { name: 'Hapus anggota permanen?' })).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Hapus permanen' }))
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Nonaktifkan' }))
-
-    expect(await screen.findByRole('heading', { name: 'Nonaktifkan akses anggota?' })).toBeVisible()
-    fireEvent.click(screen.getByRole('button', { name: 'Ya, nonaktifkan' }))
-
-    await waitFor(() => expect(removed).toBe(true))
+    await waitFor(() => expect(deleted).toBe(true))
     expect(await screen.findByRole('status')).toHaveTextContent(
-      'Akses anggota berhasil dinonaktifkan.',
+      'Anggota berhasil dihapus permanen.',
     )
   })
 })

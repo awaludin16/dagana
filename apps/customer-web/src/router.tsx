@@ -1,8 +1,8 @@
 import { createBrowserRouter, type RouteObject } from 'react-router'
 
-import { AppLayout } from '@/layouts/app-layout'
-import { HomePage } from '@/pages/home-page'
-import { NotFoundPage } from '@/pages/not-found-page'
+import { AppLayout } from '@/layouts/AppLayout'
+import { HomePage } from '@/pages/HomePage'
+import { NotFoundPage } from '@/pages/NotFoundPage'
 
 export const routes: RouteObject[] = [
   {

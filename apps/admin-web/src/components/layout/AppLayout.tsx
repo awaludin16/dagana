@@ -1,5 +1,4 @@
 import {
-  Building2,
   CircleUserRound,
   LogOut,
   Menu,
@@ -12,30 +11,30 @@ import {
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router'
 
-import { useSession } from '@/auth/session-context'
+import { useSession } from '@/auth/SessionContext'
+import { useAccess } from '@/auth/useAccess'
 import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 const navItems = [
-  { to: '/business', label: 'Business', icon: Building2 },
-  { to: '/members', label: 'Anggota', icon: Users },
-  { to: '/profile', label: 'Profil', icon: CircleUserRound },
+  { to: '/outlets', label: 'Outlet', icon: Store, permission: 'outlets.read' },
+  { to: '/members', label: 'Anggota', icon: Users, permission: 'members.read' },
+  { to: '/profile', label: 'Profil', icon: CircleUserRound, permission: null },
 ]
 
 export function AppLayout() {
-  const { token, user, endSession } = useSession()
+  const { user, endSession } = useSession()
+  const access = useAccess()
   const navigate = useNavigate()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
 
   async function handleLogout() {
-    if (!token) return
-
     let notice: string | undefined
 
     try {
-      await api.logout(token)
+      await api.logout()
     } catch {
       notice = 'Sesi di perangkat ini sudah ditutup, tetapi server belum mengonfirmasi logout.'
     } finally {
@@ -130,24 +129,26 @@ export function AppLayout() {
         </div>
 
         <nav aria-label="Navigasi utama" className="flex-1 space-y-1 overflow-y-auto p-3">
-          {navItems.map(({ to, label, icon: Icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              onClick={closeMobile}
-              className={({ isActive }) =>
-                cn(
-                  'flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition',
-                  isActive
-                    ? 'bg-dagana-primary-soft text-dagana-primary'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                )
-              }
-            >
-              <Icon aria-hidden="true" className="size-5 shrink-0" />
-              <span className={cn('whitespace-nowrap', collapsed && 'lg:sr-only')}>{label}</span>
-            </NavLink>
-          ))}
+          {navItems
+            .filter(({ permission }) => !permission || access.can(permission))
+            .map(({ to, label, icon: Icon }) => (
+              <NavLink
+                key={to}
+                to={to}
+                onClick={closeMobile}
+                className={({ isActive }) =>
+                  cn(
+                    'flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition',
+                    isActive
+                      ? 'bg-dagana-primary-soft text-dagana-primary'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                  )
+                }
+              >
+                <Icon aria-hidden="true" className="size-5 shrink-0" />
+                <span className={cn('whitespace-nowrap', collapsed && 'lg:sr-only')}>{label}</span>
+              </NavLink>
+            ))}
         </nav>
 
         <div className="border-t p-3">

@@ -20,7 +20,6 @@ final class PermissionCatalog
     public const PERMISSIONS = [
         'business.read',
         'business.update',
-        'business.delete',
         'outlets.read',
         'outlets.create',
         'outlets.update',
@@ -28,7 +27,7 @@ final class PermissionCatalog
         'members.read',
         'members.invite',
         'members.update',
-        'members.remove',
+        'members.delete',
         'categories.read',
         'categories.create',
         'categories.update',
@@ -75,7 +74,7 @@ final class PermissionCatalog
             BusinessMembership::ROLE_OWNER => self::PERMISSIONS,
             BusinessMembership::ROLE_MANAGER => array_values(array_diff(
                 self::PERMISSIONS,
-                ['business.delete', 'billing.manage_settings', 'audit.read'],
+                ['billing.manage_settings', 'audit.read', 'members.delete'],
             )),
             BusinessMembership::ROLE_CASHIER => [
                 'business.read',
@@ -92,7 +91,6 @@ final class PermissionCatalog
                 'cash.cash_in',
                 'cash.cash_out',
                 'cash.close',
-                'settings.read',
             ],
             default => [],
         };

@@ -33,7 +33,13 @@ class MemberResource extends JsonResource
                 'id' => $this->business->id,
                 'name' => $this->business->name,
             ]),
-            'outlets' => OutletResource::collection($this->accessibleOutlets())->resolve(),
+            'outlets' => OutletResource::collection(
+                $this->status === BusinessMembership::STATUS_ACTIVE
+                    ? $this->accessibleOutlets()
+                    : ($this->relationLoaded('outletAccesses')
+                        ? $this->outletAccesses->pluck('outlet')->filter()->values()
+                        : collect()),
+            )->resolve(),
             'permissions' => $this->permissions(),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),

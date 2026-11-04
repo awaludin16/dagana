@@ -31,11 +31,12 @@ BUSINESS
 - Satu User hanya terhubung dengan satu Business pada MVP.
 - Satu Business mempunyai satu Owner dan dapat mempunyai banyak Outlet serta employee.
 - Membership menyimpan hubungan User–Business, role preset, status, dan outlet access sesuai keputusan produk.
+- Business hanya menyimpan `name` pada MVP. Outlet menyimpan alamat komposit sebagai kolom flat: `street`, `village`, `district`, `regency`, `province`, dan `postal_code`, plus `phone` opsional.
 - Constraint penting wajib dijaga pada database dan backend, bukan hanya frontend validation.
 
 ## 3. Operational data ownership
 
-Data operasional yang relevan harus membawa `business_id` dan/atau `outlet_id` agar scope dan histori jelas. Contohnya order, payment, Cash Session, inventory, stock movement, table, QR, kitchen activity, dan laporan. Bentuk FK, unique constraints, indexes, soft-delete policy, dan snapshot columns harus ditetapkan pada desain ERD sebelum migration dibuat.
+Data operasional yang relevan harus membawa `business_id` dan/atau `outlet_id` agar scope dan histori jelas. Contohnya order, payment, Cash Session, inventory, stock movement, table, QR, kitchen activity, dan laporan. Bentuk FK, unique constraints, indexes, deletion/deactivation policy, dan snapshot columns harus ditetapkan pada desain ERD sebelum migration dibuat.
 
 ## 4. Transactional history
 

@@ -22,6 +22,7 @@ class UpdateMemberRequest extends FormRequest
 
         return [
             'role' => ['sometimes', Rule::in([BusinessMembership::ROLE_MANAGER, BusinessMembership::ROLE_CASHIER])],
+            'status' => ['sometimes', Rule::in([BusinessMembership::STATUS_ACTIVE, BusinessMembership::STATUS_INACTIVE])],
             'outlet_ids' => ['sometimes', 'array', 'min:1'],
             'outlet_ids.*' => [
                 'integer',

@@ -1,11 +1,21 @@
+import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Pencil, ShieldAlert, ShieldCheck, UserPlus, Users } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import {
+  LoaderCircle,
+  Pencil,
+  ShieldAlert,
+  ShieldCheck,
+  Trash2,
+  UserPlus,
+  Users,
+} from 'lucide-react'
+import { useState } from 'react'
+import { useForm, useWatch } from 'react-hook-form'
 import { useNavigate } from 'react-router'
 
-import { useSession } from '@/auth/session-context'
-import { FormField } from '@/components/form-field'
-import { ErrorState, LoadingState } from '@/components/page-feedback'
+import { useAccess } from '@/auth/useAccess'
+import { FormField } from '@/components/FormField'
+import { ErrorState, LoadingState } from '@/components/PageFeedback'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,8 +36,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { ApiError, api } from '@/lib/api'
+import { apiErrorMessage, applyApiErrors, getFieldError, hasFieldErrors } from '@/lib/form-errors'
 import { cn } from '@/lib/utils'
-import type { Member, Outlet, Role, RoleCatalog } from '@/types'
+import { memberSchema, type MemberFormValues } from '@/lib/validation'
+import type { Member, MembershipStatus, Outlet, Role, RoleCatalog } from '@/types'
 
 const ROLE_LABELS: Record<Role, string> = {
   OWNER: 'Owner',
@@ -40,68 +52,80 @@ const ASSIGNABLE_ROLES: Exclude<Role, 'OWNER'>[] = ['MANAGER', 'CASHIER']
 type MemberDialogState = { mode: 'create' } | { mode: 'update'; member: Member }
 
 export function MembersPage() {
-  const { token } = useSession()
+  const access = useAccess()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
 
   const [dialog, setDialog] = useState<MemberDialogState | null>(null)
-  const [removing, setRemoving] = useState<Member | null>(null)
+  const [statusChange, setStatusChange] = useState<{
+    member: Member
+    status: MembershipStatus
+  } | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Member | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
-  const me = useQuery({
-    queryKey: ['me', token],
-    queryFn: () => api.profile(token!),
-    enabled: Boolean(token),
-  })
-
-  const membership = me.data?.membership
-  const permissions = membership?.permissions ?? []
-  const canReadMembers = permissions.includes('members.read')
-  const canInvite = permissions.includes('members.invite')
-  const canUpdate = permissions.includes('members.update')
-  const canRemove = permissions.includes('members.remove')
+  const membership = access.membership
+  const canReadMembers = access.can('members.read')
+  const canInvite = access.can('members.invite')
+  const canUpdate = access.can('members.update')
+  const canDelete = access.can('members.delete')
   const myMembershipId = membership?.id
 
   const outlets = useQuery({
-    queryKey: ['outlets', token],
-    queryFn: () => api.outlets(token!),
-    enabled: Boolean(token) && canReadMembers,
+    queryKey: ['outlets'],
+    queryFn: api.outlets,
+    enabled: canReadMembers,
   })
 
   const roles = useQuery({
-    queryKey: ['roles', token],
-    queryFn: () => api.roles(token!),
-    enabled: Boolean(token) && canReadMembers,
+    queryKey: ['roles'],
+    queryFn: api.roles,
+    enabled: canReadMembers,
   })
 
   const members = useQuery({
-    queryKey: ['members', token],
-    queryFn: () => api.members(token!),
-    enabled: Boolean(token) && canReadMembers,
+    queryKey: ['members'],
+    queryFn: api.members,
+    enabled: canReadMembers,
   })
 
-  const removeMember = useMutation({
-    mutationFn: (id: number) => api.removeMember(token!, id),
+  const updateStatus = useMutation({
+    mutationFn: ({ member, status }: { member: Member; status: MembershipStatus }) =>
+      api.updateMember(member.id, { status }),
+    onSuccess: async (_, variables) => {
+      await queryClient.invalidateQueries({ queryKey: ['members'] })
+      await queryClient.invalidateQueries({ queryKey: ['me'] })
+      setStatusChange(null)
+      setNotice(
+        variables.status === 'ACTIVE'
+          ? 'Akses anggota berhasil diaktifkan kembali.'
+          : 'Akses anggota berhasil dinonaktifkan.',
+      )
+    },
+  })
+
+  const deleteMember = useMutation({
+    mutationFn: api.deleteMember,
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['members', token] })
-      await queryClient.invalidateQueries({ queryKey: ['me', token] })
-      setRemoving(null)
-      setNotice('Akses anggota berhasil dinonaktifkan.')
+      await queryClient.invalidateQueries({ queryKey: ['members'] })
+      await queryClient.invalidateQueries({ queryKey: ['me'] })
+      setDeleteTarget(null)
+      setNotice('Anggota berhasil dihapus permanen.')
     },
   })
 
   async function handleSaved(message: string) {
     setDialog(null)
     setNotice(message)
-    await queryClient.invalidateQueries({ queryKey: ['members', token] })
+    await queryClient.invalidateQueries({ queryKey: ['members'] })
   }
 
-  if (me.isPending) return <LoadingState label="Memuat data anggota tim..." />
-  if (me.isError) {
+  if (access.isPending) return <LoadingState label="Memuat data anggota tim..." />
+  if (access.isError) {
     return (
       <ErrorState
         message="Data anggota tim belum dapat dimuat. Periksa koneksi lalu coba lagi."
-        onRetry={() => void me.refetch()}
+        onRetry={() => void access.refetch()}
       />
     )
   }
@@ -125,9 +149,9 @@ export function MembersPage() {
           type="button"
           variant="outline"
           className="mt-4 min-h-11"
-          onClick={() => navigate('/business', { replace: true })}
+          onClick={() => navigate('/outlets', { replace: true })}
         >
-          Kembali ke Business
+          Kembali ke Outlet
         </Button>
       </section>
     )
@@ -255,24 +279,41 @@ export function MembersPage() {
                     <td className="p-4">
                       <div className="flex justify-end gap-2">
                         {canActOnMember(member) && canUpdate ? (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setDialog({ mode: 'update', member })}
-                          >
-                            <Pencil aria-hidden="true" className="size-4" />
-                            Ubah
-                          </Button>
+                          <>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setDialog({ mode: 'update', member })}
+                            >
+                              <Pencil aria-hidden="true" className="size-4" />
+                              Ubah
+                            </Button>
+                            <Button
+                              type="button"
+                              variant={member.status === 'ACTIVE' ? 'destructive' : 'outline'}
+                              size="sm"
+                              onClick={() =>
+                                setStatusChange({
+                                  member,
+                                  status: member.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE',
+                                })
+                              }
+                            >
+                              {member.status === 'ACTIVE' ? 'Nonaktifkan' : 'Aktifkan'}
+                            </Button>
+                          </>
                         ) : null}
-                        {canActOnMember(member) && canRemove ? (
+                        {canActOnMember(member) && canDelete ? (
                           <Button
                             type="button"
-                            variant="destructive"
+                            variant="ghost"
                             size="sm"
-                            onClick={() => setRemoving(member)}
+                            aria-label={`Hapus ${member.user.name}`}
+                            onClick={() => setDeleteTarget(member)}
                           >
-                            Nonaktifkan
+                            <Trash2 aria-hidden="true" className="size-4" />
+                            Hapus
                           </Button>
                         ) : null}
                         {!canActOnMember(member) ? (
@@ -301,21 +342,91 @@ export function MembersPage() {
         />
       ) : null}
 
-      <AlertDialog open={Boolean(removing)} onOpenChange={(open) => !open && setRemoving(null)}>
+      <AlertDialog
+        open={Boolean(statusChange)}
+        onOpenChange={(open) => !open && setStatusChange(null)}
+      >
         <AlertDialogContent>
-          <AlertDialogTitle>Nonaktifkan akses anggota?</AlertDialogTitle>
+          <AlertDialogTitle>
+            {statusChange?.status === 'ACTIVE'
+              ? 'Aktifkan kembali anggota?'
+              : 'Nonaktifkan akses anggota?'}
+          </AlertDialogTitle>
           <AlertDialogDescription>
-            Akses <strong>{removing?.user.name}</strong> akan dicabut dan seluruh cakupan outlet
-            dihapus. Data historis tetap tersimpan.
+            {statusChange?.status === 'ACTIVE' ? (
+              <>
+                Akses <strong>{statusChange.member.user.name}</strong> akan diaktifkan kembali
+                dengan role dan cakupan outlet yang tersimpan.
+              </>
+            ) : (
+              <>
+                Akses <strong>{statusChange?.member.user.name}</strong> akan dicabut dan token
+                aktifnya dihentikan. Data historis tetap tersimpan dan anggota dapat diaktifkan
+                kembali.
+              </>
+            )}
           </AlertDialogDescription>
-          {removeMember.isError ? (
+          {updateStatus.isError ? (
             <p
               role="alert"
               className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 px-3.5 py-3 text-sm text-destructive"
             >
-              {removeMember.error instanceof ApiError && removeMember.error.status === 403
-                ? 'Anda tidak memiliki izin untuk menonaktifkan anggota ini.'
-                : removeMember.error.message}
+              {updateStatus.error instanceof ApiError && updateStatus.error.status === 403
+                ? 'Anda tidak memiliki izin untuk mengubah status anggota ini.'
+                : updateStatus.error.message}
+            </p>
+          ) : null}
+          <AlertDialogFooter>
+            <AlertDialogCancel asChild>
+              <Button type="button" variant="outline" className="min-h-11 px-5">
+                Batal
+              </Button>
+            </AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <Button
+                type="button"
+                variant={statusChange?.status === 'ACTIVE' ? 'default' : 'destructive'}
+                className="min-h-11 px-5"
+                disabled={updateStatus.isPending}
+                onClick={(event) => {
+                  event.preventDefault()
+                  if (statusChange) updateStatus.mutate(statusChange)
+                }}
+              >
+                {updateStatus.isPending
+                  ? 'Memproses...'
+                  : statusChange?.status === 'ACTIVE'
+                    ? 'Ya, aktifkan'
+                    : 'Ya, nonaktifkan'}
+              </Button>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteTarget(null)
+            deleteMember.reset()
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogTitle>Hapus anggota permanen?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Anggota <strong>{deleteTarget?.user.name}</strong> akan dihapus permanen beserta akses
+            outlet dan token aktifnya. Riwayat transaksi tetap menyimpan atribusi pengguna.
+          </AlertDialogDescription>
+          {deleteMember.isError ? (
+            <p
+              role="alert"
+              className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 px-3.5 py-3 text-sm text-destructive"
+            >
+              {deleteMember.error instanceof ApiError && deleteMember.error.status === 403
+                ? 'Anda tidak memiliki izin untuk menghapus anggota ini.'
+                : deleteMember.error.message}
             </p>
           ) : null}
           <AlertDialogFooter>
@@ -329,13 +440,13 @@ export function MembersPage() {
                 type="button"
                 variant="destructive"
                 className="min-h-11 px-5"
-                disabled={removeMember.isPending}
+                disabled={deleteMember.isPending}
                 onClick={(event) => {
                   event.preventDefault()
-                  if (removing) removeMember.mutate(removing.id)
+                  if (deleteTarget) deleteMember.mutate(deleteTarget.id)
                 }}
               >
-                {removeMember.isPending ? 'Memproses...' : 'Ya, nonaktifkan'}
+                {deleteMember.isPending ? 'Menghapus...' : 'Hapus permanen'}
               </Button>
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -410,82 +521,64 @@ type MemberDialogProps = {
 }
 
 function MemberDialog({ mode, member, outlets, onClose, onSaved }: MemberDialogProps) {
-  const { token } = useSession()
   const isCreate = mode === 'create'
-  const [form, setForm] = useState({
-    name: member?.user.name ?? '',
-    email: member?.user.email ?? '',
-    password: '',
-    role: (member?.role === 'MANAGER' ? 'MANAGER' : 'CASHIER') as Exclude<Role, 'OWNER'>,
-    outletIds: member?.outlets.map((outlet) => outlet.id) ?? [],
+  const {
+    register,
+    control,
+    handleSubmit,
+    setValue,
+    setError,
+    formState: { errors },
+  } = useForm<MemberFormValues>({
+    resolver: zodResolver(memberSchema),
+    defaultValues: {
+      mode: isCreate ? 'create' : 'update',
+      name: member?.user.name ?? '',
+      email: member?.user.email ?? '',
+      password: '',
+      role: member?.role === 'MANAGER' ? 'MANAGER' : 'CASHIER',
+      outlet_ids: member?.outlets.map((outlet) => outlet.id) ?? [],
+    },
+    mode: 'onBlur',
   })
-  const [errors, setErrors] = useState<Record<string, string[]>>({})
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const outletIds = useWatch({ control, name: 'outlet_ids' }) ?? []
+  const outletError = getFieldError(errors, 'outlet_ids.0') ?? getFieldError(errors, 'outlet_ids')
+  const roleError = getFieldError(errors, 'role')
 
   const mutation = useMutation({
-    mutationFn: (input: Parameters<typeof api.createMember>[1]) =>
+    mutationFn: (values: MemberFormValues) =>
       isCreate
-        ? api.createMember(token!, input)
-        : api.updateMember(token!, member!.id, {
-            role: input.role,
-            outlet_ids: input.outlet_ids,
+        ? api.createMember({
+            name: values.name,
+            email: values.email,
+            password: values.password,
+            role: values.role,
+            outlet_ids: values.outlet_ids,
+          })
+        : api.updateMember(member!.id, {
+            role: values.role,
+            outlet_ids: values.outlet_ids,
           }),
     onSuccess: async () => {
       await onSaved(isCreate ? 'Anggota baru berhasil ditambahkan.' : 'Perubahan anggota disimpan.')
     },
-    onError: (error) => {
-      if (error instanceof ApiError) {
-        setErrors(error.errors)
-        setErrorMessage(
-          error.status === 403
-            ? 'Anda tidak memiliki izin untuk melakukan tindakan ini.'
-            : error.message,
-        )
-      } else if (error instanceof Error) {
-        setErrorMessage(error.message)
-      }
-    },
   })
 
   function toggleOutlet(id: number) {
-    setForm((current) => ({
-      ...current,
-      outletIds: current.outletIds.includes(id)
-        ? current.outletIds.filter((outletId) => outletId !== id)
-        : [...current.outletIds, id],
-    }))
+    const next = outletIds.includes(id)
+      ? outletIds.filter((outletId) => outletId !== id)
+      : [...outletIds, id]
+
+    setValue('outlet_ids', next, { shouldDirty: true, shouldValidate: true })
   }
 
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setErrors({})
-    setErrorMessage(null)
-
-    if (isCreate && !form.name.trim()) {
-      setErrors({ name: ['Nama wajib diisi.'] })
-      return
-    }
-    if (isCreate && !form.email.trim()) {
-      setErrors({ email: ['Email wajib diisi.'] })
-      return
-    }
-    if (isCreate && form.password.length < 8) {
-      setErrors({ password: ['Kata sandi minimal 8 karakter.'] })
-      return
-    }
-    if (form.outletIds.length === 0) {
-      setErrors({ outlet_ids: ['Pilih minimal satu outlet.'] })
-      return
-    }
-
-    mutation.mutate({
-      name: form.name.trim(),
-      email: form.email.trim(),
-      password: form.password,
-      role: form.role,
-      outlet_ids: form.outletIds,
+  const submit = handleSubmit((values) => {
+    mutation.mutate(values, {
+      onError: (error) => {
+        applyApiErrors(error, setError)
+      },
     })
-  }
+  })
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
@@ -499,55 +592,49 @@ function MemberDialog({ mode, member, outlets, onClose, onSaved }: MemberDialogP
           </DialogDescription>
         </DialogHeader>
 
-        {errorMessage ? (
+        {mutation.isError && !hasFieldErrors(mutation.error) ? (
           <p
             role="alert"
             className="mb-4 rounded-lg border border-destructive/30 bg-destructive/5 px-3.5 py-3 text-sm text-destructive"
           >
-            {errorMessage}
+            {apiErrorMessage(mutation.error, 'Perubahan anggota belum dapat disimpan. Coba lagi.')}
           </p>
         ) : null}
 
-        <form className="space-y-5" onSubmit={submit}>
+        <form className="space-y-5" onSubmit={submit} noValidate aria-busy={mutation.isPending}>
           {isCreate ? (
             <>
               <FormField
-                name="name"
+                {...register('name')}
+                id="member-name"
                 label="Nama lengkap"
-                value={form.name}
                 required
                 maxLength={255}
-                error={errors.name?.[0]}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, name: event.target.value }))
-                }
+                disabled={mutation.isPending}
+                error={getFieldError(errors, 'name')}
               />
               <FormField
-                name="email"
+                {...register('email')}
+                id="member-email"
                 label="Email"
                 type="email"
                 autoComplete="email"
-                value={form.email}
                 required
                 maxLength={255}
-                error={errors.email?.[0]}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, email: event.target.value }))
-                }
+                disabled={mutation.isPending}
+                error={getFieldError(errors, 'email')}
               />
               <FormField
-                name="password"
+                {...register('password')}
+                id="member-password"
                 label="Kata sandi awal"
                 type="password"
                 autoComplete="new-password"
-                value={form.password}
                 required
                 minLength={8}
+                disabled={mutation.isPending}
                 hint="Minimal 8 karakter. Sampaikan kepada anggota untuk masuk pertama kali."
-                error={errors.password?.[0]}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, password: event.target.value }))
-                }
+                error={getFieldError(errors, 'password')}
               />
             </>
           ) : (
@@ -562,15 +649,12 @@ function MemberDialog({ mode, member, outlets, onClose, onSaved }: MemberDialogP
               Role preset
             </label>
             <select
+              {...register('role')}
               id="member-role"
-              value={form.role}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  role: event.target.value as Exclude<Role, 'OWNER'>,
-                }))
-              }
-              className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm shadow-xs outline-none transition focus-visible:ring-[3px] focus-visible:ring-ring/40"
+              disabled={mutation.isPending}
+              aria-invalid={Boolean(roleError)}
+              aria-describedby={roleError ? 'member-role-message' : undefined}
+              className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm shadow-xs outline-none transition focus-visible:ring-[3px] focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:bg-muted/50 disabled:text-muted-foreground"
             >
               {ASSIGNABLE_ROLES.map((role) => (
                 <option key={role} value={role}>
@@ -578,9 +662,9 @@ function MemberDialog({ mode, member, outlets, onClose, onSaved }: MemberDialogP
                 </option>
               ))}
             </select>
-            {errors.role ? (
-              <p role="alert" className="text-sm text-destructive">
-                {errors.role[0]}
+            {roleError ? (
+              <p id="member-role-message" role="alert" className="text-sm text-destructive">
+                {roleError}
               </p>
             ) : null}
             <p className="text-xs text-muted-foreground">
@@ -590,7 +674,10 @@ function MemberDialog({ mode, member, outlets, onClose, onSaved }: MemberDialogP
 
           <div className="space-y-1.5">
             <span className="text-sm font-medium">Akses outlet</span>
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div
+              className="grid gap-2 sm:grid-cols-2"
+              aria-describedby={outletError ? 'member-outlets-message' : undefined}
+            >
               {outlets.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Belum ada outlet.</p>
               ) : (
@@ -599,14 +686,15 @@ function MemberDialog({ mode, member, outlets, onClose, onSaved }: MemberDialogP
                     key={outlet.id}
                     className={cn(
                       'flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm transition',
-                      form.outletIds.includes(outlet.id)
+                      outletIds.includes(outlet.id)
                         ? 'border-dagana-primary bg-dagana-primary-soft'
                         : 'border-input bg-background hover:bg-muted/50',
                     )}
                   >
                     <input
                       type="checkbox"
-                      checked={form.outletIds.includes(outlet.id)}
+                      checked={outletIds.includes(outlet.id)}
+                      disabled={mutation.isPending}
                       onChange={() => toggleOutlet(outlet.id)}
                       className="size-4 rounded border-input text-dagana-primary focus:ring-ring"
                     />
@@ -615,9 +703,9 @@ function MemberDialog({ mode, member, outlets, onClose, onSaved }: MemberDialogP
                 ))
               )}
             </div>
-            {errors.outlet_ids ? (
-              <p role="alert" className="text-sm text-destructive">
-                {errors.outlet_ids[0]}
+            {outletError ? (
+              <p id="member-outlets-message" role="alert" className="text-sm text-destructive">
+                {outletError}
               </p>
             ) : null}
           </div>
@@ -627,6 +715,12 @@ function MemberDialog({ mode, member, outlets, onClose, onSaved }: MemberDialogP
               Batal
             </Button>
             <Button type="submit" className="min-h-11 px-5" disabled={mutation.isPending}>
+              {mutation.isPending ? (
+                <LoaderCircle
+                  aria-hidden="true"
+                  className="size-4 animate-spin motion-reduce:animate-none"
+                />
+              ) : null}
               {mutation.isPending ? 'Memproses...' : isCreate ? 'Buat Anggota' : 'Simpan Perubahan'}
             </Button>
           </DialogFooter>

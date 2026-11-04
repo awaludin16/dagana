@@ -48,6 +48,9 @@ class MembershipAccessTest extends TestCase
         $this->getJson('/api/v1/roles')->assertForbidden();
         $this->patchJson("/api/v1/businesses/{$business->id}", ['name' => 'Diubah'])->assertForbidden();
         $this->patchJson("/api/v1/outlets/{$outlet->id}", ['name' => 'Diubah'])->assertForbidden();
+        $this->patchJson("/api/v1/members/{$cashier->membership->id}", [
+            'status' => BusinessMembership::STATUS_INACTIVE,
+        ])->assertForbidden();
 
         $this->assertDatabaseHas('businesses', ['id' => $business->id, 'name' => $business->name]);
         $this->assertDatabaseHas('outlets', ['id' => $outlet->id, 'name' => $outlet->name]);
@@ -116,7 +119,9 @@ class MembershipAccessTest extends TestCase
             'role' => BusinessMembership::ROLE_MANAGER,
         ])->assertNotFound();
 
-        $this->deleteJson("/api/v1/members/{$target->id}")->assertNotFound();
+        $this->patchJson("/api/v1/members/{$target->id}", [
+            'status' => BusinessMembership::STATUS_INACTIVE,
+        ])->assertNotFound();
 
         $this->assertSame(BusinessMembership::ROLE_CASHIER, $target->fresh()->role);
         $this->assertSame(BusinessMembership::STATUS_ACTIVE, $target->fresh()->status);

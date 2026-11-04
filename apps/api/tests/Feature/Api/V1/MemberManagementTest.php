@@ -128,13 +128,17 @@ class MemberManagementTest extends TestCase
             'role' => BusinessMembership::ROLE_MANAGER,
         ])->assertForbidden();
 
-        $this->deleteJson("/api/v1/members/{$owner->membership->id}")->assertForbidden();
+        $this->patchJson("/api/v1/members/{$owner->membership->id}", [
+            'status' => BusinessMembership::STATUS_INACTIVE,
+        ])->assertForbidden();
 
         $this->patchJson("/api/v1/members/{$manager->membership->id}", [
             'role' => BusinessMembership::ROLE_MANAGER,
         ])->assertForbidden();
 
-        $this->deleteJson("/api/v1/members/{$manager->membership->id}")->assertForbidden();
+        $this->patchJson("/api/v1/members/{$manager->membership->id}", [
+            'status' => BusinessMembership::STATUS_INACTIVE,
+        ])->assertForbidden();
 
         $this->assertSame(BusinessMembership::ROLE_OWNER, $owner->membership->fresh()->role);
         $this->assertSame(BusinessMembership::STATUS_ACTIVE, $manager->membership->fresh()->status);
@@ -191,7 +195,7 @@ class MemberManagementTest extends TestCase
         $this->assertSame($owner->id, $business->memberships()->where('role', BusinessMembership::ROLE_OWNER)->sole()->user_id);
     }
 
-    public function test_removing_member_revokes_access_and_keeps_membership_history(): void
+    public function test_member_deactivation_revokes_tokens_and_reactivation_restores_access(): void
     {
         [$owner, $business, $outlet] = $this->merchant();
         $employee = $this->employee($business, [$outlet], BusinessMembership::ROLE_CASHIER);
@@ -199,17 +203,110 @@ class MemberManagementTest extends TestCase
 
         Sanctum::actingAs($owner);
 
-        $this->deleteJson("/api/v1/members/{$employee->membership->id}")->assertNoContent();
+        $this->patchJson("/api/v1/members/{$employee->membership->id}", [
+            'status' => BusinessMembership::STATUS_INACTIVE,
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.status', BusinessMembership::STATUS_INACTIVE)
+            ->assertJsonPath('data.outlets.0.id', $outlet->id);
 
         $membership = $employee->membership->fresh();
 
         $this->assertSame(BusinessMembership::STATUS_INACTIVE, $membership->status);
-        $this->assertDatabaseMissing('outlet_accesses', ['membership_id' => $membership->id]);
+        $this->assertDatabaseHas('outlet_accesses', [
+            'membership_id' => $membership->id,
+            'outlet_id' => $outlet->id,
+        ]);
         $this->assertDatabaseCount('personal_access_tokens', 0);
 
         Sanctum::actingAs($employee->fresh());
 
         $this->getJson("/api/v1/outlets/{$outlet->id}")->assertForbidden();
+
+        Sanctum::actingAs($owner);
+
+        $this->patchJson("/api/v1/members/{$membership->id}", [
+            'status' => BusinessMembership::STATUS_ACTIVE,
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.status', BusinessMembership::STATUS_ACTIVE)
+            ->assertJsonPath('data.role', BusinessMembership::ROLE_CASHIER)
+            ->assertJsonPath('data.outlets.0.id', $outlet->id);
+
+        Sanctum::actingAs($employee->fresh());
+
+        $this->getJson("/api/v1/outlets/{$outlet->id}")->assertOk();
+    }
+
+    public function test_owner_can_hard_delete_an_employee_membership(): void
+    {
+        [$owner, $business, $outlet] = $this->merchant();
+        $employee = $this->employee($business, [$outlet], BusinessMembership::ROLE_CASHIER);
+        $membershipId = $employee->membership->id;
+        $employee->createToken('pos-mobile');
+
+        Sanctum::actingAs($owner);
+
+        $this->deleteJson("/api/v1/members/{$membershipId}")->assertNoContent();
+
+        $this->assertDatabaseMissing('business_memberships', ['id' => $membershipId]);
+        $this->assertDatabaseMissing('outlet_accesses', ['membership_id' => $membershipId]);
+        $this->assertDatabaseCount('personal_access_tokens', 0);
+        $this->assertDatabaseHas('users', ['id' => $employee->id]);
+    }
+
+    public function test_owner_cannot_hard_delete_the_owner_or_self(): void
+    {
+        [$owner] = $this->merchant();
+
+        Sanctum::actingAs($owner);
+
+        $this->deleteJson("/api/v1/members/{$owner->membership->id}")->assertForbidden();
+
+        $this->assertDatabaseHas('business_memberships', ['id' => $owner->membership->id]);
+    }
+
+    public function test_manager_cannot_hard_delete_members(): void
+    {
+        [$owner, $business, $outlet] = $this->merchant();
+        $manager = $this->employee($business, [$outlet], BusinessMembership::ROLE_MANAGER);
+        $employee = $this->employee($business, [$outlet], BusinessMembership::ROLE_CASHIER);
+
+        Sanctum::actingAs($manager);
+
+        $this->deleteJson("/api/v1/members/{$employee->membership->id}")->assertForbidden();
+
+        $this->assertDatabaseHas('business_memberships', ['id' => $employee->membership->id]);
+        $this->assertDatabaseHas('business_memberships', ['id' => $owner->membership->id]);
+    }
+
+    public function test_member_delete_is_scoped_to_the_authenticated_business(): void
+    {
+        [$owner] = $this->merchant();
+        [, , $foreignOutlet] = $this->merchant();
+        $foreignEmployee = $this->employee($foreignOutlet->business, [$foreignOutlet], BusinessMembership::ROLE_CASHIER);
+
+        Sanctum::actingAs($owner);
+
+        $this->deleteJson("/api/v1/members/{$foreignEmployee->membership->id}")->assertNotFound();
+
+        $this->assertDatabaseHas('business_memberships', ['id' => $foreignEmployee->membership->id]);
+    }
+
+    public function test_member_status_must_be_active_or_inactive(): void
+    {
+        [$owner, $business, $outlet] = $this->merchant();
+        $employee = $this->employee($business, [$outlet], BusinessMembership::ROLE_CASHIER);
+
+        Sanctum::actingAs($owner);
+
+        $this->patchJson("/api/v1/members/{$employee->membership->id}", [
+            'status' => 'DELETED',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('status');
+
+        $this->assertSame(BusinessMembership::STATUS_ACTIVE, $employee->membership->fresh()->status);
     }
 
     /**

@@ -1,19 +1,12 @@
-import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft, CircleUserRound, Mail } from 'lucide-react'
 import { Link } from 'react-router'
 
-import { useSession } from '@/auth/session-context'
-import { ErrorState, LoadingState } from '@/components/page-feedback'
+import { useAccess } from '@/auth/useAccess'
+import { ErrorState, LoadingState } from '@/components/PageFeedback'
 import { Button } from '@/components/ui/button'
-import { api } from '@/lib/api'
 
 export function ProfilePage() {
-  const { token } = useSession()
-  const profile = useQuery({
-    queryKey: ['profile', token],
-    queryFn: () => api.profile(token!),
-    enabled: Boolean(token),
-  })
+  const profile = useAccess()
 
   if (profile.isPending) return <LoadingState label="Memuat profil..." />
   if (profile.isError) {
@@ -25,15 +18,19 @@ export function ProfilePage() {
     )
   }
 
+  const user = profile.data
+
+  if (!user) return null
+
   return (
     <section className="mx-auto max-w-2xl space-y-7">
       <header className="space-y-2">
         <Link
-          to="/business"
+          to="/outlets"
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft aria-hidden="true" className="size-4" />
-          Kembali ke Business
+          Kembali ke Outlet
         </Link>
         <h1 className="pt-3 text-page-title tracking-tight">Profil pengguna</h1>
         <p className="text-sm leading-6 text-muted-foreground">
@@ -47,7 +44,7 @@ export function ProfilePage() {
             <CircleUserRound aria-hidden="true" className="size-7" />
           </span>
           <div>
-            <h2 className="text-card-title">{profile.data.name}</h2>
+            <h2 className="text-card-title">{user.name}</h2>
             <p className="text-sm text-muted-foreground">Akun Dagana</p>
           </div>
         </div>
@@ -56,7 +53,7 @@ export function ProfilePage() {
             <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Nama
             </dt>
-            <dd className="mt-1.5 text-sm">{profile.data.name}</dd>
+            <dd className="mt-1.5 text-sm">{user.name}</dd>
           </div>
           <div>
             <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -64,13 +61,13 @@ export function ProfilePage() {
             </dt>
             <dd className="mt-1.5 inline-flex items-center gap-2 text-sm">
               <Mail aria-hidden="true" className="size-4 text-muted-foreground" />
-              {profile.data.email}
+              {user.email}
             </dd>
           </div>
         </dl>
       </div>
       <Button asChild variant="outline" className="min-h-11">
-        <Link to="/business">Lihat pengaturan Business</Link>
+        <Link to="/outlets">Lihat pengaturan Outlet</Link>
       </Button>
     </section>
   )

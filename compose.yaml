@@ -12,6 +12,8 @@ services:
             APP_DEBUG: "true"
             APP_KEY: ${APP_KEY:-base64:ZrFI397t4b5Bk32I7fWAF/2gD7iIf1eC+d4d65Wwwp0=}
             APP_URL: ${APP_URL:-http://localhost:8000}
+            FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+            SANCTUM_STATEFUL_DOMAINS: ${SANCTUM_STATEFUL_DOMAINS:-localhost:5173,127.0.0.1:5173}
             LOG_CHANNEL: stderr
             DB_CONNECTION: pgsql
             DB_HOST: postgres

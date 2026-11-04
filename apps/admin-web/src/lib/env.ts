@@ -1,3 +1,6 @@
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1'
+
 export const env = {
-  apiBaseUrl: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1',
+  apiBaseUrl,
+  apiOrigin: import.meta.env.VITE_API_ORIGIN ?? new URL(apiBaseUrl).origin,
 } as const

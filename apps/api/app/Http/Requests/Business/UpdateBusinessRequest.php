@@ -18,8 +18,6 @@ class UpdateBusinessRequest extends FormRequest
     {
         return [
             'name' => ['sometimes', 'required', 'string', 'max:255'],
-            'phone' => ['sometimes', 'nullable', 'string', 'max:30'],
-            'address' => ['sometimes', 'nullable', 'string', 'max:1000'],
         ];
     }
 }
