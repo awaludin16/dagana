@@ -12,6 +12,15 @@
 - **Router web:** `react-router` 8.5.1 disetujui sebagai router `apps/admin-web` dan `apps/customer-web`. Route awal `/` dengan fallback `*`; versi mengikuti `package-lock.json`.
 - **Komponen web:** shadcn/ui dengan Tailwind CSS v4. Komponen ditambahkan memakai `npx shadcn@latest add` dan disimpan di `src/components/ui`. Registry default CLI v4 menghasilkan import `cn`/`radix-ui` yang belum dipakai proyek, sehingga komponen diambil dari registry `new-york` (`https://ui.shadcn.com/r/styles/new-york/<component>.json`) sampai baseline dependency diperbarui.
 
+## Konfirmasi teknis backend Phase 3 (2026-11-04)
+
+- **Skema catalog:** tabel `categories` (`business_id`, `name`, `is_active`) dan `products` (`business_id`, `category_id` nullable, `name`, `price` integer rupiah, `is_active`, `is_available`) dibuat pada migration `2026_11_04_000000`/`000001`. Catalog adalah master data level Business dengan harga yang sama di semua Outlet sesuai D-25; tidak ada override per-outlet.
+- **Nama resource:** endpoint memakai path `/api/v1/products` (bukan baseline `/menus` di `docs/architecture/api-design.md`) agar konsisten dengan permission D-03 `categories.*`/`products.*`. Baseline grouping `api-design.md` telah dikoreksi.
+- **Availability:** `is_available` adalah boolean global pada menu (aktif di catalog tetapi bisa ditandai sold out). Availability per-outlet belum diputuskan dan menunggu Product Owner; implementasi saat ini tidak mengunci desain per-outlet.
+- **Delete vs deaktivasi:** `DELETE /api/v1/categories/{id}` hanya boleh saat kategori kosong; kategori berisi menu memakai deaktivasi `PATCH` `is_active` (permission `categories.update`). `DELETE /api/v1/products/{id}` masih bebas karena belum ada tabel transaksi; guard "tolak hapus bila sudah ada transaksi" wajib ditambahkan pada Phase 4 bersama order items (catatan `Domain/Catalog/Actions/DeleteProductAction.php`).
+- **Kontrak snapshot Phase 4:** terdokumentasi di `docs/architecture/api-design.md` bagian "Phase 3 contract — catalog": order item menyimpan snapshot `product_id`/`name`/`price`, checkout wajib mengambil ulang menu via `Product::sellable()`, dan perubahan catalog tidak boleh mengubah snapshot histori.
+- **Verifikasi penuh AC "menu nonaktif tidak bisa masuk transaksi":** menunggu jalur checkout Phase 4; saat ini sudah ada guard domain `Product::sellable()` beserta test scope-nya.
+
 ## Konfirmasi teknis backend Phase 2 (2026-11-02)
 
 - **Katalog permission dan role preset:** implementasi mengikuti baseline D-03 sampai D-05. Status D-03–D-05 tetap **rekomendasi v1 yang menunggu persetujuan Product Owner**, sehingga katalog permission, batas Manager, dan model outlet access dapat direvisi bila keputusan final berbeda. Tidak ada custom role atau permission override.

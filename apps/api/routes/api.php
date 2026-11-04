@@ -2,9 +2,11 @@
 
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BusinessController;
+use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\MemberController;
 use App\Http\Controllers\Api\V1\OutletController;
+use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\RegionController;
 use App\Http\Controllers\Api\V1\RoleController;
@@ -92,5 +94,37 @@ Route::prefix('v1')->group(function () {
         Route::get('/roles', [RoleController::class, 'index'])
             ->middleware('permission:members.read')
             ->name('api.v1.roles.index');
+
+        Route::get('/categories', [CategoryController::class, 'index'])
+            ->middleware('permission:categories.read')
+            ->name('api.v1.categories.index');
+        Route::post('/categories', [CategoryController::class, 'store'])
+            ->middleware('permission:categories.create')
+            ->name('api.v1.categories.store');
+        Route::get('/categories/{category}', [CategoryController::class, 'show'])
+            ->middleware('permission:categories.read')
+            ->name('api.v1.categories.show');
+        Route::patch('/categories/{category}', [CategoryController::class, 'update'])
+            ->middleware('permission:categories.update')
+            ->name('api.v1.categories.update');
+        Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])
+            ->middleware('permission:categories.delete')
+            ->name('api.v1.categories.destroy');
+
+        Route::get('/products', [ProductController::class, 'index'])
+            ->middleware('permission:products.read')
+            ->name('api.v1.products.index');
+        Route::post('/products', [ProductController::class, 'store'])
+            ->middleware('permission:products.create')
+            ->name('api.v1.products.store');
+        Route::get('/products/{product}', [ProductController::class, 'show'])
+            ->middleware('permission:products.read')
+            ->name('api.v1.products.show');
+        Route::patch('/products/{product}', [ProductController::class, 'update'])
+            ->middleware('permission:products.update')
+            ->name('api.v1.products.update');
+        Route::delete('/products/{product}', [ProductController::class, 'destroy'])
+            ->middleware('permission:products.delete')
+            ->name('api.v1.products.destroy');
     });
 });
