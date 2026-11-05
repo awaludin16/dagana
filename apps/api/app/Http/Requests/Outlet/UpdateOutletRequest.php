@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Outlet;
 
+use App\Support\Address;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateOutletRequest extends FormRequest
@@ -19,7 +20,7 @@ class UpdateOutletRequest extends FormRequest
         return [
             'name' => ['sometimes', 'required', 'string', 'max:255'],
             'phone' => ['sometimes', 'nullable', 'string', 'max:30'],
-            'address' => ['sometimes', 'nullable', 'string', 'max:1000'],
+            ...Address::rules('address'),
         ];
     }
 }

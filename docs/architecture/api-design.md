@@ -25,6 +25,7 @@ Resource group berikut adalah baseline untuk pengelompokan endpoint, bukan spesi
 /api/v1/employees
 /api/v1/roles
 /api/v1/permissions
+/api/v1/regions
 /api/v1/categories
 /api/v1/menus
 /api/v1/inventory
@@ -73,27 +74,51 @@ Requirement produk yang mendasari API: `docs/requirements/identity-and-access.md
 
 ## 7. Phase 1 contract — identity, business, outlet
 
-Autentikasi memakai Laravel Sanctum personal access token (`Authorization: Bearer <token>`). Token hanya dikembalikan sekali pada register/login dan disimpan client di secure storage. Semua response resource memakai envelope `data`.
+Autentikasi web admin memakai Laravel Sanctum SPA session: browser memanggil `GET /sanctum/csrf-cookie`, lalu login/register melalui endpoint `/auth/web/*` dengan cookie `dagana-session` yang `HttpOnly` dan `XSRF-TOKEN` yang dapat dibaca JavaScript. Setiap request yang mengubah data mengirim header `X-XSRF-TOKEN` dan `credentials: include`; token tidak disimpan di `localStorage`. Klien mobile tetap memakai Sanctum personal access token (`Authorization: Bearer <token>`) dan wajib menyimpannya di secure storage. Semua response resource memakai envelope `data`.
 
 | Method | Path | Auth | Keterangan |
 |---|---|---|---|
-| `POST` | `/api/v1/auth/register` | publik, throttle 6/menit | Membuat user dan token; tidak membuat business. |
-| `POST` | `/api/v1/auth/login` | publik, throttle 6/menit | Menukar kredensial dengan token. |
+| `POST` | `/api/v1/auth/register` | publik, throttle 6/menit | Membuat user dan bearer token untuk mobile; tidak membuat business. |
+| `POST` | `/api/v1/auth/login` | publik, throttle 6/menit | Menukar kredensial dengan bearer token untuk mobile. |
 | `POST` | `/api/v1/auth/logout` | bearer | Menghapus token yang sedang dipakai; `204`. |
-| `GET` | `/api/v1/me` | bearer | Profil user; tidak memuat password/remember token. |
-| `POST` | `/api/v1/businesses` | bearer | Onboarding atomik: business + outlet pertama + owner membership. |
-| `GET` | `/api/v1/businesses/{business}` | bearer, membership aktif | 404 bila business bukan milik user. |
-| `PATCH` | `/api/v1/businesses/{business}` | bearer, membership aktif | Update pengaturan dasar business. |
-| `GET` | `/api/v1/outlets` | bearer, membership aktif | Hanya outlet milik business user. |
-| `GET` | `/api/v1/outlets/{outlet}` | bearer, membership aktif | 404 bila outlet di luar scope. |
-| `PATCH` | `/api/v1/outlets/{outlet}` | bearer, membership aktif | Update pengaturan dasar outlet. |
+| `POST` | `/api/v1/auth/web/register` | publik, throttle 6/menit | Membuat user dan session web; response tidak memuat token. |
+| `POST` | `/api/v1/auth/web/login` | publik, throttle 6/menit | Membuat session web; response tidak memuat token. |
+| `POST` | `/api/v1/auth/web/logout` | session | Menghapus session web; `204`. |
+| `GET` | `/api/v1/me` | bearer atau session | Profil user; tidak memuat password/remember token. |
+| `POST` | `/api/v1/businesses` | bearer atau session | Onboarding atomik: business + outlet pertama + owner membership. |
+| `GET` | `/api/v1/businesses/{business}` | bearer atau session, membership aktif | 404 bila business bukan milik user. |
+| `PATCH` | `/api/v1/businesses/{business}` | bearer atau session, membership aktif | Update nama business. |
+| `GET` | `/api/v1/outlets` | bearer atau session, membership aktif | Hanya outlet milik business user. |
+| `POST` | `/api/v1/outlets` | bearer atau session, membership aktif | Menambah outlet pada business user. |
+| `GET` | `/api/v1/outlets/{outlet}` | bearer atau session, membership aktif | 404 bila outlet di luar scope. |
+| `PATCH` | `/api/v1/outlets/{outlet}` | bearer atau session, membership aktif | Update pengaturan dasar outlet. |
+| `DELETE` | `/api/v1/outlets/{outlet}` | bearer atau session, membership aktif | Hard delete outlet; business harus tetap memiliki minimal satu outlet. |
+| `GET` | `/api/v1/regions/provinces` | bearer atau session | Daftar provinsi dari cache backend. |
+| `GET` | `/api/v1/regions/regencies/{province}` | bearer atau session | Daftar kabupaten/kota. |
+| `GET` | `/api/v1/regions/districts/{regency}` | bearer atau session | Daftar kecamatan. |
+| `GET` | `/api/v1/regions/villages/{district}` | bearer atau session | Daftar desa/kelurahan beserta kode pos. |
 
-Field pengaturan dasar: `name` wajib; `phone` dan `address` opsional. Contoh onboarding:
+Business hanya menyimpan `name`. Outlet menyimpan `name` (wajib), `phone` (opsional), dan alamat komposit `address` (`street`, `village`, `district`, `regency`, `province`, `postal_code`) yang opsional. Pada onboarding, `business` hanya memuat `name`; `phone` dan alamat hanya dikirim di `outlet`.
+
+Endpoint wilayah memakai cache backend (data fresh 1 hari, stale hingga 7 hari) dan circuit breaker (3 kegagalan berturut-turut membuka breaker selama 1 menit). Jika penyedia eksternal gagal, backend tetap melayani data cache terakhir; frontend tidak boleh memanggil penyedia wilayah secara langsung.
+
+Contoh onboarding:
 
 ```json
 {
-  "business": { "name": "Warung Budi", "phone": "081234567890", "address": "Jl. Merdeka No. 1" },
-  "outlet": { "name": "Outlet Pusat", "phone": "081298765432", "address": "Jl. Merdeka No. 1" }
+  "business": { "name": "Warung Budi" },
+  "outlet": {
+    "name": "Outlet Pusat",
+    "phone": "081298765432",
+    "address": {
+      "street": "Jl. Merdeka No. 1",
+      "village": "Kelurahan Menteng",
+      "district": "Kecamatan Menteng",
+      "regency": "Jakarta Pusat",
+      "province": "DKI JAKARTA",
+      "postal_code": "10310"
+    }
+  }
 }
 ```
 
@@ -102,10 +127,59 @@ Response sukses onboarding (`201`):
 ```json
 {
   "data": {
-    "business": { "id": 1, "name": "Warung Budi", "phone": "081234567890", "address": "Jl. Merdeka No. 1" },
-    "outlet": { "id": 1, "business_id": 1, "name": "Outlet Pusat", "phone": "081298765432", "address": "Jl. Merdeka No. 1" }
+    "business": {
+      "id": 1,
+      "name": "Warung Budi"
+    },
+    "outlet": {
+      "id": 1,
+      "business_id": 1,
+      "name": "Outlet Pusat",
+      "phone": "081298765432",
+      "address": {
+        "street": "Jl. Merdeka No. 1",
+        "village": "Kelurahan Menteng",
+        "district": "Kecamatan Menteng",
+        "regency": "Jakarta Pusat",
+        "province": "DKI JAKARTA",
+        "postal_code": "10310"
+      }
+    }
   }
 }
 ```
 
 Error yang dipakai: `401` tanpa token valid, `404` untuk resource di luar scope tenant (tanpa membocorkan keberadaannya), `422` untuk validasi termasuk user yang sudah punya business, dan `429` untuk throttle register/login. Bentuk error validasi mengikuti default Laravel `{ "message": ..., "errors": { ... } }`.
+
+## 8. Phase 2 contract — membership, role, permission
+
+Authorization memakai middleware `permission:<resource.action>` yang memeriksa membership aktif dan permission preset. Tidak ada custom role atau permission override. `403` dipakai bila membership tidak aktif atau permission tidak dimiliki; `404` dipakai bila resource di luar Business/Outlet scope agar keberadaan data tenant lain tidak terbocorkan.
+
+| Method | Path | Permission | Keterangan |
+|---|---|---|---|
+| `GET` | `/api/v1/me` | bearer atau session | Menambahkan `data.membership` berisi role, status, `business`, `outlets`, dan permission efektif. `null` bila user belum punya membership. |
+| `GET` | `/api/v1/members` | `members.read` | Daftar membership pada Business user, termasuk Owner. |
+| `POST` | `/api/v1/members` | `members.invite` | Membuat akun employee dan membership aktif langsung. Role hanya `MANAGER` atau `CASHIER`. |
+| `PATCH` | `/api/v1/members/{membership}` | `members.update` | Ubah role preset, set outlet access, dan/atau status (`ACTIVE`/`INACTIVE`). Deaktivasi mencabut token tetapi mempertahankan record membership dan outlet access; reaktivasi memakai role/outlet yang sama. |
+| `DELETE` | `/api/v1/members/{membership}` | `members.delete` | Hard delete membership employee; hanya Owner, tidak dapat menghapus Owner atau dirinya sendiri, dan token user dicabut. |
+| `GET` | `/api/v1/roles` | `members.read` | Katalog tiga role preset beserta permission-nya untuk kebutuhan UI. |
+
+`members.delete` menghapus record membership secara permanen, tetapi mempertahankan user untuk atribusi historis. Owner tidak dapat dihapus melalui endpoint ini. Untuk sekadar mencabut akses sementara, gunakan `PATCH` dengan field `status` agar membership dan outlet access dapat diaktifkan kembali.
+
+Owner memiliki seluruh permission katalog dan akses ke semua outlet secara implisit. Manager dan Cashier hanya dapat mengakses outlet yang tercatat di `outlet_accesses`. Manager tidak dapat mengubah/menonaktifkan Owner, mengubah aksesnya sendiri, memberi role `OWNER`, atau memberi outlet access di luar outlet yang ia akses. Owner tidak dapat diubah melalui endpoint member karena Business harus tetap memiliki tepat satu Owner.
+
+Contoh penambahan employee:
+
+```json
+{
+  "name": "Kasir Satu",
+  "email": "kasir@example.com",
+  "password": "password123",
+  "role": "CASHIER",
+  "outlet_ids": [1]
+}
+```
+
+Response `201` memakai envelope `data` berisi `id`, `user_id`, `business_id`, `role`, `status`, `user`, `business`, `outlets`, dan `permissions`. Katalog role mengembalikan `data` berisi `[{ "role": "OWNER", "permissions": [...] }]`. `POST`/`PATCH` memakai `422` untuk role di luar preset, email duplikat, atau `outlet_ids` yang bukan milik Business.
+
+Catatan: alur undangan via email belum diputuskan; implementasi saat ini adalah penambahan employee langsung dengan password awal dari operator. Perubahan membership belum masuk audit log karena modul audit belum dibangun.

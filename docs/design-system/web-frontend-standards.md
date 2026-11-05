@@ -95,9 +95,36 @@ Rules:
 - Put API calls in feature API modules or a shared typed API client, never inline in unrelated presentation components.
 - TanStack Query owns server state, cache, mutations, retries, and invalidation. Do not mirror API responses into a second global store without a documented reason.
 - Use React local state for local UI state. Add a global client-state library only when a real cross-route requirement exists and is approved in the stack document.
-- Use React Hook Form/Zod only if included in the approved dependency baseline; do not add them by habit where a small native form is sufficient.
+- Use React Hook Form with a Zod resolver for application forms. Keep schemas in `src/lib/validation.ts`, map API field errors through `src/lib/form-errors.ts`, show field-level messages, and reserve the top-level alert for errors that cannot be attached to a field.
 - Keep shared `components/ui` limited to generic, reusable primitives. Feature-specific composition belongs in the feature.
 - Permission-based visibility is a UX aid only. The backend remains the security boundary.
+
+### Current `apps/admin-web` convention
+
+The repository adapts the structure above into a flat, category-based layout so that feature work stays easy to find without a large migration:
+
+```text
+apps/admin-web/src/
+├── auth/                    # SessionContext, SessionProvider, useAccess
+├── components/
+│   ├── layout/              # AppLayout and AuthLayout
+│   └── ui/                  # shared primitives (button, badge, dialog, alert-dialog)
+├── lib/                     # API client, validation schemas, form errors, address helpers
+├── pages/
+│   ├── auth/                # LoginPage, RegisterPage
+│   ├── onboarding/          # first-Business setup
+│   └── workspace/           # HomePage, OutletsPage, MembersPage, ProfilePage, NotFoundPage
+├── test/                    # feature-flow tests + setup
+├── types/                   # shared domain/API types (auth, access, business)
+├── router.tsx
+└── main.tsx
+```
+
+- Keep shared domain types in `src/types/` and import them through the barrel; do not redeclare API entities inside pages.
+- Put cross-feature flow tests in `src/test/`; keep component-level tests beside the component only when they are truly local.
+- Use `components/ui/dialog.tsx` and `components/ui/alert-dialog.tsx` for modal forms and destructive confirmations so the overlay, focus trap, and backdrop blur stay consistent.
+- Name React components, pages, layouts, providers, and context exports in `PascalCase.tsx` matching the exported component. Name hooks `useCamelCase.ts`. Keep non-component modules, test scenario files, and shadcn primitives in lowercase `kebab-case` (for example `router.tsx`, `form-errors.ts`, `searchable-select.test.tsx`, `components/ui/button.tsx`). Both `apps/admin-web` and `apps/customer-web` follow this convention.
+- Give each form control a unique DOM `id`; modal forms must not reuse the id of a field rendered behind the dialog.
 
 ## 5. Component rules
 

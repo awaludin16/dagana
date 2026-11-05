@@ -1,15 +1,16 @@
-import { createBrowserRouter, type RouteObject } from 'react-router'
+import { createBrowserRouter, Navigate, type RouteObject } from 'react-router'
 
-import { AppLayout } from '@/layouts/app-layout'
-import { AnonymousOnly, RequireSession } from '@/components/route-guards'
-import { AuthLayout } from '@/layouts/auth-layout'
-import { BusinessPage } from '@/pages/business-page'
-import { HomePage } from '@/pages/home-page'
-import { LoginPage } from '@/pages/login-page'
-import { NotFoundPage } from '@/pages/not-found-page'
-import { OnboardingPage } from '@/pages/onboarding-page'
-import { ProfilePage } from '@/pages/profile-page'
-import { RegisterPage } from '@/pages/register-page'
+import { AnonymousOnly, RequirePermission, RequireSession } from '@/components/RouteGuards'
+import { AppLayout } from '@/components/layout/AppLayout'
+import { AuthLayout } from '@/components/layout/AuthLayout'
+import { LoginPage } from '@/pages/auth/LoginPage'
+import { RegisterPage } from '@/pages/auth/RegisterPage'
+import { OnboardingPage } from '@/pages/onboarding/OnboardingPage'
+import { HomePage } from '@/pages/workspace/HomePage'
+import { MembersPage } from '@/pages/workspace/MembersPage'
+import { NotFoundPage } from '@/pages/workspace/NotFoundPage'
+import { OutletsPage } from '@/pages/workspace/OutletsPage'
+import { ProfilePage } from '@/pages/workspace/ProfilePage'
 
 export const routes: RouteObject[] = [
   {
@@ -21,7 +22,23 @@ export const routes: RouteObject[] = [
         children: [
           { index: true, element: <HomePage /> },
           { path: 'onboarding', element: <OnboardingPage /> },
-          { path: 'business', element: <BusinessPage /> },
+          {
+            path: 'outlets',
+            element: (
+              <RequirePermission permission="outlets.read">
+                <OutletsPage />
+              </RequirePermission>
+            ),
+          },
+          { path: 'business', element: <Navigate to="/outlets" replace /> },
+          {
+            path: 'members',
+            element: (
+              <RequirePermission permission="members.read">
+                <MembersPage />
+              </RequirePermission>
+            ),
+          },
           { path: 'profile', element: <ProfilePage /> },
         ],
       },

@@ -30,6 +30,7 @@
         <server name="MAIL_MAILER" value="array" force="true"/>
         <server name="QUEUE_CONNECTION" value="sync" force="true"/>
         <server name="SESSION_DRIVER" value="array" force="true"/>
+        <server name="SANCTUM_STATEFUL_DOMAINS" value="localhost,localhost:3000,localhost:5173,127.0.0.1:5173" force="true"/>
         <server name="PULSE_ENABLED" value="false" force="true"/>
         <server name="TELESCOPE_ENABLED" value="false" force="true"/>
         <server name="NIGHTWATCH_ENABLED" value="false" force="true"/>

@@ -9,6 +9,7 @@ use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -57,6 +58,49 @@ class AuthController extends Controller
     public function logout(Request $request): JsonResponse
     {
         $request->user()->currentAccessToken()->delete();
+
+        return response()->json(null, 204);
+    }
+
+    public function webRegister(RegisterRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+
+        $user = DB::transaction(fn (): User => User::create($data));
+
+        Auth::guard('web')->login($user);
+        $request->session()->regenerate();
+
+        return response()->json([
+            'data' => new UserResource($user->load('membership.business')),
+        ], 201);
+    }
+
+    public function webLogin(LoginRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+        $user = User::where('email', $data['email'])->first();
+
+        if (! $user || ! Hash::check($data['password'], $user->password)) {
+            throw ValidationException::withMessages([
+                'email' => __('auth.failed'),
+            ]);
+        }
+
+        Auth::guard('web')->login($user);
+        $request->session()->regenerate();
+
+        return response()->json([
+            'data' => new UserResource($user->load('membership.business')),
+        ]);
+    }
+
+    public function webLogout(Request $request): JsonResponse
+    {
+        Auth::guard('web')->logout();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
         return response()->json(null, 204);
     }

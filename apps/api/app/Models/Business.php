@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'phone', 'address'])]
+#[Fillable(['name'])]
 class Business extends Model
 {
     /** @use HasFactory<BusinessFactory> */

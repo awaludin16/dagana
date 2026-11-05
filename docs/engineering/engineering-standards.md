@@ -95,6 +95,8 @@ A possible domain-oriented layout is `app/Domain/<Domain>/{Actions,DTOs,Events,E
 - Keep financial totals and authorization decisions authoritative on the backend; client calculations are previews only and must be revalidated by the API.
 - Build mobile-first and responsive interfaces with loading, empty, error, disabled, and success states. Preserve keyboard accessibility and semantic controls.
 - Keep reusable UI components generic only when reuse is real; do not create an abstraction for a single trivial screen without a clear benefit.
+- React Web forms use React Hook Form with Zod schemas in `src/lib/validation.ts`. Map API validation errors to fields through `src/lib/form-errors.ts`, disable inputs while pending, and keep a top-level alert only for errors without a field mapping. Do not hand-roll a second validation rule set in the component.
+- Name component, page, layout, provider, and context files in `PascalCase.tsx`; name hooks `useCamelCase.ts`; keep non-component modules and test scenario files in `kebab-case`. Ensure every form control has a unique DOM `id`, including fields inside dialogs.
 - Flutter POS is a client of the same API/domain. Do not create a separate set of business rules for checkout, payments, cash, or inventory in the mobile app. Keep HTTP/API access in a dedicated data layer, use Riverpod for app state/dependency injection where appropriate, and verify plugin compatibility with the pinned Flutter/Dart SDK before adding native dependencies.
 
 ## Flutter implementation notes

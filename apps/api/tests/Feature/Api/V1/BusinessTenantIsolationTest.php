@@ -79,18 +79,18 @@ class BusinessTenantIsolationTest extends TestCase
         $this->getJson("/api/v1/businesses/{$business->id}")
             ->assertOk()
             ->assertJsonPath('data.name', $business->name)
-            ->assertJsonPath('data.phone', $business->phone)
-            ->assertJsonPath('data.address', $business->address);
+            ->assertJsonMissingPath('data.phone')
+            ->assertJsonMissingPath('data.address');
 
         $this->patchJson("/api/v1/businesses/{$business->id}", [
             'name' => 'Warung Baru',
-            'phone' => null,
-            'address' => 'Jl. Baru No. 2',
+            'phone' => '0800000000',
+            'address' => ['street' => 'Alamat yang tidak dipakai'],
         ])
             ->assertOk()
             ->assertJsonPath('data.name', 'Warung Baru')
-            ->assertJsonPath('data.phone', null)
-            ->assertJsonPath('data.address', 'Jl. Baru No. 2');
+            ->assertJsonMissingPath('data.phone')
+            ->assertJsonMissingPath('data.address');
 
         $this->getJson("/api/v1/outlets/{$outlet->id}")
             ->assertOk()
@@ -98,14 +98,32 @@ class BusinessTenantIsolationTest extends TestCase
 
         $this->patchJson("/api/v1/outlets/{$outlet->id}", [
             'name' => 'Outlet Cabang',
-            'address' => 'Jl. Cabang No. 3',
+            'address' => [
+                'street' => 'Jl. Cabang No. 3',
+                'village' => 'Desa Cabang',
+                'district' => 'Kecamatan Cabang',
+                'regency' => 'Kota Cabang',
+                'province' => 'PROVINSI CABANG',
+                'postal_code' => '54321',
+            ],
         ])
             ->assertOk()
             ->assertJsonPath('data.name', 'Outlet Cabang')
-            ->assertJsonPath('data.address', 'Jl. Cabang No. 3');
+            ->assertJsonPath('data.address.street', 'Jl. Cabang No. 3')
+            ->assertJsonPath('data.address.village', 'Desa Cabang')
+            ->assertJsonPath('data.address.regency', 'Kota Cabang');
 
-        $this->assertDatabaseHas('businesses', ['id' => $business->id, 'name' => 'Warung Baru']);
-        $this->assertDatabaseHas('outlets', ['id' => $outlet->id, 'name' => 'Outlet Cabang']);
+        $this->assertDatabaseHas('businesses', [
+            'id' => $business->id,
+            'name' => 'Warung Baru',
+        ]);
+        $this->assertDatabaseHas('outlets', [
+            'id' => $outlet->id,
+            'name' => 'Outlet Cabang',
+            'street' => 'Jl. Cabang No. 3',
+            'village' => 'Desa Cabang',
+            'district' => 'Kecamatan Cabang',
+        ]);
     }
 
     public function test_invalid_settings_update_is_rejected_without_changing_data(): void

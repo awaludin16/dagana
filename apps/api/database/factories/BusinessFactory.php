@@ -19,8 +19,6 @@ class BusinessFactory extends Factory
     {
         return [
             'name' => fake()->company(),
-            'phone' => fake()->numerify('08##########'),
-            'address' => fake()->address(),
         ];
     }
 }

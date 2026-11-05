@@ -211,7 +211,7 @@ User dapat diberi akses ke satu atau beberapa Outlet dalam Business-nya. Owner m
 MVP hanya memiliki tiga role preset:
 
 - `OWNER`: kontrol penuh terhadap Business dan operasional.
-- `MANAGER`: mengelola operasional dan employee sesuai permission yang diberikan; tidak dapat menghapus atau mengambil alih Owner.
+- `MANAGER`: mengelola operasional dan employee sesuai permission yang diberikan; tidak dapat menonaktifkan atau mengambil alih Owner.
 - `CASHIER`: menjalankan penjualan, pembayaran, dan Cash Session sesuai permission.
 
 Baseline akses role:
@@ -224,7 +224,6 @@ Baseline akses role:
 | Kelola inventory dasar | Ya | Ya | Tidak |
 | Kelola employee dan outlet access | Ya | Ya, kecuali Owner/permission | Tidak |
 | Ubah pengaturan bisnis/billing | Ya | Terbatas | Tidak |
-| Hapus/nonaktifkan Business | Ya, guarded | Tidak | Tidak |
 
 Akses aktual tetap ditentukan oleh permission preset dan outlet scope yang diperiksa backend. Manager tidak dapat mengubah Owner atau memberikan hak yang lebih tinggi daripada hak yang dimilikinya.
 
@@ -241,7 +240,6 @@ Permission memakai pola `resource.action`. Katalog awal:
 ```text
 business.read
 business.update
-business.delete
 
 outlets.read
 outlets.create
@@ -251,7 +249,7 @@ outlets.delete
 members.read
 members.invite
 members.update
-members.remove
+members.delete
 
 categories.read
 categories.create
@@ -303,10 +301,10 @@ settings.update
 ### 1 Authorization Rules
 
 - Backend memeriksa permission dan Business/Outlet scope pada setiap operasi; menyembunyikan tombol di frontend bukan pengamanan.
-- `delete` hanya tersedia untuk resource yang aman dihapus secara logis. Untuk Business, Outlet, kategori, dan produk, gunakan soft delete/archive atau status nonaktif bila data historis masih direferensikan.
-- User/member yang tidak lagi boleh mengakses Business harus dinonaktifkan atau dikeluarkan (`members.remove`), bukan menghapus riwayat audit.
+- `delete` berarti menghapus record, bukan soft-delete. Gunakan `delete` hanya untuk resource yang aman dihapus; untuk master data yang masih punya referensi historis, gunakan perubahan status/deaktivasi melalui permission `update` dan method `PATCH`.
+- User/member yang tidak lagi boleh mengakses Business dinonaktifkan melalui `PATCH /api/v1/members/{membership}` dengan field `status` dan permission `members.update`. Deaktivasi mencabut token tetapi mempertahankan record membership dan outlet access; reaktivasi memakai role dan outlet yang sama. `DELETE /api/v1/members/{membership}` dengan permission `members.delete` melakukan hard delete membership employee; hanya Owner yang boleh, tidak dapat menghapus Owner atau dirinya sendiri, token dicabut, dan user dipertahankan untuk atribusi historis.
 - Order selesai, payment, cash movement, stock movement, dan audit log **tidak boleh dihapus permanen**. Koreksi dilakukan melalui cancel, refund, reversal, atau adjustment yang tercatat.
-- `business.delete` hanya untuk Owner dan harus berupa proses soft-delete/deactivation dengan pemeriksaan dependensi serta audit trail; bukan penghapusan langsung dari database.
+- Business tidak memiliki permission `business.delete` pada MVP; perubahan pengaturan Business memakai `business.update`. Penghapusan Business belum diimplementasikan.
 - Perubahan role hanya dapat dilakukan Owner; Manager tidak dapat mengubah role Owner atau menaikkan hak aksesnya sendiri.
 - Permission efektif dan outlet access harus dites di backend; role name saja tidak cukup untuk memberi akses.
 

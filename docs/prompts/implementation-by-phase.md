@@ -155,7 +155,7 @@ Sebelum mengubah kode:
 
 Buat UI registrasi, login, logout, pengelolaan sesi, tampilan profil dasar, onboarding pembuatan Business dan Outlet pertama, serta halaman pengaturan dasar Business/Outlet. Setelah onboarding, arahkan pengguna ke konteks Business miliknya. Satu akun hanya memiliki satu Business pada MVP; jangan membuat business switcher. Business dapat memiliki banyak Outlet, sehingga komponen pemilihan outlet hanya ditampilkan bila dibutuhkan oleh alur dan hak akses.
 
-**Pemeriksaan wajib:** validasi form di client untuk UX, tetapi tetap anggap validasi backend sebagai otoritatif. Tangani loading, error, empty, success, token/session expiry, dan retry. Jangan menyimpan token sensitif di localStorage/AsyncStorage; ikuti mekanisme penyimpanan aman yang ditetapkan stack platform.
+**Pemeriksaan wajib:** validasi form di client untuk UX, tetapi tetap anggap validasi backend sebagai otoritatif. Tangani loading, error, empty, success, token/session expiry, dan retry. Jangan menyimpan token sensitif di AsyncStorage atau preferensi umum. Klien mobile wajib memakai secure storage. Admin web memakai Sanctum SPA session dengan cookie `dagana-session` yang `HttpOnly` dan `XSRF-TOKEN` untuk request mutasi; jangan menyimpan token di `localStorage`.
 
 **Instruksi implementasi:**
 - Pecah pekerjaan menjadi langkah kecil yang dapat direview. Implementasikan hanya scope Phase 1; jangan mengerjakan fase berikutnya kecuali ada dependency minimum yang wajib.
@@ -266,7 +266,7 @@ Sebelum mengubah kode:
 
 **Tujuan:** membangun API catalog sederhana untuk kategori dan menu/produk.
 
-Implementasikan operasi create/read/update dan nonaktifkan/soft delete sesuai permission untuk kategori serta menu/produk. Validasi nama, harga, status, dan field wajib di backend. Sediakan pagination/filter yang terukur. Menu harus mempunyai status aktif/nonaktif dan ketersediaan dasar. Scope data harus terisolasi berdasarkan Business dan Outlet sesuai model PRD. Pertahankan referensi histori: jangan hard-delete master data yang sudah memiliki transaksi; gunakan soft delete/archive/deactivation.
+Implementasikan operasi create/read/update dan hapus/nonaktifkan sesuai permission untuk kategori serta menu/produk. Validasi nama, harga, status, dan field wajib di backend. Sediakan pagination/filter yang terukur. Menu harus mempunyai status aktif/nonaktif dan ketersediaan dasar. Scope data harus terisolasi berdasarkan Business dan Outlet sesuai model PRD. Pertahankan referensi histori: jangan hard-delete master data yang sudah memiliki transaksi; gunakan perubahan status/deactivation.
 
 **Pemeriksaan wajib:** menu nonaktif/tidak tersedia tidak dapat digunakan pada transaksi baru melalui manipulasi request. Dokumentasikan kontrak snapshot harga/nama untuk Phase 4; perubahan catalog tidak boleh mengubah snapshot transaksi historis.
 

@@ -95,9 +95,10 @@ Catatan web:
 
 - Tailwind CSS v4 dipakai lewat plugin `@tailwindcss/vite`; token warna/radius shadcn/ui berada di `src/index.css`.
 - Komponen shadcn/ui berada di `src/components/ui` dan ditambahkan dengan `npx shadcn@latest add <component> -y`. Registry default CLI v4 menghasilkan import `cn`/`radix-ui` yang belum dipakai proyek; gunakan registry `new-york` sampai baseline dependency diperbarui: `npx shadcn@latest add https://ui.shadcn.com/r/styles/new-york/<component>.json -y --overwrite`. Alias `@/*` tersedia di `tsconfig.json` (dibaca CLI) dan `tsconfig.app.json`.
-- TanStack Query disediakan lewat `QueryClientProvider` di `src/main.tsx`; belum ada query bisnis.
-- Router memakai `react-router` 8.5.1 (disetujui 2026-11-01, lihat `docs/planning/decision-log.md`) dengan route `/` dan fallback `*`.
-- `VITE_API_BASE_URL` di `.env` mengatur base URL API untuk pengembangan; jangan menaruh secret di variabel `VITE_*` karena nilainya ikut ter-bundle ke browser.
+- TanStack Query dipakai untuk server state (sesi, business, outlet, member, dan wilayah); state UI lokal tetap memakai React state.
+- Router memakai `react-router` 8.5.1 (disetujui 2026-11-01, lihat `docs/planning/decision-log.md`) dengan route publik, onboarding, dan workspace yang dijaga status sesi.
+- `VITE_API_BASE_URL` di `.env` mengatur base URL API untuk pengembangan; `VITE_API_ORIGIN` opsional untuk origin cookie/CSRF (default diturunkan dari base URL). Jangan menaruh secret di variabel `VITE_*` karena nilainya ikut ter-bundle ke browser.
+- Admin web memakai Sanctum SPA session, bukan token di `localStorage`. Pastikan `FRONTEND_URL` dan `SANCTUM_STATEFUL_DOMAINS` pada Compose mencakup origin dev (default `http://localhost:5173` dan `localhost:5173,127.0.0.1:5173`), lalu recreate container API setelah mengubah env.
 
 ### Mobile (`apps/pos-mobile`)
 

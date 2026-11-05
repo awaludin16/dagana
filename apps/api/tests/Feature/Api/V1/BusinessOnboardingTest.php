@@ -22,16 +22,23 @@ class BusinessOnboardingTest extends TestCase
 
         Sanctum::actingAs($user);
 
+        $address = [
+            'street' => 'Jl. Merdeka No. 1',
+            'village' => 'Kelurahan Menteng',
+            'district' => 'Kecamatan Menteng',
+            'regency' => 'Jakarta Pusat',
+            'province' => 'DKI JAKARTA',
+            'postal_code' => '10310',
+        ];
+
         $response = $this->postJson('/api/v1/businesses', [
             'business' => [
                 'name' => 'Warung Budi',
-                'phone' => '081234567890',
-                'address' => 'Jl. Merdeka No. 1',
             ],
             'outlet' => [
                 'name' => 'Outlet Pusat',
                 'phone' => '081298765432',
-                'address' => 'Jl. Merdeka No. 1',
+                'address' => $address,
             ],
         ]);
 
@@ -39,10 +46,19 @@ class BusinessOnboardingTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('data.business.name', 'Warung Budi')
             ->assertJsonPath('data.outlet.name', 'Outlet Pusat')
+            ->assertJsonPath('data.outlet.phone', '081298765432')
+            ->assertJsonPath('data.outlet.address.street', 'Jl. Merdeka No. 1')
+            ->assertJsonPath('data.outlet.address.village', 'Kelurahan Menteng')
+            ->assertJsonPath('data.outlet.address.district', 'Kecamatan Menteng')
+            ->assertJsonPath('data.outlet.address.regency', 'Jakarta Pusat')
+            ->assertJsonPath('data.outlet.address.province', 'DKI JAKARTA')
+            ->assertJsonPath('data.outlet.address.postal_code', '10310')
             ->assertJsonStructure([
                 'data' => [
-                    'business' => ['id', 'name', 'phone', 'address'],
-                    'outlet' => ['id', 'business_id', 'name', 'phone', 'address'],
+                    'business' => ['id', 'name'],
+                    'outlet' => ['id', 'business_id', 'name', 'phone', 'address' => [
+                        'street', 'village', 'district', 'regency', 'province', 'postal_code',
+                    ]],
                 ],
             ]);
 
@@ -50,6 +66,15 @@ class BusinessOnboardingTest extends TestCase
         $outlet = Outlet::sole();
         $membership = BusinessMembership::sole();
 
+        $this->assertSame('Warung Budi', $business->name);
+        $this->assertSame($address, [
+            'street' => $outlet->street,
+            'village' => $outlet->village,
+            'district' => $outlet->district,
+            'regency' => $outlet->regency,
+            'province' => $outlet->province,
+            'postal_code' => $outlet->postal_code,
+        ]);
         $this->assertSame($business->id, $outlet->business_id);
         $this->assertSame($business->id, $response->json('data.business.id'));
         $this->assertSame($outlet->id, $response->json('data.outlet.id'));
@@ -60,6 +85,34 @@ class BusinessOnboardingTest extends TestCase
         $this->assertSame($business->id, $user->fresh()->business->id);
     }
 
+    public function test_onboarding_ignores_business_phone_and_address_payloads(): void
+    {
+        $user = User::factory()->create();
+
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/v1/businesses', [
+            'business' => [
+                'name' => 'Warung Budi',
+                'phone' => '0800000000',
+                'address' => 'Alamat bisnis yang tidak boleh dipakai saat onboarding',
+            ],
+            'outlet' => [
+                'name' => 'Outlet Pusat',
+                'phone' => '081298765432',
+                'address' => ['street' => 'Jl. Merdeka No. 1', 'village' => 'Menteng'],
+            ],
+        ])->assertCreated();
+
+        $business = Business::sole();
+        $outlet = Outlet::sole();
+
+        $this->assertSame('Warung Budi', $business->name);
+        $this->assertSame('081298765432', $outlet->phone);
+        $this->assertSame('Jl. Merdeka No. 1', $outlet->street);
+        $this->assertSame('Menteng', $outlet->village);
+    }
+
     public function test_invalid_onboarding_leaves_no_partial_records(): void
     {
         $user = User::factory()->create();
@@ -68,10 +121,10 @@ class BusinessOnboardingTest extends TestCase
 
         $this->postJson('/api/v1/businesses', [
             'business' => ['name' => ''],
-            'outlet' => ['name' => ''],
+            'outlet' => ['name' => '', 'address' => ['street' => ['not-a-string']]],
         ])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['business.name', 'outlet.name']);
+            ->assertJsonValidationErrors(['business.name', 'outlet.name', 'outlet.address.street']);
 
         $this->assertDatabaseCount('businesses', 0);
         $this->assertDatabaseCount('outlets', 0);

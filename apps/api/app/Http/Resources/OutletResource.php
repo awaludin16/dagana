@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Outlet;
+use App\Support\Address;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -21,7 +22,7 @@ class OutletResource extends JsonResource
             'business_id' => $this->business_id,
             'name' => $this->name,
             'phone' => $this->phone,
-            'address' => $this->address,
+            'address' => Address::from($this->resource),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];

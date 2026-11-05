@@ -6,7 +6,9 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
+use Symfony\Component\HttpFoundation\Cookie;
 use Tests\TestCase;
 
 class AuthTest extends TestCase
@@ -38,6 +40,77 @@ class AuthTest extends TestCase
             ->getJson('/api/v1/me')
             ->assertOk()
             ->assertJsonPath('data.email', 'budi@example.com');
+    }
+
+    public function test_web_login_uses_an_http_only_session_and_never_returns_a_token(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'budi@example.com',
+            'password' => Hash::make('password123'),
+        ]);
+
+        $response = $this->withHeader('Origin', 'http://localhost:5173')
+            ->postJson('/api/v1/auth/web/login', [
+                'email' => 'budi@example.com',
+                'password' => 'password123',
+            ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('data.id', $user->id)
+            ->assertJsonMissingPath('data.token')
+            ->assertJsonMissingPath('data.user');
+
+        $this->assertAuthenticatedAs($user);
+
+        $this->withHeader('Origin', 'http://localhost:5173')
+            ->getJson('/api/v1/me')
+            ->assertOk()
+            ->assertJsonPath('data.email', 'budi@example.com');
+
+        $this->assertDatabaseCount('personal_access_tokens', 0);
+    }
+
+    public function test_web_logout_invalidates_the_session(): void
+    {
+        $user = User::factory()->create([
+            'password' => Hash::make('password123'),
+        ]);
+
+        $login = $this->withHeader('Origin', 'http://localhost:5173')
+            ->postJson('/api/v1/auth/web/login', [
+                'email' => $user->email,
+                'password' => 'password123',
+            ])
+            ->assertOk();
+
+        $sessionCookie = $this->sessionCookie($login);
+
+        $this->withCookie($sessionCookie->getName(), $sessionCookie->getValue());
+        $this->app['auth']->forgetGuards();
+
+        $this->withHeader('Origin', 'http://localhost:5173')
+            ->getJson('/api/v1/me')
+            ->assertOk();
+
+        $logout = $this->withHeader('Origin', 'http://localhost:5173')
+            ->postJson('/api/v1/auth/web/logout')
+            ->assertNoContent();
+
+        $nextCookie = $this->sessionCookie($logout) ?? $sessionCookie;
+
+        $this->withCookie($nextCookie->getName(), $nextCookie->getValue());
+        $this->app['auth']->forgetGuards();
+
+        $this->withHeader('Origin', 'http://localhost:5173')
+            ->getJson('/api/v1/me')
+            ->assertUnauthorized();
+    }
+
+    private function sessionCookie(TestResponse $response): ?Cookie
+    {
+        return collect($response->headers->getCookies())
+            ->first(fn ($cookie) => $cookie->getName() === config('session.cookie'));
     }
 
     public function test_invalid_registration_creates_no_user(): void
@@ -155,6 +228,7 @@ class AuthTest extends TestCase
     public function test_protected_endpoints_require_authentication(): void
     {
         $this->getJson('/api/v1/me')->assertUnauthorized();
+        $this->get('/api/v1/me')->assertUnauthorized()->assertJsonPath('message', 'Unauthenticated.');
         $this->getJson('/api/v1/businesses/1')->assertUnauthorized();
         $this->postJson('/api/v1/businesses', [])->assertUnauthorized();
         $this->postJson('/api/v1/auth/logout')->assertUnauthorized();

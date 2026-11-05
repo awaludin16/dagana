@@ -22,7 +22,12 @@ class OutletFactory extends Factory
             'business_id' => Business::factory(),
             'name' => fake()->city().' Outlet',
             'phone' => fake()->numerify('08##########'),
-            'address' => fake()->address(),
+            'street' => fake()->streetAddress(),
+            'village' => 'Desa '.fake()->city(),
+            'district' => 'Kecamatan '.fake()->city(),
+            'regency' => fake()->city(),
+            'province' => fake()->city(),
+            'postal_code' => fake()->numerify('#####'),
         ];
     }
 }
