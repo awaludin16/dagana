@@ -21,6 +21,9 @@ class CategoryController extends Controller
             ->when(! is_null($request->query('is_active')), function ($query) use ($request): void {
                 $query->where('is_active', $request->boolean('is_active'));
             })
+            ->when($request->filled('q'), function ($query) use ($request): void {
+                $query->where('name', 'ilike', '%'.$request->string('q').'%');
+            })
             ->orderBy('name')
             ->paginate($this->perPage($request));
 

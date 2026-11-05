@@ -41,6 +41,23 @@ export const businessNameSchema = z.object({
   name: requiredText('Nama business'),
 })
 
+export const categorySchema = z.object({
+  name: requiredText('Nama kategori'),
+  is_active: z.boolean(),
+})
+
+export const productSchema = z.object({
+  name: requiredText('Nama menu'),
+  price: z
+    .number({ message: 'Harga wajib diisi.' })
+    .int('Harga harus berupa Rupiah utuh.')
+    .safe()
+    .nonnegative('Harga tidak boleh negatif.'),
+  category_id: z.number().int().positive().nullable(),
+  is_active: z.boolean(),
+  is_available: z.boolean(),
+})
+
 export const outletSchema = z.object({
   name: requiredText('Nama outlet'),
   phone: optionalText(30),
@@ -86,6 +103,8 @@ export const memberSchema = z
 export type LoginFormValues = z.infer<typeof loginSchema>
 export type RegisterFormValues = z.infer<typeof registerSchema>
 export type BusinessNameFormValues = z.infer<typeof businessNameSchema>
+export type CategoryFormValues = z.infer<typeof categorySchema>
+export type ProductFormValues = z.infer<typeof productSchema>
 export type OutletFormValues = z.infer<typeof outletSchema>
 export type OnboardingFormValues = z.infer<typeof onboardingSchema>
 export type MemberFormValues = z.infer<typeof memberSchema>

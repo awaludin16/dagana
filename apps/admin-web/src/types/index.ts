@@ -1,4 +1,5 @@
 export type * from '@/types/access'
 export type * from '@/types/auth'
 export type * from '@/types/business'
+export type * from '@/types/catalog'
 export { emptyAddress } from '@/types/business'

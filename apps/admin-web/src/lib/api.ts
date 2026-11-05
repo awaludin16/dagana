@@ -1,12 +1,18 @@
 import { env } from '@/lib/env'
 import type {
   Business,
+  CatalogListParams,
+  CatalogPage,
+  Category,
+  CategoryInput,
   CreateBusinessInput,
   CreateMemberInput,
   Me,
   Member,
   Outlet,
   OutletInput,
+  Product,
+  ProductInput,
   RoleCatalog,
   UpdateMemberInput,
 } from '@/types'
@@ -102,6 +108,19 @@ async function data<T>(response: Response): Promise<T> {
   return envelope.data
 }
 
+async function page<T>(response: Response): Promise<CatalogPage<T>> {
+  return (await response.json()) as CatalogPage<T>
+}
+
+function queryString(params: CatalogListParams): string {
+  const search = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== '') search.set(key, String(value))
+  }
+  const query = search.toString()
+  return query ? `?${query}` : ''
+}
+
 export const api = {
   async register(input: {
     name: string
@@ -177,5 +196,29 @@ export const api = {
 
   async roles() {
     return data<RoleCatalog[]>(await request('/roles'))
+  },
+
+  async categories(params: CatalogListParams = {}) {
+    return page<Category>(await request(`/categories${queryString(params)}`))
+  },
+
+  async createCategory(input: CategoryInput) {
+    return data<Category>(await request('/categories', { method: 'POST', body: input }))
+  },
+
+  async updateCategory(id: number, input: Partial<CategoryInput>) {
+    return data<Category>(await request(`/categories/${id}`, { method: 'PATCH', body: input }))
+  },
+
+  async products(params: CatalogListParams = {}) {
+    return page<Product>(await request(`/products${queryString(params)}`))
+  },
+
+  async createProduct(input: ProductInput) {
+    return data<Product>(await request('/products', { method: 'POST', body: input }))
+  },
+
+  async updateProduct(id: number, input: Partial<ProductInput>) {
+    return data<Product>(await request(`/products/${id}`, { method: 'PATCH', body: input }))
   },
 }

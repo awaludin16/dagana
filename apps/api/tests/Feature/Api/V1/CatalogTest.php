@@ -63,6 +63,28 @@ class CatalogTest extends TestCase
         $this->assertDatabaseCount('categories', 0);
     }
 
+    public function test_category_list_supports_search_and_pagination(): void
+    {
+        [$owner, $business] = $this->merchant();
+        Category::factory()->for($business)->create(['name' => 'Minuman Dingin']);
+        Category::factory()->for($business)->create(['name' => 'Minuman Hangat']);
+        Category::factory()->for($business)->create(['name' => 'Makanan', 'is_active' => false]);
+
+        Sanctum::actingAs($owner);
+
+        $this->getJson('/api/v1/categories?q=MINUMAN&per_page=1')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.name', 'Minuman Dingin')
+            ->assertJsonPath('meta.total', 2)
+            ->assertJsonPath('meta.last_page', 2);
+
+        $this->getJson('/api/v1/categories?is_active=false')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.name', 'Makanan');
+    }
+
     public function test_category_with_menus_cannot_be_deleted_but_empty_one_can(): void
     {
         [$owner, $business] = $this->merchant();

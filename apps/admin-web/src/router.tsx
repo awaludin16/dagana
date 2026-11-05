@@ -7,6 +7,7 @@ import { LoginPage } from '@/pages/auth/LoginPage'
 import { RegisterPage } from '@/pages/auth/RegisterPage'
 import { OnboardingPage } from '@/pages/onboarding/OnboardingPage'
 import { HomePage } from '@/pages/workspace/HomePage'
+import { CatalogPage } from '@/pages/workspace/CatalogPage'
 import { MembersPage } from '@/pages/workspace/MembersPage'
 import { NotFoundPage } from '@/pages/workspace/NotFoundPage'
 import { OutletsPage } from '@/pages/workspace/OutletsPage'
@@ -22,6 +23,7 @@ export const routes: RouteObject[] = [
         children: [
           { index: true, element: <HomePage /> },
           { path: 'onboarding', element: <OnboardingPage /> },
+          { path: 'catalog', element: <CatalogPage /> },
           {
             path: 'outlets',
             element: (
