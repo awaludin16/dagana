@@ -6,7 +6,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['https://dagana-away.vercel.app', 'http://locahost:5173', 'http://localhost:5174'],
+    'allowed_origins' => ['https://dagana-away.vercel.app', 'http://localhost:5173', 'http://localhost:5174'],
 
     'allowed_origins_patterns' => [],
 
