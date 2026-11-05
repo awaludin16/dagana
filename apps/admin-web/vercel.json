@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/sanctum/:path*",
+      "destination": "https://dagana.onrender.com/sanctum/:path*"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "https://dagana.onrender.com/api/:path*"
+    }
+  ]
+}
