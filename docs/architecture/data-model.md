@@ -13,12 +13,13 @@ MEMBERSHIP ───── PERMISSION / ROLE PRESET
   │
   ▼
 BUSINESS
+  ├────────────── CATALOG / MENU (business-level master data, lihat D-25)
+  │
   ├────────────── BILLING
   │
   └── OUTLET (one or many)
         ├── OUTLET ACCESS
         ├── CASH SESSION ── OPERATOR
-        ├── CATALOG / MENU
         ├── ORDER ── ORDER ITEMS
         │     └── PAYMENT
         ├── INVENTORY ── STOCK MOVEMENTS
@@ -32,6 +33,7 @@ BUSINESS
 - Satu Business mempunyai satu Owner dan dapat mempunyai banyak Outlet serta employee.
 - Membership menyimpan hubungan User–Business, role preset, status, dan outlet access sesuai keputusan produk.
 - Business hanya menyimpan `name` pada MVP. Outlet menyimpan alamat komposit sebagai kolom flat: `street`, `village`, `district`, `regency`, `province`, dan `postal_code`, plus `phone` opsional.
+- Catalog (category dan menu/produk) adalah master data milik Business dengan harga yang sama di semua Outlet sesuai D-25. Menu memakai `is_active` dan `is_available` boolean; availability per-outlet belum diputuskan. Price disimpan sebagai integer rupiah utuh.
 - Constraint penting wajib dijaga pada database dan backend, bukan hanya frontend validation.
 
 ## 3. Operational data ownership

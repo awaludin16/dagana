@@ -37,8 +37,11 @@ RUN composer install --no-dev --optimize-autoloader
 # 8. Atur hak akses/permission folder storage dan bootstrap (Wajib agar Laravel tidak error 500)
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
+# Izinkan script entrypoint agar bisa dieksekusi
+RUN chmod +x /var/www/html/entrypoint.sh
+
 # 9. Buka port 80 untuk lalu lintas web
 EXPOSE 80
 
-# 10. Jalankan Apache di foreground
-CMD ["apache2-foreground"]
+# 10. Jalankan Entrypoint script untuk menjalankan Laravel
+ENTRYPOINT ["/var/www/html/entrypoint.sh"]

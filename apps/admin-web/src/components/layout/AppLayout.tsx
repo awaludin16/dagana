@@ -5,6 +5,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Store,
+  Tags,
   Users,
   X,
 } from 'lucide-react'
@@ -18,9 +19,15 @@ import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 const navItems = [
-  { to: '/outlets', label: 'Outlet', icon: Store, permission: 'outlets.read' },
-  { to: '/members', label: 'Anggota', icon: Users, permission: 'members.read' },
-  { to: '/profile', label: 'Profil', icon: CircleUserRound, permission: null },
+  { to: '/outlets', label: 'Outlet', icon: Store, permission: ['outlets.read'] },
+  {
+    to: '/catalog',
+    label: 'Katalog',
+    icon: Tags,
+    permission: ['categories.read', 'products.read'],
+  },
+  { to: '/members', label: 'Anggota', icon: Users, permission: ['members.read'] },
+  { to: '/profile', label: 'Profil', icon: CircleUserRound },
 ]
 
 export function AppLayout() {
@@ -130,7 +137,7 @@ export function AppLayout() {
 
         <nav aria-label="Navigasi utama" className="flex-1 space-y-1 overflow-y-auto p-3">
           {navItems
-            .filter(({ permission }) => !permission || access.can(permission))
+            .filter(({ permission }) => !permission || permission.some((item) => access.can(item)))
             .map(({ to, label, icon: Icon }) => (
               <NavLink
                 key={to}

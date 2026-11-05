@@ -27,7 +27,7 @@ Resource group berikut adalah baseline untuk pengelompokan endpoint, bukan spesi
 /api/v1/permissions
 /api/v1/regions
 /api/v1/categories
-/api/v1/menus
+/api/v1/products
 /api/v1/inventory
 /api/v1/stock-movements
 /api/v1/orders
@@ -183,3 +183,30 @@ Contoh penambahan employee:
 Response `201` memakai envelope `data` berisi `id`, `user_id`, `business_id`, `role`, `status`, `user`, `business`, `outlets`, dan `permissions`. Katalog role mengembalikan `data` berisi `[{ "role": "OWNER", "permissions": [...] }]`. `POST`/`PATCH` memakai `422` untuk role di luar preset, email duplikat, atau `outlet_ids` yang bukan milik Business.
 
 Catatan: alur undangan via email belum diputuskan; implementasi saat ini adalah penambahan employee langsung dengan password awal dari operator. Perubahan membership belum masuk audit log karena modul audit belum dibangun.
+
+## 9. Phase 3 contract — catalog
+
+Catalog adalah master data level Business (`categories`, `products`); satu Business memakai harga yang sama di semua Outlet sesuai D-25, sehingga tidak ada endpoint per-outlet. Path `/api/v1/products` dipakai alih-alih baseline `/menus` agar konsisten dengan permission D-03 (`products.*`). Menu tanpa kategori valid; menu bisa aktif tetapi tidak tersedia (`is_available` false, mis. sold out).
+
+Skema kolom: `products.price` adalah integer rupiah utuh; `is_active` dan `is_available` boolean (default `true`); `category_id` nullable dengan FK ke kategori milik Business yang sama.
+
+| Method | Path | Permission | Keterangan |
+|---|---|---|---|
+| `GET` | `/api/v1/categories` | `categories.read` | Paginated; filter `is_active`, `q` (nama). |
+| `POST` | `/api/v1/categories` | `categories.create` | Body: `name` (wajib), `is_active`. |
+| `GET` | `/api/v1/categories/{id}` | `categories.read` | `404` bila di luar Business. |
+| `PATCH` | `/api/v1/categories/{id}` | `categories.update` | Update `name` dan/atau `is_active` (jalur deaktivasi). |
+| `DELETE` | `/api/v1/categories/{id}` | `categories.delete` | Hard delete hanya bila masih kosong; `422` bila masih memiliki menu (gunakan `PATCH is_active`). |
+| `GET` | `/api/v1/products` | `products.read` | Paginated; filter `category_id`, `is_active`, `is_available`, `q` (nama). |
+| `POST` | `/api/v1/products` | `products.create` | Body: `name` (wajib), `price` (wajib, integer ≥ 0), `category_id` (nullable, wajib milik Business sendiri), `is_active`, `is_available`. |
+| `GET` | `/api/v1/products/{id}` | `products.read` | `404` bila di luar Business. |
+| `PATCH` | `/api/v1/products/{id}` | `products.update` | Update `name`, `price`, `category_id`, `is_active`, `is_available`. |
+| `DELETE` | `/api/v1/products/{id}` | `products.delete` | Hard delete; setelah tabel order tersedia (Phase 4) endpoint ini wajib menolak menu yang sudah memiliki transaksi. |
+
+Pagination memakai parameter `per_page` (default `20`, maksimum `100`) dan `page`, dengan envelope standar Laravel (`data` + `meta`/`links`). List endpoint selalu ter-scope ke Business membership yang aktif; `403` untuk permission/membership tidak sah, `404` untuk resource di luar Business, `422` untuk validasi.
+
+**Kontrak snapshot nama/harga untuk Phase 4 (wajib diterapkan Order Engine):**
+
+1. Saat order dibuat, tiap order item menyimpan snapshot `product_id`, `name`, dan `price` saat transaksi (plus field lain yang diperlukan receipt). Perubahan `name`/`price` catalog kemudian hari tidak boleh mengubah data order yang sudah tersimpan; jalur pembacaan receipt/histori mengambil nilai snapshot, bukan nilai catalog saat ini.
+2. Checkout backend wajib mengambil ulang menu dari database melalui scope `App\Models\Product::sellable()` (`is_active = true AND is_available = true`), menghitung total dari harga snapshot tersebut, dan tidak pernah mempercayai `price`/`is_active`/`is_available`/`product_id` dari client. Menu nonaktif/tidak tersedia gagal checkout dengan `422`.
+3. `DELETE` product yang sudah memiliki transaksi menolak; judulnya deaktivasi memakai `PATCH` `is_active = false` sehingga referensi `product_id` pada histori tetap valid. Referensi histori tidak digantungkan pada nama kategori (snapshot menyimpan nama), sehingga kategori dapat dinonaktifkan tanpa mengubah histori.
