@@ -38,6 +38,17 @@ REFUNDED
 PARTIALLY_REFUNDED
 ```
 
+### Alur pembayaran MVP (tanpa gateway)
+
+Fase Order Engine berjalan **tanpa integrasi payment gateway**. Metode dikelompokkan dua alur:
+
+- **Cash:** pembayaran langsung dicatat berhasil (`PAID`) saat checkout. Backend menyimpan payment record lengkap (termasuk siapa yang mengonfirmasi dan kapan), lalu order dapat diselesaikan sesuai aturan transaksi. Konsistensi Order–Payment–Cash Session harus terjaga begitu Cash Session tersedia; penjualan cash tidak boleh mengurangi integritas transaksi hanya karena gateway belum ada.
+- **Non-cash (QR payment, bank transfer, debit, credit):** payment dapat berstatus `PENDING`. Konfirmasi manual ke `PAID` hanya boleh dilakukan pengguna yang memiliki izin (`payments.create`, akses outlet sah) dan sudah memverifikasi pembayaran. Sistem harus mencatat siapa yang melakukan konfirmasi dan kapan (`confirmed_by`, `paid_at`). Pembayaran non-cash belum boleh ditandai sebagai terverifikasi otomatis; QR payment otomatis baru dapat diklaim setelah integrasi provider, verifikasi callback/webhook, dan pengujian settlement tersedia (D-15/D-16).
+
+### Refund
+
+Refund **belum tersedia** pada MVP saat ini. Status `REFUNDED`/`PARTIALLY_REFUNDED` hanya tersimpan sebagai nilai status di model; belum ada state transition atau endpoint yang dapat mencapainya. Implementasi refund harus memiliki aturan bisnis, otorisasi, audit trail, dan pencatatan finansial yang sesuai sebelum diaktifkan. Jangan menganggap enum/model tersedia berarti fiturnya sudah didukung secara fungsional.
+
 ---
 
 ---

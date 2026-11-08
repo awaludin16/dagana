@@ -210,3 +210,28 @@ Pagination memakai parameter `per_page` (default `20`, maksimum `100`) dan `page
 1. Saat order dibuat, tiap order item menyimpan snapshot `product_id`, `name`, dan `price` saat transaksi (plus field lain yang diperlukan receipt). Perubahan `name`/`price` catalog kemudian hari tidak boleh mengubah data order yang sudah tersimpan; jalur pembacaan receipt/histori mengambil nilai snapshot, bukan nilai catalog saat ini.
 2. Checkout backend wajib mengambil ulang menu dari database melalui scope `App\Models\Product::sellable()` (`is_active = true AND is_available = true`), menghitung total dari harga snapshot tersebut, dan tidak pernah mempercayai `price`/`is_active`/`is_available`/`product_id` dari client. Menu nonaktif/tidak tersedia gagal checkout dengan `422`.
 3. `DELETE` product yang sudah memiliki transaksi menolak; judulnya deaktivasi memakai `PATCH` `is_active = false` sehingga referensi `product_id` pada histori tetap valid. Referensi histori tidak digantungkan pada nama kategori (snapshot menyimpan nama), sehingga kategori dapat dinonaktifkan tanpa mengubah histori.
+
+## 10. Phase 4 contract — order engine dan pembayaran (POS)
+
+Order Engine adalah satu titik masuk untuk semua channel transaksi (POS, QR, ADMIN). Order disimpan dengan `business_id`, `outlet_id`, dan `membership_id` (aktor) agar isolasi tenant/outlet selalu dapat ditegakkan. Order item menyimpan snapshot `product_id`, `product_name`, dan `product_price` pada saat transaksi, sehingga perubahan catalog tidak mengubah receipt/histori yang sudah tersimpan.
+
+IDR disimpan sebagai integer rupiah utuh; tidak ada perhitungan uang dengan float.
+
+| Method | Path | Permission | Keterangan |
+|---|---|---|---|
+| `POST` | `/api/v1/orders` | `orders.create` | Checkout: membuat order, order items (snapshot), dan payment secara atomik dalam satu transaksi database. `idempotency_key` wajib; request ulang dengan kunci yang sama mengembalikan order yang sudah ada (tidak ada duplikasi). Menu diambil ulang lewat `Product::sellable()`; total dihitung ulang di backend, harga/kategori dari client tidak dipercaya. |
+| `GET` | `/api/v1/orders` | `orders.read` | Daftar order terpaginate, difilter Business, opsi `outlet_id`. |
+| `GET` | `/api/v1/orders/{order}` | `orders.read` | Detail order + receipt: item, snapshot, dan payment. `404` bila di luar Business/Outlet scope. |
+| `POST` | `/api/v1/orders/{order}/cancel` | `orders.cancel` | Batal order: hanya `PENDING` tanpa pembayaran `PAID`; otherwise `422`. |
+| `POST` | `/api/v1/payments/{payment}/confirm` | `payments.create` | Konfirmasi pembayaran server-side `PENDING → PAID` (untuk metode non-tunai setelah verifikasi backend). Order `PENDING` ikut berubah menjadi `PAID`. |
+
+Metode pembayaran MVP dikelompokkan dua alur:
+
+- **Cash:** order dan payment langsung `PAID` pada checkout. Aktor konfirmasi (`payments.confirmed_by`) adalah operator yang melakukan checkout, `paid_at` terisi saat itu. Konsistensi Order–Payment–Cash Session harus terjaga saat Cash Session (Phase 5) menyambung total cash sales; tidak adanya gateway bukan alasan mengurangi integritas transaksi.
+- **Non-cash (`qr_payment`, `bank_transfer`, `debit`, `credit`):** payment dibuat `PENDING`. `POST /payments/{payment}/confirm` mengubahnya menjadi `PAID` hanya untuk pengguna dengan permission `payments.create`, akses outlet yang sah, dan setelah pembayaran diverifikasi backend; aktor dan waktu konfirmasi dicatat (`confirmed_by`, `paid_at`). Endpoint ini bukan jalan pintas: pengguna tak berizin (401/403) atau payment non-PENDING (422) tidak dapat mengubah status. Belum ada klaim integrasi otomatis/gateway production — QR payment otomatis baru dapat diklaim setelah provider, verifikasi callback/webhook, dan pengujian settlement tersedia (D-15/D-16).
+
+Satu order memakai satu metode (split payment bukan MVP, D-23).
+
+Status payment: `PENDING`, `PAID`, `FAILED`, `REFUNDED`, `PARTIALLY_REFUNDED`. Status order: `PENDING`, `PAID`, `CANCELLED`. Transisi divalidasi di server; request arbitrer tidak dapat mengubah payment menjadi `PAID` tanpa jalur konfirmasi yang sah. **Refund belum didukung:** status `REFUNDED`/`PARTIALLY_REFUNDED` tersimpan sebagai enum model, tetapi belum ada state transition atau endpoint yang dapat mencapainya. Implementasi refund kelak membutuhkan aturan bisnis, otorisasi, audit trail, dan pencatatan finansial yang sesuai; penempatannya mengikuti roadmap (Phase 5 mencakup refund sebagai aktivitas Cash Session, billing D-12 mengidentifikasi refund pada `eligible_net_sales`). Ketersediaan enum/model tidak berarti fiturnya sudah didukung secara fungsional.
+
+Idempotency: `orders.idempotency_key` wajib berformat UUID dan beda untuk setiap operasi checkout (validasi `uuid` di backend). Kolom memakai unique constraint global dan pertahankan untuk implementasi saat ini; pencarian dan pengembalian hasil replay selalu mencakup pemeriksaan `business_id` dan otorisasi membership/outlet, sehingga key milik Business lain tidak dapat dipakai untuk membaca atau menggandakan transaksi. Composite unique `(business_id, idempotency_key)` dievaluasi hanya jika kebutuhan sistem benar-benar memintanya — jangan migration ulang hanya untuk mengubah constraint; perlindungan race condition tetap melalui unique constraint + `lockForUpdate()` pada produk selama checkout.

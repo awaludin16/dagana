@@ -56,6 +56,7 @@ Jika terdapat konflik: requirement produk menentukan behavior; architecture mene
 - [`post-mvp-roadmap.md`](planning/post-mvp-roadmap.md)
 - [`phase-targets.md`](planning/phase-targets.md)
 - [`decision-log.md`](planning/decision-log.md)
+- [`technical-debt.md`](planning/technical-debt.md)
 - [`implementation-by-phase.md`](prompts/implementation-by-phase.md)
 
 ## Maintenance rules

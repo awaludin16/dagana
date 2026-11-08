@@ -282,6 +282,28 @@ Setiap order lokal memiliki UUID/client-generated idempotency key yang unik, wak
 
 **Gate produksi:** apabila provider/infrastruktur yang dipilih tidak dapat memenuhi target, Product Owner harus menerima RPO/RTO alternatif secara tertulis sebelum go-live—jangan diam-diam mengurangi target.
 
+### D-30 — Status dan gate Phase 4 (POS + Payment) tanpa gateway
+
+**Keputusan (2026-11-08):** Phase 4 berjalan **tanpa payment gateway**. Metode dikelompokkan dua alur: cash langsung `PAID` oleh operator checkout; non-cash berstatus `PENDING` dan hanya dapat dikonfirmasi manual ke `PAID` oleh pengguna berpermission `payments.create` dengan akses outlet sah setelah verifikasi backend, dengan pencatatan aktor (`payments.confirmed_by`) dan waktu (`paid_at`). Belum ada klaim integrasi otomatis; QR payment otomatis baru setelah provider, verifikasi callback/webhook, dan pengujian settlement tersedia (D-15/D-16). Ini bukan jalan pintas: pengguna tanpa izin/outlet tidak dapat mengubah status payment.
+
+**Kontrak idempotency:** `orders.idempotency_key` wajib UUID, beda per operasi checkout, dan mempertahankan unique constraint global (tidak ada migration ulang hanya untuk mengubah constraint). Lookup/replay selalu ter-scope `business_id` dan diaotorisasi membership/outlet. Composite unique `(business_id, idempotency_key)` dievaluasi hanya bila kebutuhan sistem meminta.
+
+**Refund:** belum didukung. Status `REFUNDED`/`PARTIALLY_REFUNDED` adalah nilai enum tersimpan, bukan transition yang dapat digunakan; endpoint refund membutuhkan aturan bisnis, otorisasi, audit trail, dan pencatatan finansial yang disepakati (kaitan: aktivitas refund di Phase 5 dan `eligible_net_sales` billing D-12).
+
+**Gate Phase 4:**
+
+| Gate | Kondisi yang diperlukan |
+|---|---|
+| Payment gateway | Out of scope saat ini; integrasi provider belum termasuk scope. |
+| Manual payment confirmation | Otorisasi (`payments.create` + outlet), audit trail aktor/waktu, dan bukti verifikasi backend. |
+| Idempotency | Retry checkout dengan key yang sama tidak membuat transaksi ganda (teruji). |
+| Pint pada 4 file committed | Technical debt terpisah; dicatat di `docs/planning/technical-debt.md`, bukan pekerjaan Phase 4. |
+| Split payment | Tidak termasuk MVP (D-23). |
+| Refund | Belum didukung; jangan dianggap tersedia. |
+| Konsistensi cash | Cash sales harus dapat direkonsiliasi dengan Cash Session saat Phase 5 tersedia; tanpa gateway bukan alasan mengurangi integritas transaksi. |
+
+**Verifikasi:** test checkout cash/non-cash, konfirmasi mencatat aktor/waktu, idempotency key UUID ditolak bila tidak valid, retry tidak duplikat, isolasi tenant/outlet, dan rollback transaksi atomik berjalan (`OrderPaymentTest`).
+
 ## 9. Daftar Gate yang Tetap Harus Ditutup Sebelum Produksi
 
 Keputusan-keputusan di atas memberi arah yang cukup untuk desain dan pengembangan, tetapi item berikut membutuhkan bukti atau persetujuan khusus:
