@@ -2,7 +2,9 @@
 
 namespace App\Domain\Catalog\Actions;
 
+use App\Models\OrderItem;
 use App\Models\Product;
+use Illuminate\Validation\ValidationException;
 
 class DeleteProductAction
 {
@@ -13,6 +15,15 @@ class DeleteProductAction
      */
     public function execute(Product $product): void
     {
+        // Produk yang sudah dirujuk oleh histori transaksi tidak boleh
+        // dihapus (menjaga snapshot order); nonaktifkan melalui PATCH
+        // is_active = false sebagai penggantinya.
+        if (OrderItem::query()->where('product_id', $product->id)->exists()) {
+            throw ValidationException::withMessages([
+                'product' => 'Produk tidak dapat dihapus karena sudah digunakan pada histori transaksi. Nonaktifkan produk sebagai penggantinya.',
+            ]);
+        }
+
         $product->delete();
     }
 }
