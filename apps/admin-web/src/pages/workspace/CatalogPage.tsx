@@ -19,6 +19,7 @@ import { FormField } from '@/components/FormField'
 import { CatalogFormDialog } from '@/pages/workspace/CatalogFormDialog'
 import { api } from '@/lib/api'
 import { apiErrorMessage } from '@/lib/form-errors'
+import { formatRupiah } from '@/lib/order-format'
 import type { Category, CategoryInput, Product, ProductInput } from '@/types'
 
 type CatalogSection = 'products' | 'categories'
@@ -34,14 +35,6 @@ function activeFilter(value: string): boolean | undefined {
   if (value === 'active') return true
   if (value === 'inactive') return false
   return undefined
-}
-
-function rupiah(amount: number): string {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    maximumFractionDigits: 0,
-  }).format(amount)
 }
 
 export function CatalogPage() {
@@ -601,7 +594,7 @@ function ProductList({
                 <td className="p-3 text-muted-foreground">
                   {item.category?.name ?? 'Tanpa kategori'}
                 </td>
-                <td className="p-3 text-right tabular-nums">{rupiah(item.price)}</td>
+                <td className="p-3 text-right tabular-nums">{formatRupiah(item.price)}</td>
                 <td className="p-3">
                   <ProductStatus item={item} />
                 </td>
@@ -632,7 +625,7 @@ function ProductList({
               <ProductStatus item={item} />
             </div>
             <div className="mt-4 flex items-center justify-between gap-3">
-              <span className="font-semibold tabular-nums">{rupiah(item.price)}</span>
+              <span className="font-semibold tabular-nums">{formatRupiah(item.price)}</span>
               <ItemActions
                 itemName={item.name}
                 canUpdate={canUpdate}
