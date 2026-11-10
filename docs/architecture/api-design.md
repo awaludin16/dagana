@@ -236,3 +236,28 @@ Satu order memakai satu metode (split payment bukan MVP, D-23).
 Status payment: `PENDING`, `PAID`, `FAILED`, `REFUNDED`, `PARTIALLY_REFUNDED`. Status order: `PENDING`, `PAID`, `CANCELLED`. Transisi divalidasi di server; request arbitrer tidak dapat mengubah payment menjadi `PAID` tanpa jalur konfirmasi yang sah. **Refund belum didukung:** status `REFUNDED`/`PARTIALLY_REFUNDED` tersimpan sebagai enum model, tetapi belum ada state transition atau endpoint yang dapat mencapainya. Implementasi refund kelak membutuhkan aturan bisnis, otorisasi, audit trail, dan pencatatan finansial yang sesuai; penempatannya mengikuti roadmap (Phase 5 mencakup refund sebagai aktivitas Cash Session, billing D-12 mengidentifikasi refund pada `eligible_net_sales`). Ketersediaan enum/model tidak berarti fiturnya sudah didukung secara fungsional.
 
 Idempotency: `orders.idempotency_key` wajib berformat UUID dan beda untuk setiap operasi checkout (validasi `uuid` di backend). Kolom memakai unique constraint global dan pertahankan untuk implementasi saat ini; pencarian dan pengembalian hasil replay selalu mencakup pemeriksaan `business_id` dan otorisasi membership/outlet, sehingga key milik Business lain tidak dapat dipakai untuk membaca atau menggandakan transaksi. Composite unique `(business_id, idempotency_key)` dievaluasi hanya jika kebutuhan sistem benar-benar memintanya — jangan migration ulang hanya untuk mengubah constraint; perlindungan race condition tetap melalui unique constraint + `lockForUpdate()` pada produk selama checkout.
+
+## 11. Phase 5 contract — Cash Session
+
+Cash Session (D-06/D-07/D-08) adalah konteks tanggung jawab kas per operator per outlet, bukan shift management. Aturan dasar:
+
+- Satu session mempunyai tepat satu operator (`operator_membership_id`). Batas **satu session aktif per operator per outlet** divalidasi di backend dan diproteksi partial unique index PostgreSQL `cash_sessions_unique_active_operator (business_id, outlet_id, operator_membership_id) WHERE status = 'OPEN'`, sehingga request bersamaan tidak meloloskan session ganda.
+- Setiap arus kas adalah baris ledger `cash_movements` yang append-only: `CASH_SALE` (positif, otomatis dari checkout cash), `CASH_IN` (+), `CASH_OUT` (−), `REFUND` (−), `ADJUSTMENT` (bertanda ±). Saldo tidak pernah diubah tanpa riwayat movement.
+- Formula (mengikuti contoh requirement): `expected_cash = opening_cash + Σ amount` pada ledger; `variance = actual_cash − expected_cash` (bertanda, bisa negatif), dengan `variance_note` opsional dari operator. Expected cash dihitung di backend, tidak diterima dari client.
+- Session `CLOSED` tidak menerima movement baru maupun penutupan ulang (422); koreksi pasca-close memakai alur eksplisit (session baru + movement), bukan pengubahan record lama.
+- Checkout cash yang terjadi saat operator memiliki session aktif pada outlet yang sama mencatat movement `CASH_SALE` dalam transaksi database yang sama dengan order/payment (idempotency replay tidak menggandakan movement). Balapan close vs checkout diserialisasi dengan `lockForUpdate` pada baris session: close menghitung expected cash dari movement yang sudah commit; checkout ke session yang baru ditutup tidak menulis movement.
+
+| Method | Path | Permission | Keterangan |
+|---|---|---|---|
+| `POST` | `/api/v1/cash-sessions` | `cash.open` | Buka session: `outlet_id` + `opening_cash` (integer rupiah ≥ 0). `422` bila operator masih punya session aktif di outlet sama (D-07). |
+| `GET` | `/api/v1/cash-sessions` | `cash.read` | Daftar terpaginate; filter `outlet_id` dan `status`. Non-owner hanya melihat outlet dalam cakupan aksesnya (D-05). Response memuat `expected_cash` live. |
+| `GET` | `/api/v1/cash-sessions/{session}` | `cash.read` | Detail session. `404` di luar Business, `403` bila outlet tidak dalam cakupan akses. |
+| `GET` | `/api/v1/cash-sessions/{session}/movements` | `cash.read` | Ledger movement terpaginate. |
+| `POST` | `/api/v1/cash-sessions/{session}/movements` | `cash.read` (route) + per-type di action | Catat movement: `CASH_IN` → `cash.cash_in`, `CASH_OUT` → `cash.cash_out`, `REFUND` dan `ADJUSTMENT` → `cash.reconcile`. Type `CASH_SALE` ditolak (hanya dibuat otomatis dari checkout). Nominal `CASH_IN`/`CASH_OUT`/`REFUND` wajib positif; `ADJUSTMENT` boleh negatif, tidak boleh 0. |
+| `POST` | `/api/v1/cash-sessions/{session}/close` | `cash.close` | Tutup session: `actual_cash` (≥ 0) + `variance_note` opsional. Backend menghitung `expected_cash` dan `variance = actual_cash − expected_cash`. `422` untuk session yang sudah CLOSED. |
+
+Keputusan yang dikunci untuk Phase 5 (disetujui Product Owner 2026-11-10, D-31):
+
+1. **Checkout cash tanpa session aktif** diizinkan dan berjalan tanpa movement kas (order tetap `PAID`). Kebijakan wajib-session tidak diberlakukan.
+2. **Movement `REFUND`/`ADJUSTMENT` memakai permission `cash.reconcile`** karena katalog permission MVP tidak memiliki `cash.refund`; konsekuensi: CASHIER tidak dapat mencatat refund/adjustment kas.
+3. **Movement refund kas ≠ transition refund payment.** Refund kas adalah pengeluaran kas yang direkam sebagai ledger; status payment `REFUNDED` tetap belum didukung (D-30) sampai aturan bisnis refund payment disepakati.

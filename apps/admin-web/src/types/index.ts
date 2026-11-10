@@ -1,6 +1,7 @@
 export type * from '@/types/access'
 export type * from '@/types/auth'
 export type * from '@/types/business'
+export type * from '@/types/cash'
 export type * from '@/types/catalog'
 export type * from '@/types/order'
 export type * from '@/types/pos'
