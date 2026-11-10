@@ -304,6 +304,24 @@ Setiap order lokal memiliki UUID/client-generated idempotency key yang unik, wak
 
 **Verifikasi:** test checkout cash/non-cash, konfirmasi mencatat aktor/waktu, idempotency key UUID ditolak bila tidak valid, retry tidak duplikat, isolasi tenant/outlet, dan rollback transaksi atomik berjalan (`OrderPaymentTest`).
 
+### D-31 — Baseline teknis Phase 5 (Cash Session) — status: disetujui
+
+**Status:** disetujui Product Owner (2026-11-10). Baseline teknis hasil implementasi Phase 5, mengikuti D-06 (satu operator per session), D-07 (satu session aktif per operator per outlet, diproteksi database), dan D-08 (tanpa pengalihan session). Formula `expected_cash = opening_cash + Σ amount` mengikuti contoh requirement `payments-and-cash.md`; `variance = actual_cash − expected_cash` bertanda.
+
+**Baseline yang diimplementasikan:**
+
+- Tabel `cash_sessions` (status `OPEN`/`CLOSED`, `opening_cash`, `actual_cash`, `expected_cash`, `variance`, `variance_note`, `closed_by_membership_id`) dan ledger append-only `cash_movements` (`CASH_SALE`, `CASH_IN`, `CASH_OUT`, `REFUND`, `ADJUSTMENT`; amount bertanda).
+- Partial unique index PostgreSQL `(business_id, outlet_id, operator_membership_id) WHERE status = 'OPEN'` sebagai proteksi kedua di luar validasi action; teruji dengan insert mentah yang memicu `UniqueConstraintViolationException`.
+- Checkout cash saat operator punya session aktif pada outlet yang sama mencatat movement `CASH_SALE` dalam transaksi yang sama dengan order/payment; replay idempotency tidak menggandakan movement; balapan close vs checkout diserialisasi via `lockForUpdate` pada baris session.
+
+**Keputusan yang dikunci (disetujui Product Owner, 2026-11-10):**
+
+1. Checkout cash **tanpa** session aktif tetap diizinkan dan berjalan tanpa movement kas (order tetap `PAID`). Kebijakan wajib-session tidak diberlakukan; bila kelak direvisi, perubahan dilakukan di `CheckoutAction` beserta test-nya.
+2. Permission untuk movement `REFUND` dan `ADJUSTMENT` adalah `cash.reconcile` (katalog MVP tidak punya `cash.refund`); konsekuensi yang disetujui: CASHIER tidak dapat mencatat refund/adjustment kas.
+3. Movement refund kas tidak mengubah status payment; transition refund payment tetap tertutup sampai aturan bisnisnya disepakati (D-30 tetap berlaku).
+
+**Verifikasi:** unit formula (`CashSessionFormulaTest`) dan feature open/close/movement/permission/isolasi (`CashSessionTest`) lulus; kontrak endpoint terdokumentasi di `docs/architecture/api-design.md` bagian Phase 5.
+
 ## 9. Daftar Gate yang Tetap Harus Ditutup Sebelum Produksi
 
 Keputusan-keputusan di atas memberi arah yang cukup untuk desain dan pengembangan, tetapi item berikut membutuhkan bukti atau persetujuan khusus:

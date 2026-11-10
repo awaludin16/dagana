@@ -136,6 +136,16 @@ Contoh:
 
 ---
 
+## Implementasi Phase 5 (backend, 2026-11-10)
+
+- Setiap aktivitas kas dicatat sebagai baris ledger `cash_movements` yang append-only dengan amount bertanda: `CASH_SALE` (+, otomatis dari checkout cash saat operator punya session aktif), `CASH_IN` (+), `CASH_OUT` (−), `REFUND` (−), `ADJUSTMENT` (±). Saldo tidak diubah tanpa riwayat movement.
+- Formula di atas diimplementasikan persis: `expected_cash = opening_cash + Σ amount`, dihitung di backend; `variance = actual_cash − expected_cash` bertanda (bisa negatif) dan `variance_note` hanya mencatat penjelasan operator, bukan penyebab yang disimpulkan sistem.
+- Aturan session mengikuti D-06/D-07/D-08: satu operator per session; satu session aktif per operator per outlet (diproteksi di database); tidak ada pengalihan session.
+- Session `CLOSED` tidak menerima movement baru maupun penutupan ulang; koreksi pasca-close memakai session/flow eksplisit berikutnya.
+- Keputusan yang dikunci (disetujui Product Owner 2026-11-10, D-31): checkout cash tanpa session aktif tetap diizinkan tanpa movement kas; movement REFUND/ADJUSTMENT memakai permission `cash.reconcile`; movement refund kas tidak mengubah status payment. Kontrak API selengkapnya di `docs/architecture/api-design.md` bagian Phase 5.
+
+---
+
 ---
 
 ## Why Cash Session Matters
