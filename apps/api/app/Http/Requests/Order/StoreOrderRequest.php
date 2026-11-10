@@ -27,6 +27,13 @@ class StoreOrderRequest extends FormRequest
             'payment_method' => ['required', Rule::in([
                 'cash', 'qr_payment', 'bank_transfer', 'debit', 'credit',
             ])],
+            'amount_tendered' => [
+                'required_if:payment_method,cash',
+                'prohibited_unless:payment_method,cash',
+                'integer',
+                'min:0',
+                'max:4294967295',
+            ],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'integer'],
             'items.*.quantity' => ['required', 'integer', 'min:1'],

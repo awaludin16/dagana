@@ -40,6 +40,7 @@ class OrderPaymentTest extends TestCase
             'outlet_id' => $outlet->id,
             'idempotency_key' => fake()->uuid(),
             'payment_method' => 'cash',
+            'amount_tendered' => 40000,
             'items' => [
                 ['product_id' => $coffee->id, 'quantity' => 2],
                 ['product_id' => $teh->id, 'quantity' => 1],
@@ -52,6 +53,9 @@ class OrderPaymentTest extends TestCase
             ->assertJsonPath('data.payment.method', Payment::METHOD_CASH)
             ->assertJsonPath('data.payment.status', Payment::STATUS_PAID)
             ->assertJsonPath('data.payment.amount', 38000)
+            ->assertJsonPath('data.payment.amount_tendered', 40000)
+            ->assertJsonPath('data.payment.change_amount', 2000)
+            ->assertJsonPath('data.payment.qr_code_payload', null)
             ->assertJsonCount(2, 'data.items')
             ->assertJsonPath('data.items.0.product_name', 'Es Kopi Susu')
             ->assertJsonPath('data.items.0.product_price', 15000)
@@ -88,6 +92,8 @@ class OrderPaymentTest extends TestCase
             'method' => Payment::METHOD_CASH,
             'status' => Payment::STATUS_PAID,
             'amount' => 38000,
+            'amount_tendered' => 40000,
+            'change_amount' => 2000,
             // Cash langsung dikonfirmasi operator yang melakukan checkout.
             'confirmed_by' => $this->membershipId($owner),
             'paid_at' => $response->json('data.payment.paid_at'),
@@ -116,11 +122,57 @@ class OrderPaymentTest extends TestCase
             'items' => [['product_id' => $coffee->id, 'quantity' => 1]],
         ])->assertCreated()
             ->assertJsonPath('data.status', Order::STATUS_PENDING)
-            ->assertJsonPath('data.payment.status', Payment::STATUS_PENDING);
+            ->assertJsonPath('data.payment.status', Payment::STATUS_PENDING)
+            ->assertJsonPath('data.payment.amount_tendered', null)
+            ->assertJsonPath('data.payment.change_amount', null)
+            ->assertJsonPath('data.payment.qr_code_payload', null);
 
         $orderId = Order::query()->latest('id')->first()->id;
         $payment = Payment::query()->where('order_id', $orderId)->firstOrFail();
         $this->assertNull($payment->paid_at);
+    }
+
+    public function test_checkout_cash_menolak_nominal_kurang_dan_tidak_membuat_transaksi(): void
+    {
+        [$owner, $business, $outlet] = $this->merchant();
+        $coffee = Product::factory()->for($business)->create(['price' => 15000]);
+
+        Sanctum::actingAs($owner);
+
+        $this->postJson('/api/v1/orders', [
+            'outlet_id' => $outlet->id,
+            'idempotency_key' => fake()->uuid(),
+            'payment_method' => 'cash',
+            'amount_tendered' => 14999,
+            'items' => [['product_id' => $coffee->id, 'quantity' => 1]],
+        ])->assertUnprocessable()->assertJsonValidationErrors('amount_tendered');
+
+        $this->assertDatabaseCount('orders', 0);
+        $this->assertDatabaseCount('payments', 0);
+    }
+
+    public function test_checkout_cash_mewajibkan_nominal_dan_non_cash_melarang_nominal(): void
+    {
+        [$owner, $business, $outlet] = $this->merchant();
+        $coffee = Product::factory()->for($business)->create(['price' => 15000]);
+
+        Sanctum::actingAs($owner);
+
+        $base = [
+            'outlet_id' => $outlet->id,
+            'idempotency_key' => fake()->uuid(),
+            'items' => [['product_id' => $coffee->id, 'quantity' => 1]],
+        ];
+
+        $this->postJson('/api/v1/orders', [...$base, 'payment_method' => 'cash'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('amount_tendered');
+
+        $this->postJson('/api/v1/orders', [
+            ...$base,
+            'payment_method' => 'qr_payment',
+            'amount_tendered' => 15000,
+        ])->assertUnprocessable()->assertJsonValidationErrors('amount_tendered');
     }
 
     public function test_checkout_total_dihitung_ulang_dari_catalog_bukan_dari_client(): void
@@ -135,6 +187,7 @@ class OrderPaymentTest extends TestCase
             'outlet_id' => $outlet->id,
             'idempotency_key' => fake()->uuid(),
             'payment_method' => 'cash',
+            'amount_tendered' => 100000,
             'items' => [['product_id' => $coffee->id, 'quantity' => 3]],
         ])->assertCreated()->assertJsonPath('data.total_amount', 45000);
     }
@@ -151,6 +204,7 @@ class OrderPaymentTest extends TestCase
             'outlet_id' => $outlet->id,
             'idempotency_key' => fake()->uuid(),
             'payment_method' => 'cash',
+            'amount_tendered' => 100000,
             'items' => [['product_id' => $inactive->id, 'quantity' => 1]],
         ])->assertUnprocessable()->assertJsonValidationErrors('items');
 
@@ -158,6 +212,7 @@ class OrderPaymentTest extends TestCase
             'outlet_id' => $outlet->id,
             'idempotency_key' => fake()->uuid(),
             'payment_method' => 'cash',
+            'amount_tendered' => 100000,
             'items' => [['product_id' => $unavailable->id, 'quantity' => 1]],
         ])->assertUnprocessable()->assertJsonValidationErrors('items');
 
@@ -177,6 +232,7 @@ class OrderPaymentTest extends TestCase
             'outlet_id' => $outlet->id,
             'idempotency_key' => fake()->uuid(),
             'payment_method' => 'cash',
+            'amount_tendered' => 100000,
             'items' => [['product_id' => $coffee->id, 'quantity' => 0]],
         ])->assertUnprocessable()->assertJsonValidationErrors(['items.0.quantity']);
 
@@ -185,6 +241,7 @@ class OrderPaymentTest extends TestCase
             'outlet_id' => $outlet->id,
             'idempotency_key' => fake()->uuid(),
             'payment_method' => 'cash',
+            'amount_tendered' => 100000,
             'items' => [['product_id' => 999999, 'quantity' => 1]],
         ])->assertUnprocessable()->assertJsonValidationErrors('items');
 
@@ -207,6 +264,7 @@ class OrderPaymentTest extends TestCase
             'outlet_id' => $outlet->id,
             'idempotency_key' => fake()->uuid(),
             'payment_method' => 'cash',
+            'amount_tendered' => 100000,
             'items' => [['product_id' => $coffee->id, 'quantity' => 2]],
         ])->assertCreated()->json('data');
 
@@ -243,6 +301,7 @@ class OrderPaymentTest extends TestCase
             'outlet_id' => $outlet->id,
             'idempotency_key' => $key,
             'payment_method' => 'cash',
+            'amount_tendered' => 100000,
             'items' => [['product_id' => $coffee->id, 'quantity' => 1]],
         ];
 
@@ -264,6 +323,7 @@ class OrderPaymentTest extends TestCase
             'outlet_id' => 1,
             'idempotency_key' => 'bukan-uuid', // tanpa autentikasi saja sudah ditolak sebelum validasi lebih jauh
             'payment_method' => 'cash',
+            'amount_tendered' => 100000,
             'items' => [],
         ])->assertUnauthorized();
     }
@@ -287,6 +347,7 @@ class OrderPaymentTest extends TestCase
             'outlet_id' => $outlet->id,
             'idempotency_key' => fake()->uuid(),
             'payment_method' => 'cash',
+            'amount_tendered' => 100000,
             'items' => [['product_id' => $coffee->id, 'quantity' => 1]],
         ])->assertForbidden();
 
@@ -311,6 +372,7 @@ class OrderPaymentTest extends TestCase
             'outlet_id' => $foreignOutlet->id,
             'idempotency_key' => fake()->uuid(),
             'payment_method' => 'cash',
+            'amount_tendered' => 100000,
             'items' => [['product_id' => $coffee->id, 'quantity' => 1]],
         ])->assertCreated()->json('data');
 
@@ -366,6 +428,7 @@ class OrderPaymentTest extends TestCase
             'outlet_id' => $outlet->id,
             'idempotency_key' => fake()->uuid(),
             'payment_method' => 'cash',
+            'amount_tendered' => 100000,
             'items' => [['product_id' => $coffee->id, 'quantity' => 1]],
         ])->assertCreated()->json('data');
 
@@ -405,6 +468,7 @@ class OrderPaymentTest extends TestCase
             'outlet_id' => $outlet->id,
             'idempotency_key' => fake()->uuid(),
             'payment_method' => 'cash',
+            'amount_tendered' => 100000,
             'items' => [['product_id' => $coffee->id, 'quantity' => 1]],
         ])->assertCreated()->json('data');
 
@@ -449,6 +513,7 @@ class OrderPaymentTest extends TestCase
             'outlet_id' => $outlet->id,
             'idempotency_key' => 'bukan-uuid',
             'payment_method' => 'cash',
+            'amount_tendered' => 100000,
             'items' => [['product_id' => $coffee->id, 'quantity' => 1]],
         ])->assertUnprocessable()->assertJsonValidationErrors(['idempotency_key']);
 

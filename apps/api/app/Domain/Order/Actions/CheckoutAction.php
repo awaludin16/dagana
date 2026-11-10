@@ -26,6 +26,7 @@ class CheckoutAction
      *     outlet_id: int,
      *     idempotency_key: string,
      *     payment_method: string,
+     *     amount_tendered?: int,
      *     items: list<array{product_id: int, quantity: int}>,
      *     notes?: ?string,
      * }  $input
@@ -38,6 +39,7 @@ class CheckoutAction
         $outletId = $input['outlet_id'];
         $idempotencyKey = $input['idempotency_key'];
         $paymentMethod = $input['payment_method'];
+        $amountTendered = (int) ($input['amount_tendered'] ?? 0);
         $itemsInput = $input['items'];
         $notes = $input['notes'] ?? null;
 
@@ -58,7 +60,7 @@ class CheckoutAction
         }
 
         try {
-            return DB::transaction(function () use ($membership, $businessId, $outletId, $idempotencyKey, $paymentMethod, $itemsInput, $notes): array {
+            return DB::transaction(function () use ($membership, $businessId, $outletId, $idempotencyKey, $paymentMethod, $amountTendered, $itemsInput, $notes): array {
                 // Row locking mengantisipasi request serentak pada produk yang sama.
                 $productIds = array_unique(array_column($itemsInput, 'product_id'));
                 $products = Product::query()
@@ -97,6 +99,12 @@ class CheckoutAction
                     $totalAmount += $lineTotal;
                 }
 
+                if ($paymentMethod === Payment::METHOD_CASH && $amountTendered < $totalAmount) {
+                    throw ValidationException::withMessages([
+                        'amount_tendered' => 'Jumlah yang dibayarkan harus setidaknya sebesar total order.',
+                    ]);
+                }
+
                 $order = Order::create([
                     'business_id' => $businessId,
                     'outlet_id' => $outletId,
@@ -125,6 +133,8 @@ class CheckoutAction
                     'method' => $paymentMethod,
                     'status' => $paymentStatus,
                     'amount' => $totalAmount,
+                    'amount_tendered' => $paymentMethod === Payment::METHOD_CASH ? $amountTendered : null,
+                    'change_amount' => $paymentMethod === Payment::METHOD_CASH ? $amountTendered - $totalAmount : null,
                     'reference' => null,
                     'paid_at' => $paymentStatus === Payment::STATUS_PAID ? now() : null,
                     // Cash dipastikan langsung oleh operator yang melakukan checkout.

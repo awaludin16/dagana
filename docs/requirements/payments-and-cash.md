@@ -23,6 +23,7 @@ Payment menyimpan:
 - order
 - method
 - amount
+- amount tendered dan change untuk transaksi cash
 - status
 - reference
 - timestamp
@@ -44,6 +45,7 @@ Fase Order Engine berjalan **tanpa integrasi payment gateway**. Metode dikelompo
 
 - **Cash:** pembayaran langsung dicatat berhasil (`PAID`) saat checkout. Backend menyimpan payment record lengkap (termasuk siapa yang mengonfirmasi dan kapan), lalu order dapat diselesaikan sesuai aturan transaksi. Konsistensi Order–Payment–Cash Session harus terjaga begitu Cash Session tersedia; penjualan cash tidak boleh mengurangi integritas transaksi hanya karena gateway belum ada.
 - **Non-cash (QR payment, bank transfer, debit, credit):** payment dapat berstatus `PENDING`. Konfirmasi manual ke `PAID` hanya boleh dilakukan pengguna yang memiliki izin (`payments.create`, akses outlet sah) dan sudah memverifikasi pembayaran. Sistem harus mencatat siapa yang melakukan konfirmasi dan kapan (`confirmed_by`, `paid_at`). Pembayaran non-cash belum boleh ditandai sebagai terverifikasi otomatis; QR payment otomatis baru dapat diklaim setelah integrasi provider, verifikasi callback/webhook, dan pengujian settlement tersedia (D-15/D-16).
+- Pada checkout cash, `amount_tendered` wajib dikirim sebagai integer rupiah, divalidasi terhadap total final backend, dan `change_amount` disimpan untuk receipt. `qr_code_payload` adalah field response nullable; QRIS tidak dapat dipakai bila backend belum menyediakan payload. Penambahan kontrak ini tidak mengaktifkan payment gateway.
 
 ### Refund
 

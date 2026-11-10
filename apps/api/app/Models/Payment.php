@@ -23,6 +23,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'method',
     'status',
     'amount',
+    'amount_tendered',
+    'change_amount',
     'reference',
     'paid_at',
 ])]
@@ -76,6 +78,8 @@ class Payment extends Model
     {
         return [
             'amount' => 'integer',
+            'amount_tendered' => 'integer',
+            'change_amount' => 'integer',
             'paid_at' => 'datetime',
         ];
     }

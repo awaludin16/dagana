@@ -219,7 +219,7 @@ IDR disimpan sebagai integer rupiah utuh; tidak ada perhitungan uang dengan floa
 
 | Method | Path | Permission | Keterangan |
 |---|---|---|---|
-| `POST` | `/api/v1/orders` | `orders.create` | Checkout: membuat order, order items (snapshot), dan payment secara atomik dalam satu transaksi database. `idempotency_key` wajib; request ulang dengan kunci yang sama mengembalikan order yang sudah ada (tidak ada duplikasi). Menu diambil ulang lewat `Product::sellable()`; total dihitung ulang di backend, harga/kategori dari client tidak dipercaya. |
+| `POST` | `/api/v1/orders` | `orders.create` | Checkout: membuat order, order items (snapshot), dan payment secara atomik dalam satu transaksi database. `idempotency_key` wajib; request ulang dengan kunci yang sama mengembalikan order yang sudah ada (tidak ada duplikasi). Menu diambil ulang lewat `Product::sellable()`; total dihitung ulang di backend, harga/kategori dari client tidak dipercaya. Untuk `payment_method=cash`, `amount_tendered` wajib berupa integer rupiah dan harus mencukupi total final server. |
 | `GET` | `/api/v1/orders` | `orders.read` | Daftar order terpaginate, difilter Business, opsi `outlet_id`. |
 | `GET` | `/api/v1/orders/{order}` | `orders.read` | Detail order + receipt: item, snapshot, dan payment. `404` bila di luar Business/Outlet scope. |
 | `POST` | `/api/v1/orders/{order}/cancel` | `orders.cancel` | Batal order: hanya `PENDING` tanpa pembayaran `PAID`; otherwise `422`. |
@@ -228,6 +228,7 @@ IDR disimpan sebagai integer rupiah utuh; tidak ada perhitungan uang dengan floa
 Metode pembayaran MVP dikelompokkan dua alur:
 
 - **Cash:** order dan payment langsung `PAID` pada checkout. Aktor konfirmasi (`payments.confirmed_by`) adalah operator yang melakukan checkout, `paid_at` terisi saat itu. Konsistensi Order–Payment–Cash Session harus terjaga saat Cash Session (Phase 5) menyambung total cash sales; tidak adanya gateway bukan alasan mengurangi integritas transaksi.
+- Response payment menyediakan `amount_tendered` dan `change_amount` untuk transaksi cash (`null` pada payment lama/non-cash), serta `qr_code_payload` nullable. Payload QRIS hanya dirender frontend bila disediakan backend/provider; field kosong berarti QRIS belum tersedia. Kontrak ini tidak mengaktifkan atau mengimplementasikan gateway.
 - **Non-cash (`qr_payment`, `bank_transfer`, `debit`, `credit`):** payment dibuat `PENDING`. `POST /payments/{payment}/confirm` mengubahnya menjadi `PAID` hanya untuk pengguna dengan permission `payments.create`, akses outlet yang sah, dan setelah pembayaran diverifikasi backend; aktor dan waktu konfirmasi dicatat (`confirmed_by`, `paid_at`). Endpoint ini bukan jalan pintas: pengguna tak berizin (401/403) atau payment non-PENDING (422) tidak dapat mengubah status. Belum ada klaim integrasi otomatis/gateway production — QR payment otomatis baru dapat diklaim setelah provider, verifikasi callback/webhook, dan pengujian settlement tersedia (D-15/D-16).
 
 Satu order memakai satu metode (split payment bukan MVP, D-23).
