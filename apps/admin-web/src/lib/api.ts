@@ -11,6 +11,10 @@ import type {
   Member,
   Outlet,
   OutletInput,
+  Order,
+  OrderCreateInput,
+  OrderListParams,
+  OrderPayment,
   Product,
   ProductInput,
   RoleCatalog,
@@ -212,6 +216,22 @@ export const api = {
 
   async products(params: CatalogListParams = {}) {
     return page<Product>(await request(`/products${queryString(params)}`))
+  },
+
+  async orders(params: OrderListParams = {}) {
+    return page<Order>(await request(`/orders${queryString(params)}`))
+  },
+
+  async order(id: number) {
+    return data<Order>(await request(`/orders/${id}`))
+  },
+
+  async createOrder(input: OrderCreateInput) {
+    return data<Order>(await request('/orders', { method: 'POST', body: input }))
+  },
+
+  async confirmPayment(id: number) {
+    return data<OrderPayment>(await request(`/payments/${id}/confirm`, { method: 'POST' }))
   },
 
   async createProduct(input: ProductInput) {

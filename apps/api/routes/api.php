@@ -5,7 +5,9 @@ use App\Http\Controllers\Api\V1\BusinessController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\MemberController;
+use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\OutletController;
+use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\RegionController;
@@ -126,5 +128,23 @@ Route::prefix('v1')->group(function () {
         Route::delete('/products/{product}', [ProductController::class, 'destroy'])
             ->middleware('permission:products.delete')
             ->name('api.v1.products.destroy');
+
+        // Phase 4 — Order Engine dan pembayaran (POS).
+        Route::get('/orders', [OrderController::class, 'index'])
+            ->middleware('permission:orders.read')
+            ->name('api.v1.orders.index');
+        Route::post('/orders', [OrderController::class, 'store'])
+            ->middleware('permission:orders.create')
+            ->name('api.v1.orders.store');
+        Route::get('/orders/{order}', [OrderController::class, 'show'])
+            ->middleware('permission:orders.read')
+            ->name('api.v1.orders.show');
+        Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])
+            ->middleware('permission:orders.cancel')
+            ->name('api.v1.orders.cancel');
+
+        Route::post('/payments/{payment}/confirm', [PaymentController::class, 'confirm'])
+            ->middleware('permission:payments.create')
+            ->name('api.v1.payments.confirm');
     });
 });

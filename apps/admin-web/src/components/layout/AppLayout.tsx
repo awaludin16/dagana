@@ -4,6 +4,8 @@ import {
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
+  ShoppingBasket,
+  Receipt,
   Store,
   Tags,
   Users,
@@ -16,10 +18,13 @@ import { useSession } from '@/auth/SessionContext'
 import { useAccess } from '@/auth/useAccess'
 import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
+import { requestPosDisplayMode } from '@/lib/pos-mode'
 import { cn } from '@/lib/utils'
 
 const navItems = [
+  { to: '/pos', label: 'POS Mode', icon: ShoppingBasket, permission: ['orders.create'] },
   { to: '/outlets', label: 'Outlet', icon: Store, permission: ['outlets.read'] },
+  { to: '/orders', label: 'Transaksi', icon: Receipt, permission: ['orders.read'] },
   {
     to: '/catalog',
     label: 'Katalog',
@@ -142,7 +147,16 @@ export function AppLayout() {
               <NavLink
                 key={to}
                 to={to}
-                onClick={closeMobile}
+                onClick={() => {
+                  closeMobile()
+                  if (to === '/pos') {
+                    void requestPosDisplayMode().then((result) => {
+                      window.dispatchEvent(
+                        new CustomEvent('dagana:pos-display-mode', { detail: result }),
+                      )
+                    })
+                  }
+                }}
                 className={({ isActive }) =>
                   cn(
                     'flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition',

@@ -10,8 +10,11 @@ import { HomePage } from '@/pages/workspace/HomePage'
 import { CatalogPage } from '@/pages/workspace/CatalogPage'
 import { MembersPage } from '@/pages/workspace/MembersPage'
 import { NotFoundPage } from '@/pages/workspace/NotFoundPage'
+import { OrderReceiptPage } from '@/pages/workspace/OrderReceiptPage'
+import { OrdersPage } from '@/pages/workspace/OrdersPage'
 import { OutletsPage } from '@/pages/workspace/OutletsPage'
 import { ProfilePage } from '@/pages/workspace/ProfilePage'
+import { PosPage } from '@/pages/workspace/pos/PosPage'
 
 export const routes: RouteObject[] = [
   {
@@ -24,6 +27,22 @@ export const routes: RouteObject[] = [
           { index: true, element: <HomePage /> },
           { path: 'onboarding', element: <OnboardingPage /> },
           { path: 'catalog', element: <CatalogPage /> },
+          {
+            path: 'orders',
+            element: (
+              <RequirePermission permission="orders.read">
+                <OrdersPage />
+              </RequirePermission>
+            ),
+          },
+          {
+            path: 'orders/:orderId',
+            element: (
+              <RequirePermission permission="orders.read">
+                <OrderReceiptPage />
+              </RequirePermission>
+            ),
+          },
           {
             path: 'outlets',
             element: (
@@ -43,6 +62,14 @@ export const routes: RouteObject[] = [
           },
           { path: 'profile', element: <ProfilePage /> },
         ],
+      },
+      {
+        path: 'pos',
+        element: (
+          <RequirePermission permission="orders.create">
+            <PosPage />
+          </RequirePermission>
+        ),
       },
     ],
   },
