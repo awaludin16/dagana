@@ -5,10 +5,16 @@ import type {
   CatalogPage,
   Category,
   CategoryInput,
+  CashMovement,
+  CashMovementInput,
+  CashSession,
+  CashSessionListParams,
+  CloseCashSessionInput,
   CreateBusinessInput,
   CreateMemberInput,
   Me,
   Member,
+  OpenCashSessionInput,
   Outlet,
   OutletInput,
   Order,
@@ -116,7 +122,7 @@ async function page<T>(response: Response): Promise<CatalogPage<T>> {
   return (await response.json()) as CatalogPage<T>
 }
 
-function queryString(params: CatalogListParams): string {
+function queryString(params: Record<string, string | number | boolean | undefined>): string {
   const search = new URLSearchParams()
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined && value !== '') search.set(key, String(value))
@@ -240,5 +246,35 @@ export const api = {
 
   async updateProduct(id: number, input: Partial<ProductInput>) {
     return data<Product>(await request(`/products/${id}`, { method: 'PATCH', body: input }))
+  },
+
+  async cashSessions(params: CashSessionListParams = {}) {
+    return page<CashSession>(await request(`/cash-sessions${queryString(params)}`))
+  },
+
+  async cashSession(id: number) {
+    return data<CashSession>(await request(`/cash-sessions/${id}`))
+  },
+
+  async openCashSession(input: OpenCashSessionInput) {
+    return data<CashSession>(await request('/cash-sessions', { method: 'POST', body: input }))
+  },
+
+  async cashMovements(sessionId: number, params: CashSessionListParams = {}) {
+    return page<CashMovement>(
+      await request(`/cash-sessions/${sessionId}/movements${queryString(params)}`),
+    )
+  },
+
+  async createCashMovement(sessionId: number, input: CashMovementInput) {
+    return data<CashMovement>(
+      await request(`/cash-sessions/${sessionId}/movements`, { method: 'POST', body: input }),
+    )
+  },
+
+  async closeCashSession(sessionId: number, input: CloseCashSessionInput) {
+    return data<CashSession>(
+      await request(`/cash-sessions/${sessionId}/close`, { method: 'POST', body: input }),
+    )
   },
 }

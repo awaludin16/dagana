@@ -13,6 +13,7 @@ import { NotFoundPage } from '@/pages/workspace/NotFoundPage'
 import { OrderReceiptPage } from '@/pages/workspace/OrderReceiptPage'
 import { OrdersPage } from '@/pages/workspace/OrdersPage'
 import { OutletsPage } from '@/pages/workspace/OutletsPage'
+import { CashPage } from '@/pages/workspace/CashPage'
 import { ProfilePage } from '@/pages/workspace/ProfilePage'
 import { PosPage } from '@/pages/workspace/pos/PosPage'
 
@@ -40,6 +41,14 @@ export const routes: RouteObject[] = [
             element: (
               <RequirePermission permission="orders.read">
                 <OrderReceiptPage />
+              </RequirePermission>
+            ),
+          },
+          {
+            path: 'cash',
+            element: (
+              <RequirePermission permission="cash.read">
+                <CashPage />
               </RequirePermission>
             ),
           },

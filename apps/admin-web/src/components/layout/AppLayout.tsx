@@ -4,11 +4,12 @@ import {
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
-  ShoppingBasket,
   Receipt,
+  ShoppingBasket,
   Store,
   Tags,
   Users,
+  Wallet,
   X,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -25,6 +26,7 @@ const navItems = [
   { to: '/pos', label: 'POS Mode', icon: ShoppingBasket, permission: ['orders.create'] },
   { to: '/outlets', label: 'Outlet', icon: Store, permission: ['outlets.read'] },
   { to: '/orders', label: 'Transaksi', icon: Receipt, permission: ['orders.read'] },
+  { to: '/cash', label: 'Kas', icon: Wallet, permission: ['cash.read'] },
   {
     to: '/catalog',
     label: 'Katalog',
