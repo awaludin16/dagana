@@ -3,6 +3,8 @@
 namespace App\Domain\Order\Actions;
 
 use App\Models\BusinessMembership;
+use App\Models\CashMovement;
+use App\Models\CashSession;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Product;
@@ -105,6 +107,23 @@ class CheckoutAction
                     ]);
                 }
 
+                // Konsistensi Order–Payment–Cash (D-30): cash sale milik operator
+                // dengan session aktif pada outlet ini tercatat sebagai movement
+                // ledger sekaligus dengan order/payment, sehingga rekonsiliasi
+                // tidak dihitung dua kali (idempotency key sama → replay saja).
+                // Belum ada session (belum dibuka) tetap boleh berjualan; gate
+                // kebijakan wajib-session dicatat di decision log Phase 5.
+                $cashSession = null;
+                if ($paymentMethod === Payment::METHOD_CASH) {
+                    $cashSession = CashSession::query()
+                        ->where('business_id', $businessId)
+                        ->where('outlet_id', $outletId)
+                        ->where('operator_membership_id', $membership->id)
+                        ->where('status', CashSession::STATUS_OPEN)
+                        ->lockForUpdate()
+                        ->first();
+                }
+
                 $order = Order::create([
                     'business_id' => $businessId,
                     'outlet_id' => $outletId,
@@ -143,6 +162,17 @@ class CheckoutAction
 
                 if ($paymentStatus === Payment::STATUS_PAID) {
                     $order->update(['status' => Order::STATUS_PAID]);
+                }
+
+                if ($cashSession !== null && $cashSession->isOpen()) {
+                    $cashSession->movements()->create([
+                        'business_id' => $businessId,
+                        'outlet_id' => $outletId,
+                        'membership_id' => $membership->id,
+                        'type' => CashMovement::TYPE_CASH_SALE,
+                        'amount' => $totalAmount,
+                        'reason' => null,
+                    ]);
                 }
 
                 return [$order->load(['items', 'payments']), true];

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BusinessController;
+use App\Http\Controllers\Api\V1\CashSessionController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\MemberController;
@@ -146,5 +147,25 @@ Route::prefix('v1')->group(function () {
         Route::post('/payments/{payment}/confirm', [PaymentController::class, 'confirm'])
             ->middleware('permission:payments.create')
             ->name('api.v1.payments.confirm');
+
+        // Phase 5 — Cash Session: kontrol kas operasional per operator per outlet.
+        Route::get('/cash-sessions', [CashSessionController::class, 'index'])
+            ->middleware('permission:cash.read')
+            ->name('api.v1.cash-sessions.index');
+        Route::post('/cash-sessions', [CashSessionController::class, 'store'])
+            ->middleware('permission:cash.open')
+            ->name('api.v1.cash-sessions.store');
+        Route::get('/cash-sessions/{session}', [CashSessionController::class, 'show'])
+            ->middleware('permission:cash.read')
+            ->name('api.v1.cash-sessions.show');
+        Route::get('/cash-sessions/{session}/movements', [CashSessionController::class, 'movements'])
+            ->middleware('permission:cash.read')
+            ->name('api.v1.cash-sessions.movements');
+        Route::post('/cash-sessions/{session}/movements', [CashSessionController::class, 'storeMovement'])
+            ->middleware('permission:cash.read')
+            ->name('api.v1.cash-sessions.store-movement');
+        Route::post('/cash-sessions/{session}/close', [CashSessionController::class, 'close'])
+            ->middleware('permission:cash.close')
+            ->name('api.v1.cash-sessions.close');
     });
 });
