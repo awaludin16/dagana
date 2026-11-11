@@ -6,6 +6,7 @@ use App\Models\Business;
 use App\Models\BusinessMembership;
 use App\Models\Outlet;
 use App\Models\Payment;
+use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
  * @extends Factory<Payment>
