@@ -29,7 +29,7 @@ export function RegisterPage() {
     mutationFn: api.register,
     onSuccess: (profile) => {
       startSession(profile)
-      navigate('/', { replace: true })
+      navigate('/dashboard', { replace: true })
     },
   })
 

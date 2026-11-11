@@ -60,7 +60,7 @@ export function AnonymousOnly() {
   if (isPending) return <LoadingState label="Memeriksa sesi..." />
 
   if (isAuthenticated) {
-    return <Navigate to="/" replace />
+    return <Navigate to="/dashboard" replace />
   }
 
   return <Outlet />
