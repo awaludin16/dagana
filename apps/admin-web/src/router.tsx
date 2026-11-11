@@ -14,6 +14,7 @@ import { OrderReceiptPage } from '@/pages/workspace/OrderReceiptPage'
 import { OrdersPage } from '@/pages/workspace/OrdersPage'
 import { OutletsPage } from '@/pages/workspace/OutletsPage'
 import { CashPage } from '@/pages/workspace/CashPage'
+import { InventoryPage } from '@/pages/workspace/InventoryPage'
 import { ProfilePage } from '@/pages/workspace/ProfilePage'
 import { PosPage } from '@/pages/workspace/pos/PosPage'
 
@@ -49,6 +50,14 @@ export const routes: RouteObject[] = [
             element: (
               <RequirePermission permission="cash.read">
                 <CashPage />
+              </RequirePermission>
+            ),
+          },
+          {
+            path: 'inventory',
+            element: (
+              <RequirePermission permission="inventory.read">
+                <InventoryPage />
               </RequirePermission>
             ),
           },

@@ -1,4 +1,5 @@
 import {
+  Boxes,
   CircleUserRound,
   LogOut,
   Menu,
@@ -27,6 +28,7 @@ const navItems = [
   { to: '/outlets', label: 'Outlet', icon: Store, permission: ['outlets.read'] },
   { to: '/orders', label: 'Transaksi', icon: Receipt, permission: ['orders.read'] },
   { to: '/cash', label: 'Kas', icon: Wallet, permission: ['cash.read'] },
+  { to: '/inventory', label: 'Inventory', icon: Boxes, permission: ['inventory.read'] },
   {
     to: '/catalog',
     label: 'Katalog',
