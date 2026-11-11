@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\BusinessController;
 use App\Http\Controllers\Api\V1\CashSessionController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\HealthController;
+use App\Http\Controllers\Api\V1\InventoryItemController;
 use App\Http\Controllers\Api\V1\MemberController;
 use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\OutletController;
@@ -167,5 +168,25 @@ Route::prefix('v1')->group(function () {
         Route::post('/cash-sessions/{session}/close', [CashSessionController::class, 'close'])
             ->middleware('permission:cash.close')
             ->name('api.v1.cash-sessions.close');
+
+        // Phase 6 — Basic Inventory: item, saldo dari ledger, adjustment, low stock.
+        Route::get('/inventory', [InventoryItemController::class, 'index'])
+            ->middleware('permission:inventory.read')
+            ->name('api.v1.inventory.index');
+        Route::post('/inventory', [InventoryItemController::class, 'store'])
+            ->middleware('permission:inventory.create')
+            ->name('api.v1.inventory.store');
+        Route::get('/inventory/{item}', [InventoryItemController::class, 'show'])
+            ->middleware('permission:inventory.read')
+            ->name('api.v1.inventory.show');
+        Route::patch('/inventory/{item}', [InventoryItemController::class, 'update'])
+            ->middleware('permission:inventory.update')
+            ->name('api.v1.inventory.update');
+        Route::get('/inventory/{item}/movements', [InventoryItemController::class, 'movements'])
+            ->middleware('permission:inventory.read')
+            ->name('api.v1.inventory.movements');
+        Route::post('/inventory/{item}/adjustments', [InventoryItemController::class, 'adjustments'])
+            ->middleware('permission:inventory.adjust')
+            ->name('api.v1.inventory.adjustments');
     });
 });
