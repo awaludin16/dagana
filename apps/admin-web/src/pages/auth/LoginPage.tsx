@@ -38,7 +38,7 @@ export function LoginPage() {
     mutationFn: api.login,
     onSuccess: (profile) => {
       startSession(profile)
-      navigate('/', { replace: true })
+      navigate('/dashboard', { replace: true })
     },
   })
 
