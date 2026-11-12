@@ -6,7 +6,7 @@ import { AuthLayout } from '@/components/layout/AuthLayout'
 import { LoginPage } from '@/pages/auth/LoginPage'
 import { RegisterPage } from '@/pages/auth/RegisterPage'
 import { OnboardingPage } from '@/pages/onboarding/OnboardingPage'
-import { HomePage } from '@/pages/workspace/HomePage'
+import { DashboardPage } from '@/pages/workspace/DashboardPage'
 import { CatalogPage } from '@/pages/workspace/CatalogPage'
 import { MembersPage } from '@/pages/workspace/MembersPage'
 import { NotFoundPage } from '@/pages/workspace/NotFoundPage'
@@ -16,6 +16,7 @@ import { OutletsPage } from '@/pages/workspace/OutletsPage'
 import { CashPage } from '@/pages/workspace/CashPage'
 import { InventoryPage } from '@/pages/workspace/InventoryPage'
 import { ProfilePage } from '@/pages/workspace/ProfilePage'
+import { ReportsPage } from '@/pages/workspace/ReportsPage'
 import { PosPage } from '@/pages/workspace/pos/PosPage'
 
 export const routes: RouteObject[] = [
@@ -26,7 +27,9 @@ export const routes: RouteObject[] = [
       {
         element: <AppLayout />,
         children: [
-          { index: true, element: <HomePage /> },
+          // '/' akan menjadi landing page publik; untuk sementara diarahkan ke dashboard.
+          { index: true, element: <Navigate to="/dashboard" replace /> },
+          { path: 'dashboard', element: <DashboardPage /> },
           { path: 'onboarding', element: <OnboardingPage /> },
           { path: 'catalog', element: <CatalogPage /> },
           {
@@ -58,6 +61,14 @@ export const routes: RouteObject[] = [
             element: (
               <RequirePermission permission="inventory.read">
                 <InventoryPage />
+              </RequirePermission>
+            ),
+          },
+          {
+            path: 'reports',
+            element: (
+              <RequirePermission permission="reports.read">
+                <ReportsPage />
               </RequirePermission>
             ),
           },
