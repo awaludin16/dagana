@@ -287,3 +287,28 @@ Aturan saldo dan movement:
 | `POST` | `/api/v1/inventory/{item}/adjustments` | `inventory.adjust` | Adjustment stok: `quantity_change` (integer ≠ 0), `reason` (wajib), `idempotency_key` (UUID). New movement `201`; replay key sama `200`. Saldo negatif, item nonaktif, atau key lintas item ditolak `422`. |
 
 Permission `inventory.create` dan `inventory.update` ditambahkan pada Phase 6 karena katalog D-03 sebelumnya hanya memuat `inventory.read`, `inventory.adjust`, dan `inventory.stock_opname`. `inventory.stock_opname` belum dipakai; stock opname/waste termasuk Phase 12B. Penambahan permission ini disetujui bersama D-32.
+
+## 13. Phase 7 contract — Reporting
+
+Reporting MVP bersifat read-only dan dihitung langsung dari data transaksi (orders, payments, cash ledger, stock ledger) pada `app/Domain/Report/ReportService.php`; tidak ada tabel agregat, tidak ada penghitungan ulang dari harga catalog terkini, dan bukan accounting penuh.
+
+Definisi agregasi (baseline D-33):
+
+- **Penjualan** = order dengan status `PAID`. Nilai = snapshot `orders.total_amount`. Tanggal transaksi = tanggal konfirmasi pembayaran `PAID` pertama (`MIN(payments.paid_at)`), sehingga satu order dihitung tepat satu kali walau memiliki lebih dari satu payment. `PENDING`, `FAILED`, `CANCELLED`, dan payment `REFUNDED`/`PARTIALLY_REFUNDED` tidak dihitung sebagai penjualan (refund belum didukung, D-30).
+- **Laporan payment** memakai basis tanggal pencatatan payment (`payments.created_at`). `by_method` hanya payment `PAID` (total + jumlah transaksi per metode); `by_status` memuat semua status yang ada (termasuk `PENDING`/`FAILED`) sehingga pending/failed tidak pernah menyatu ke angka paid.
+- **Laporan operator** = agregasi order `PAID` per membership operator (`orders.membership_id`), basis tanggal sama dengan sales, diurutkan dari total terbesar.
+- **Cash reconciliation** = daftar Cash Session dengan `opened_at` dalam rentang: `opening_cash`, arus ledger per tipe (`CASH_SALE`, `CASH_IN`, `CASH_OUT`, `REFUND`, `ADJUSTMENT`), `net_movement`, `expected_cash = opening_cash + net_movement` (formula Phase 5), `actual_cash`, dan `variance = actual_cash - expected_cash`; session `OPEN` masih `null` pada actual/variance.
+- **Basic inventory report** = item inventory dengan `current_stock` (Σ seluruh ledger `stock_movements`), ringkasan movement dalam rentang (`movements_count`, `movements_net`), dan `is_low_stock` (aturan Phase 6). Kosong bila modul inventory tidak aktif.
+- **Periode** mengikuti jam aplikasi (`config app.timezone` = **Asia/Jakarta**, keputusan Product Owner 2026-11-11): `from`/`to` wajib (`YYYY-MM-DD`), `from <= to`, maksimal 92 hari. Batas hari laporan adalah batas hari WIB, sesuai jam operasional outlet Indonesia.
+
+Semua endpoint memakai permission `reports.read` (CASHIER tidak memilikinya pada katalog D-03, sehingga laporan hanya OWNER/MANAGER), scope Business dari membership, dan batasan outlet akses (D-05): OWNER melihat semua outlet Business, non-owner hanya outlet yang diberi akses; `outlet_id` di luar cakupan → `403`.
+
+| Method | Path | Permission | Keterangan |
+|---|---|---|---|
+| `GET` | `/api/v1/reports/sales` | `reports.read` | Params: `from`, `to` (wajib), `outlet_id`, `per_page`. Response: `summary` (`sales_total`, `transactions`) dan `days` per tanggal dalam rentang (hari tanpa transaksi tetap muncul dengan nilai 0; `average_order_value` dibulatkan ke bawah, `null` bila 0 transaksi). |
+| `GET` | `/api/v1/reports/payments` | `reports.read` | Params: `from`, `to`, `outlet_id`. Response: `by_method` (PAID saja) dan `by_status` (semua bucket). |
+| `GET` | `/api/v1/reports/operators` | `reports.read` | Params: `from`, `to`, `outlet_id`, `per_page`. Response terpaginate: `membership_id`, `operator_name`, `transactions`, `sales_total`. |
+| `GET` | `/api/v1/reports/cash` | `reports.read` | Params: `from`, `to`, `outlet_id`, `per_page`. Response terpaginate per session termasuk `movements_by_type`. |
+| `GET` | `/api/v1/reports/inventory` | `reports.read` | Params: `from`, `to`, `outlet_id`, `low_stock=true|false`, `per_page`. Response terpaginate per item: saldo, movement dalam rentang, `is_low_stock`. |
+
+Endpoint list terbatas pagination (`per_page` 1–100, default 20) atau lebar rentang (≤ 92 hari), sehingga response tidak terbuka. Validasi rentang dilaporkan `422` untuk parameter kurang, `from > to`, atau rentang > 92 hari.

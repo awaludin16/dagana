@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\RegionController;
+use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\RoleController;
 use Illuminate\Support\Facades\Route;
 
@@ -188,5 +189,22 @@ Route::prefix('v1')->group(function () {
         Route::post('/inventory/{item}/adjustments', [InventoryItemController::class, 'adjustments'])
             ->middleware('permission:inventory.adjust')
             ->name('api.v1.inventory.adjustments');
+
+        // Phase 7 — Reporting: agregat dari orders/payments/cash/inventory ledger.
+        Route::get('/reports/sales', [ReportController::class, 'sales'])
+            ->middleware('permission:reports.read')
+            ->name('api.v1.reports.sales');
+        Route::get('/reports/payments', [ReportController::class, 'payments'])
+            ->middleware('permission:reports.read')
+            ->name('api.v1.reports.payments');
+        Route::get('/reports/operators', [ReportController::class, 'operators'])
+            ->middleware('permission:reports.read')
+            ->name('api.v1.reports.operators');
+        Route::get('/reports/cash', [ReportController::class, 'cash'])
+            ->middleware('permission:reports.read')
+            ->name('api.v1.reports.cash');
+        Route::get('/reports/inventory', [ReportController::class, 'inventory'])
+            ->middleware('permission:reports.read')
+            ->name('api.v1.reports.inventory');
     });
 });

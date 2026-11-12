@@ -353,6 +353,27 @@ Setiap order lokal memiliki UUID/client-generated idempotency key yang unik, wak
 
 **Verifikasi:** `InventoryTest` mencakup create/read/update, adjustment masuk/keluar, rekonsiliasi ledger, low stock (termasuk batas threshold), retry idempotency, unique constraint database, penolakan saldo negatif/quantity nol/reason kosong, item nonaktif, isolasi Business/Outlet, permission CASHIER, dan penjualan tanpa inventory; seluruh suite backend lulus (lihat laporan implementasi).
 
+### D-33 — Baseline teknis Phase 7 (Reporting) — status: menunggu persetujuan Product Owner
+
+**Status:** usulan baseline hasil implementasi Phase 7. Definisi agregasi laporan berikut mengikuti requirement reporting (`docs/requirements/inventory-and-reporting.md`) dan acceptance criteria Phase 7; jika Product Owner memutuskan berbeda, endpoint dan test terkait harus direvisi bersama kontrak di `api-design.md` §13.
+
+**Baseline yang diimplementasikan:**
+
+1. **Definisi penjualan**: order `PAID` dengan nilai snapshot `total_amount`, tanggal transaksi = konfirmasi pembayaran `PAID` pertama (`MIN(payments.paid_at)`). `PENDING`/`FAILED`/`CANCELLED` tidak dihitung; tidak ada penghitungan ulang dengan harga catalog terkini.
+2. **Laporan payment** memisahkan `by_method` (hanya `PAID`) dari `by_status` (semua bucket), sehingga pending/failed tidak pernah digabung ke angka paid.
+3. **Operator report** = agregasi order `PAID` per membership; **cash reconciliation** menampilkan opening cash, arus ledger per tipe, expected cash (formula Phase 5/D-31), actual cash, dan variance; **basic inventory report** menampilkan saldo dari ledger plus ringkasan movement dalam rentang dan low stock.
+4. **Periode laporan mengikuti jam aplikasi** dengan rentang maksimal 92 hari. Zona waktu aplikasi adalah **Asia/Jakarta** (disetujui Product Owner 2026-11-11), sehingga batas hari laporan mengikuti jam operasional outlet Indonesia.
+5. **Endpoint read-only** `GET /api/v1/reports/{sales,payments,operators,cash,inventory}` dengan permission `reports.read`, scope Business dari membership, dan batasan outlet akses D-05.
+
+**Gate/keputusan yang belum final:**
+
+1. ~~**Zona waktu laporan**: baseline UTC mengikuti konfigurasi aplikasi; apakah laporan harian perlu memakai Asia/Jakarta (batas hari operasional Indonesia) belum diputuskan Product Owner. Perubahan di masa depan akan memengaruhi interpretasi `from`/`to` dan bucket harian.~~ **Ditutup (2026-11-11):** Product Owner memutuskan zona waktu aplikasi `Asia/Jakarta`; batas hari laporan mengikuti jam operasional WIB.
+2. **Refund**: belum didukung (D-30); saat endpoint refund disetujui, definisi `sales_total` (dikurangi refund atau tidak) perlu diputuskan ulang.
+3. **Akses report CASHIER**: katalog D-03 tidak memberi `reports.read` ke CASHIER; teks verifikasi D-05 menyebut report dengan batasan outlet. Jika owner ingin cashier melihat report outlet-nya, katalog harus direvisi.
+4. **`reports.export`** belum diimplementasikan (tidak ada endpoint export pada Phase 7).
+
+**Verifikasi:** `ReportTest` membandingkan setiap laporan dengan fixture dihitung manual (sales harian + ringkasan, payment by method/status, operator, cash reconciliation, inventory ledger + low stock), periode kosong, batas rentang, permission, serta isolasi business/outlet; seluruh suite backend (126 test) lulus.
+
 ## 9. Daftar Gate yang Tetap Harus Ditutup Sebelum Produksi
 
 Keputusan-keputusan di atas memberi arah yang cukup untuk desain dan pengembangan, tetapi item berikut membutuhkan bukti atau persetujuan khusus:
