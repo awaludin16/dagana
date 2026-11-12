@@ -25,9 +25,16 @@ import type {
   OrderCreateInput,
   OrderListParams,
   OrderPayment,
+  OperatorReportRow,
+  PaymentsReport,
   Product,
   ProductInput,
+  ReportCashRow,
+  ReportInventoryRow,
+  ReportListParams,
+  ReportRangeParams,
   RoleCatalog,
+  SalesReport,
   StockAdjustmentInput,
   StockMovement,
   UpdateMemberInput,
@@ -308,5 +315,25 @@ export const api = {
     return data<StockMovement>(
       await request(`/inventory/${id}/adjustments`, { method: 'POST', body: input }),
     )
+  },
+
+  async reportSales(params: ReportRangeParams) {
+    return data<SalesReport>(await request(`/reports/sales${queryString(params)}`))
+  },
+
+  async reportPayments(params: ReportRangeParams) {
+    return data<PaymentsReport>(await request(`/reports/payments${queryString(params)}`))
+  },
+
+  async reportOperators(params: ReportListParams) {
+    return page<OperatorReportRow>(await request(`/reports/operators${queryString(params)}`))
+  },
+
+  async reportCash(params: ReportListParams) {
+    return page<ReportCashRow>(await request(`/reports/cash${queryString(params)}`))
+  },
+
+  async reportInventory(params: ReportListParams) {
+    return page<ReportInventoryRow>(await request(`/reports/inventory${queryString(params)}`))
   },
 }

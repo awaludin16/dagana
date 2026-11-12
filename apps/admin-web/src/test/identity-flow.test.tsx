@@ -255,8 +255,7 @@ describe('identity and merchant onboarding', () => {
     fireEvent.change(screen.getByLabelText('Kata sandi'), { target: { value: 'password123' } })
     fireEvent.click(screen.getByRole('button', { name: 'Masuk' }))
 
-    expect(await screen.findByRole('heading', { name: 'Outlet' })).toBeVisible()
-    expect(screen.getByLabelText('Nama business')).toHaveValue('Kedai Pagi')
+    expect(await screen.findByRole('heading', { name: 'Kedai Pagi' })).toBeVisible()
     expect(localStorage.length).toBe(0)
 
     const loginCall = fetchMock.mock.calls.find(
