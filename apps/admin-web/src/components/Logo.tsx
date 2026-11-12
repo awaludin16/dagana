@@ -1,12 +1,21 @@
-export function Logo({ className }: { className?: string }) {
+import daganaIcon from '@/assets/dagana-icon.png'
+import daganaLogo from '@/assets/dagana-logo.png'
+import { cn } from '@/lib/utils'
+
+// Logo brand resmi dari docs/design-system: mode 'full' memakai dagana-logo.png
+// (icon + wordmark), mode 'icon' memakai dagana-icon.png untuk ruang sempit.
+export function BrandLogo({
+  mode = 'full',
+  className,
+}: {
+  mode?: 'full' | 'icon'
+  className?: string
+}) {
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      className={className}
-    >
-      <path d="M12.75 2.25a.75.75 0 00-1.5 0v1.5a.75.75 0 001.5 0v-1.5zM12 6a6 6 0 100 12 .75.75 0 000-1.5A4.5 4.5 0 1112 7.5a.75.75 0 000-1.5zM3.78 4.22a.75.75 0 00-1.06 1.06l1.06-1.06zm16.44 1.06a.75.75 0 00-1.06-1.06l1.06 1.06zM4.22 20.22a.75.75 0 001.06 1.06l-1.06-1.06zm15.56 1.06a.75.75 0 001.06-1.06l-1.06 1.06zM2.25 12a.75.75 0 000 1.5h1.5a.75.75 0 000-1.5h-1.5zm18 0a.75.75 0 000 1.5h1.5a.75.75 0 000-1.5h-1.5z" />
-    </svg>
+    <img
+      src={mode === 'full' ? daganaLogo : daganaIcon}
+      alt="Dagana"
+      className={cn('w-auto', className)}
+    />
   )
 }
