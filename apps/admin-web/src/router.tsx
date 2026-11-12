@@ -6,6 +6,7 @@ import { AuthLayout } from '@/components/layout/AuthLayout'
 import { LoginPage } from '@/pages/auth/LoginPage'
 import { RegisterPage } from '@/pages/auth/RegisterPage'
 import { OnboardingPage } from '@/pages/onboarding/OnboardingPage'
+import { LandingPage } from '@/pages/landing/LandingPage'
 import { DashboardPage } from '@/pages/workspace/DashboardPage'
 import { CatalogPage } from '@/pages/workspace/CatalogPage'
 import { MembersPage } from '@/pages/workspace/MembersPage'
@@ -20,6 +21,9 @@ import { ReportsPage } from '@/pages/workspace/ReportsPage'
 import { PosPage } from '@/pages/workspace/pos/PosPage'
 
 export const routes: RouteObject[] = [
+  // Landing page publik; pengguna terautentikasi tetap bisa melihatnya dan
+  // lanjut lewat tombol "Buka aplikasi".
+  { path: '/', element: <LandingPage /> },
   {
     path: '/',
     element: <RequireSession />,
@@ -27,8 +31,6 @@ export const routes: RouteObject[] = [
       {
         element: <AppLayout />,
         children: [
-          // '/' akan menjadi landing page publik; untuk sementara diarahkan ke dashboard.
-          { index: true, element: <Navigate to="/dashboard" replace /> },
           { path: 'dashboard', element: <DashboardPage /> },
           { path: 'onboarding', element: <OnboardingPage /> },
           { path: 'catalog', element: <CatalogPage /> },
