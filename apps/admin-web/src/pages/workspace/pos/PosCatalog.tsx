@@ -103,7 +103,7 @@ export function PosCatalog({
           <Button
             type="button"
             variant={categoryId === null ? 'default' : 'outline'}
-            className="min-h-10 shrink-0"
+            className="rounded-full min-h-10 shrink-0"
             aria-pressed={categoryId === null}
             disabled={attempt}
             onClick={() => onCategoryChange(null)}
@@ -115,7 +115,7 @@ export function PosCatalog({
               key={category.id}
               type="button"
               variant={categoryId === category.id ? 'default' : 'outline'}
-              className="min-h-10 shrink-0"
+              className="rounded-full min-h-10 shrink-0"
               aria-pressed={categoryId === category.id}
               disabled={attempt}
               onClick={() => onCategoryChange(category.id)}

@@ -143,7 +143,7 @@ describe('katalog (Phase 3)', () => {
     fireEvent.change(within(dialog).getByLabelText('Kategori'), {
       target: { value: String(category.id) },
     })
-    expect(within(dialog).getByLabelText('Harga (Rp)')).toHaveValue(15000)
+    expect(within(dialog).getByLabelText('Harga (Rp)')).toHaveValue('15.000')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Simpan menu' }))
     await waitFor(() => {
       expect(

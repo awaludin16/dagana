@@ -505,7 +505,7 @@ function PosWorkspace({ access }: { access: ReturnType<typeof useAccess> }) {
   }
 
   function exitPosMode() {
-    navigate('/')
+    navigate('/dashboard')
   }
 
   if (!canReadProducts && !attempt && receiptId === null && paymentId === null) {

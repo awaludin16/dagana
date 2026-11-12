@@ -289,7 +289,7 @@ describe('cash session (Phase 5)', () => {
     const alert = await screen.findByRole('alert')
     expect(within(alert).getByText(/Session gagal ditutup/)).toBeVisible()
     // Nilai input tetap ada agar pengguna tidak kehilangan isian.
-    expect(screen.getByLabelText('Uang fisik di laci (Rp)')).toHaveValue('2500000')
+    expect(screen.getByLabelText('Uang fisik di laci (Rp)')).toHaveValue('2.500.000')
   })
 
   it('menolak halaman kas tanpa permission cash.read', async () => {

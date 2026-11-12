@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { apiErrorMessage, applyApiErrors, getFieldError } from '@/lib/form-errors'
+import { formatRupiahInput } from '@/lib/order-format'
 import {
   categorySchema,
   productSchema,
@@ -152,11 +153,14 @@ function ProductFormDialog({ item, categories, isSaving, onClose, onSubmit }: Pr
           <FormField
             id="product-price"
             label="Harga (Rp)"
-            type="number"
-            min="0"
-            step="1"
             inputMode="numeric"
-            {...form.register('price', { valueAsNumber: true })}
+            autoComplete="off"
+            value={formatRupiahInput(String(form.watch('price') ?? ''))}
+            onChange={(event) => {
+              // Empty string jadi NaN agar tetap gagal validasi "Harga wajib diisi."
+              const digits = event.target.value.replace(/\D/g, '')
+              form.setValue('price', digits === '' ? Number.NaN : Number(digits))
+            }}
             error={getFieldError(form.formState.errors, 'price')}
             hint="Masukkan angka Rupiah utuh, tanpa desimal."
           />

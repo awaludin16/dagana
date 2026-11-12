@@ -16,7 +16,7 @@ import {
 } from '@/lib/cash-format'
 import { api } from '@/lib/api'
 import { apiErrorMessage } from '@/lib/form-errors'
-import { formatOrderDate, formatRupiah } from '@/lib/order-format'
+import { formatOrderDate, formatRupiah, formatRupiahInput } from '@/lib/order-format'
 import type { CashMovement, CashMovementInput, CashSession } from '@/types'
 
 const LEDGER_PER_PAGE = 50
@@ -275,8 +275,8 @@ function OpenSessionForm({
           inputMode="numeric"
           placeholder="0"
           hint="Angka rupiah penuh tanpa pecahan."
-          value={openingCash}
-          onChange={(event) => setOpeningCash(event.target.value)}
+          value={formatRupiahInput(openingCash)}
+          onChange={(event) => setOpeningCash(formatRupiahInput(event.target.value))}
         />
       </div>
       <Button type="submit" className="min-h-11" disabled={mutation.isPending}>
@@ -444,8 +444,11 @@ function MovementForm({
           label={type === 'ADJUSTMENT' ? 'Nominal (± Rp)' : 'Nominal (Rp)'}
           inputMode={type === 'ADJUSTMENT' ? 'text' : 'numeric'}
           placeholder={type === 'ADJUSTMENT' ? 'contoh: -5000' : '0'}
-          value={amount}
-          onChange={(event) => setAmount(event.target.value)}
+          value={type === 'ADJUSTMENT' ? amount : formatRupiahInput(amount)}
+          onChange={(event) =>
+            // ADJUSTMENT boleh negatif ("-5000"), tidak dilewati formatter digit.
+            setAmount(type === 'ADJUSTMENT' ? event.target.value : formatRupiahInput(event.target.value))
+          }
         />
         <FormField
           id={`movement-reason-${session.id}`}
@@ -575,8 +578,8 @@ function CloseSessionForm({
           label="Uang fisik di laci (Rp)"
           inputMode="numeric"
           placeholder="0"
-          value={actualCash}
-          onChange={(event) => setActualCash(event.target.value)}
+          value={formatRupiahInput(actualCash)}
+          onChange={(event) => setActualCash(formatRupiahInput(event.target.value))}
         />
         <FormField
           id={`variance-note-${session.id}`}

@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   formatRupiah,
+  formatRupiahInput,
   paymentStatusClass,
   paymentStatusLabel,
   formatNumber,
@@ -216,14 +217,14 @@ export function PosPayment({
             </label>
             <div className="flex min-h-14 items-center rounded-md border bg-background px-3 focus-within:ring-[3px] focus-within:ring-ring/50">
               <span className="mr-2 text-sm text-muted-foreground">Rp</span>
-              {/* Digit polos agar DOM value selalu integer string; format tampilan rupiah
-                  hanya pada ringkasan/receipt, bukan pada input yang dikirim ke server. */}
+              {/* State tetap menyimpan digit polos; format tampilan memakai pemisah ribuan
+                  titik, dan setTenderedValue membuang kembali semua non-digit. */}
               <input
                 id="pos-amount-tendered"
                 type="text"
                 inputMode="numeric"
                 autoComplete="off"
-                value={amountTendered}
+                value={formatRupiahInput(amountTendered)}
                 disabled={Boolean(attempt)}
                 onChange={(event) => setTenderedValue(event.target.value)}
                 className="min-w-0 flex-1 bg-transparent py-2 text-right text-xl font-bold tabular-nums outline-none"
@@ -362,7 +363,7 @@ export function PosPayment({
                   variant="outline"
                   className="min-h-7 rounded-3xl text-sm tabular-nums"
                   disabled={Boolean(attempt)}
-                  onClick={() => addCashAmount(Math.abs(Number(amountTendered) - total))}
+                  onClick={() => setTenderedValue(String(total))}
                 >
                   Uang Pas
                 </Button>
@@ -381,13 +382,31 @@ export function PosPayment({
               ),
             )}
           </div>
-          <div className="mt-auto grid grid-cols-3 gap-2 pt-3">
-            {CASH_KEYS.map((key) => (
+          <div className="mt-auto grid grid-cols-12 gap-2 pt-3">
+            {/* Baris 1 - 3 (9 item pertama, masing-masing 4 kolom dari 12 = 3 kolom/baris) */}
+            {CASH_KEYS.slice(0, 9).map((key) => (
               <Button
                 key={key}
                 type="button"
                 variant="outline"
-                className={`min-h-12 text-base tabular-nums ${key === 'clear' ? 'row-span-2 text-destructive' : ''}`}
+                className="col-span-4 min-h-12 text-base tabular-nums"
+                aria-label={`Nominal ${key}`}
+                disabled={Boolean(attempt)}
+                onClick={() => handleCashKey(key)}
+              >
+                {key}
+              </Button>
+            ))}
+
+            {/* Baris 4 (4 item terakhir, masing-masing 3 kolom dari 12 = 4 kolom/baris) */}
+            {CASH_KEYS.slice(9).map((key) => (
+              <Button
+                key={key}
+                type="button"
+                variant="outline"
+                className={`col-span-3 min-h-12 text-base tabular-nums ${
+                  key === 'clear' ? 'text-destructive' : ''
+                }`}
                 aria-label={
                   key === 'backspace'
                     ? 'Hapus digit terakhir'

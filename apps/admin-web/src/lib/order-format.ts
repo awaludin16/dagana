@@ -13,6 +13,12 @@ export function formatNumber(value: number): string {
   }).format(value)
 }
 
+// Input nominal rupiah: ambil digit saja lalu tampilkan dengan pemisah ribuan titik.
+export function formatRupiahInput(value: string): string {
+  const digits = value.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+}
+
 export function formatOrderDate(value: string | null): string {
   if (!value) return 'Waktu tidak tersedia'
 
