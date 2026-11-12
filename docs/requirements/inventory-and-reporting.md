@@ -69,6 +69,8 @@ Recipe bukan dependency untuk transaksi sederhana jika inventory/recipe belum di
 
 MVP reporting fokus pada informasi yang benar-benar berguna untuk owner.
 
+> **Implementasi (Phase 7):** laporan tersedia sebagai endpoint read-only `GET /api/v1/reports/{sales,payments,operators,cash,inventory}` dengan permission `reports.read`. Definisi agregasi (order `PAID` berbasis snapshot, pembatasan pending/failed, basis tanggal, periode maksimal 92 hari mengikuti jam aplikasi Asia/Jakarta) didokumentasikan di `docs/architecture/api-design.md` §13 dan D-33. `reports.export`, accounting penuh, dan AI analytics belum termasuk MVP.
+
 ### Sales
 
 - sales today
