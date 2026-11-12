@@ -72,7 +72,7 @@
 - `orders.read`, `orders.create`, `orders.update`, `orders.cancel`
 - `payments.read`, `payments.create`, `payments.refund`
 - `cash.read`, `cash.open`, `cash.cash_in`, `cash.cash_out`, `cash.close`, `cash.reconcile`
-- `inventory.read`, `inventory.adjust`, `inventory.stock_opname`
+- `inventory.read`, `inventory.create`, `inventory.update`, `inventory.adjust`, `inventory.stock_opname`
 - `reports.read`, `reports.export`
 - `qr.read`, `qr.manage`
 - `kitchen.read`, `kitchen.update_status`
@@ -321,6 +321,37 @@ Setiap order lokal memiliki UUID/client-generated idempotency key yang unik, wak
 3. Movement refund kas tidak mengubah status payment; transition refund payment tetap tertutup sampai aturan bisnisnya disepakati (D-30 tetap berlaku).
 
 **Verifikasi:** unit formula (`CashSessionFormulaTest`) dan feature open/close/movement/permission/isolasi (`CashSessionTest`) lulus; kontrak endpoint terdokumentasi di `docs/architecture/api-design.md` bagian Phase 5.
+
+### D-32 — Baseline teknis Phase 6 (Basic Inventory) — status: disetujui
+
+**Status:** disetujui Product Owner (2026-11-11). Keputusan berikut menjadi baseline Phase 6; perubahan di masa depan harus melalui revisi keputusan dan migration/test terkait.
+
+**Baseline yang diimplementasikan:**
+
+- `inventory_items` dimiliki satu Business+Outlet (`business_id`, `outlet_id`), dengan `name`, `unit` (base unit string), `low_stock_threshold` nullable, dan `is_active`. Tidak ada item master lintas outlet.
+- Kuantitas berupa integer pada base unit item. Unit conversion, pack/box conversion, pecahan, dan costing tidak termasuk Phase 6.
+- `stock_movements` append-only; saldo item = `SUM(quantity_change)`. Phase 6 hanya menulis tipe `ADJUSTMENT` bertanda dengan `reason` wajib dan aktor `membership_id`.
+- Adjustment memakai `lockForUpdate` pada item, menolak saldo negatif, dan memakai `idempotency_key` UUID unik per Business. Replay key yang sama mengembalikan movement lama; key lintas item ditolak.
+- Low stock dihitung server-side: `low_stock_threshold != null && current_stock <= low_stock_threshold`. Threshold disimpan per item; tidak ada notifikasi otomatis pada fase ini.
+- Item tidak dihapus permanen; deaktivasi memakai `PATCH is_active=false` (permission `inventory.update`) agar histori movement tetap valid. `unit` dikunci setelah item memiliki movement agar kuantitas historis tidak berubah makna.
+- Permission `inventory.create` dan `inventory.update` ditambahkan ke katalog D-03. Role preset tidak berubah selain Manager otomatis menerima permission baru; CASHIER tetap tidak memiliki akses inventory.
+
+**Keputusan yang dikunci (disetujui Product Owner, 2026-11-11):**
+
+1. **Scope item per Outlet** dipertahankan. Item master Business dengan saldo per Outlet tidak dibuat pada Phase 6.
+2. **Stok negatif ditolak** pada adjustment Phase 6.
+3. **Permission `inventory.create`/`inventory.update`** dipakai untuk pengelolaan item.
+4. **Kuantitas integer pada base unit** dipakai; 0,5 kg dicatat sebagai 500 g. Decimal quantity dan konversi satuan menunggu keputusan lanjutan.
+5. **Pengurangan stok dari penjualan ditunda** sampai mapping produk → bahan/recipe (Phase 12A) disepakati.
+
+**Gate yang belum ditutup:**
+
+1. **Pengurangan stok dari penjualan** belum diimplementasikan karena mapping produk → bahan (recipe/BOM) belum disepakati; recipe/BOM dijadwalkan Phase 12A. Checkout tidak boleh mengarang konsumsi bahan.
+2. **Unit conversion dan costing** tetap di luar scope; laporan COGS tidak boleh diklaim tersedia. D-09/D-10 tetap menjadi arah untuk fase lanjutan.
+3. **Stock opname/waste** belum diimplementasikan; termasuk Phase 12B.
+4. **Test paralel nyata** untuk adjustment serentak belum dijalankan; proteksi saat ini adalah row lock, unique constraint, dan test constraint database.
+
+**Verifikasi:** `InventoryTest` mencakup create/read/update, adjustment masuk/keluar, rekonsiliasi ledger, low stock (termasuk batas threshold), retry idempotency, unique constraint database, penolakan saldo negatif/quantity nol/reason kosong, item nonaktif, isolasi Business/Outlet, permission CASHIER, dan penjualan tanpa inventory; seluruh suite backend lulus (lihat laporan implementasi).
 
 ## 9. Daftar Gate yang Tetap Harus Ditutup Sebelum Produksi
 

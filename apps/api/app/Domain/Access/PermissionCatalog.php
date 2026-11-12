@@ -50,6 +50,8 @@ final class PermissionCatalog
         'cash.close',
         'cash.reconcile',
         'inventory.read',
+        'inventory.create',
+        'inventory.update',
         'inventory.adjust',
         'inventory.stock_opname',
         'reports.read',

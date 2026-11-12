@@ -261,3 +261,29 @@ Keputusan yang dikunci untuk Phase 5 (disetujui Product Owner 2026-11-10, D-31):
 1. **Checkout cash tanpa session aktif** diizinkan dan berjalan tanpa movement kas (order tetap `PAID`). Kebijakan wajib-session tidak diberlakukan.
 2. **Movement `REFUND`/`ADJUSTMENT` memakai permission `cash.reconcile`** karena katalog permission MVP tidak memiliki `cash.refund`; konsekuensi: CASHIER tidak dapat mencatat refund/adjustment kas.
 3. **Movement refund kas ≠ transition refund payment.** Refund kas adalah pengeluaran kas yang direkam sebagai ledger; status payment `REFUNDED` tetap belum didukung (D-30) sampai aturan bisnis refund payment disepakati.
+
+## 12. Phase 6 contract — Basic Inventory
+
+Basic inventory bersifat opsional dan tidak menjadi prasyarat POS. Item dimiliki satu Business+Outlet (`inventory_items`). Kuantitas disimpan sebagai integer pada base unit item (`unit` berupa string, mis. `g`, `ml`, `pcs`); **tidak ada unit conversion** pada fase ini. Costing juga tidak termasuk.
+
+Aturan saldo dan movement:
+
+- `stock_movements` adalah ledger append-only. Saldo item **tidak disimpan sebagai kolom**; `current_stock = Σ quantity_change` seluruh movement item tersebut, sehingga saldo selalu dapat direkonsiliasi dari ledger.
+- Movement Phase 6 hanya `ADJUSTMENT` dengan `quantity_change` bertanda (positif masuk, negatif keluar), `reason` wajib, `membership_id` sebagai aktor, dan timestamp. Hard delete movement tidak tersedia.
+- Adjustment berjalan dalam transaksi database dengan `lockForUpdate` pada baris item; saldo diperiksa di dalam lock. Adjustment yang menghasilkan saldo negatif ditolak `422` (mengikuti baseline D-10 yang masih menunggu persetujuan Product Owner).
+- `idempotency_key` wajib UUID dan unik per Business (`unique (business_id, idempotency_key)`). Request ulang dengan key sama mengembalikan movement yang sama (`200`, bukan `201`) tanpa menambah baris; key yang sama untuk item lain ditolak `422`.
+- Item dinonaktifkan dengan `PATCH is_active=false`, bukan dihapus, agar referensi movement historis tetap valid. Item nonaktif menolak adjustment baru tetapi masih dapat dibaca.
+- Low stock: item dianggap low stock bila `low_stock_threshold` tidak null dan `current_stock <= low_stock_threshold`. Item tanpa threshold tidak pernah masuk low stock.
+
+**Pengurangan stok dari penjualan belum diimplementasikan.** Belum ada mapping resmi produk → bahan/recipe (recipe/BOM adalah Phase 12A), sehingga checkout tidak mengubah stok. Penjualan biasa tetap berjalan meskipun merchant membuat item inventory; integrasi hanya boleh ditambahkan setelah aturan konsumsi disetujui.
+
+| Method | Path | Permission | Keterangan |
+|---|---|---|---|
+| `GET` | `/api/v1/inventory` | `inventory.read` | Daftar item terpaginate; filter `outlet_id`, `q` (nama), `is_active`, `low_stock=true`. Non-owner hanya melihat outlet dalam cakupan aksesnya (D-05). Response memuat `current_stock` dan `is_low_stock`. |
+| `POST` | `/api/v1/inventory` | `inventory.create` | Buat item: `outlet_id` (wajib, milik Business sendiri), `name`, `unit`, `low_stock_threshold` (nullable, ≥ 0), `is_active`. |
+| `GET` | `/api/v1/inventory/{item}` | `inventory.read` | Detail item + saldo. `404` di luar Business, `403` bila outlet tidak dalam cakupan akses. |
+| `PATCH` | `/api/v1/inventory/{item}` | `inventory.update` | Update `name`, `unit`, `low_stock_threshold`, `is_active`. Tidak ada perubahan outlet atau hard delete. `unit` tidak dapat diubah setelah item memiliki movement (agar arti kuantitas ledger tidak berubah). |
+| `GET` | `/api/v1/inventory/{item}/movements` | `inventory.read` | Ledger movement item terpaginate, terbaru lebih dulu. |
+| `POST` | `/api/v1/inventory/{item}/adjustments` | `inventory.adjust` | Adjustment stok: `quantity_change` (integer ≠ 0), `reason` (wajib), `idempotency_key` (UUID). New movement `201`; replay key sama `200`. Saldo negatif, item nonaktif, atau key lintas item ditolak `422`. |
+
+Permission `inventory.create` dan `inventory.update` ditambahkan pada Phase 6 karena katalog D-03 sebelumnya hanya memuat `inventory.read`, `inventory.adjust`, dan `inventory.stock_opname`. `inventory.stock_opname` belum dipakai; stock opname/waste termasuk Phase 12B. Penambahan permission ini disetujui bersama D-32.

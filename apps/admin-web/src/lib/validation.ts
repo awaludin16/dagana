@@ -58,6 +58,19 @@ export const productSchema = z.object({
   is_available: z.boolean(),
 })
 
+export const inventoryItemSchema = z.object({
+  outlet_id: z.number({ message: 'Pilih outlet.' }).int().positive('Pilih outlet terlebih dahulu.'),
+  name: requiredText('Nama item'),
+  unit: requiredText('Satuan', 20),
+  low_stock_threshold: z
+    .number({ message: 'Ambang low stock harus berupa angka.' })
+    .int('Ambang low stock harus bilangan bulat.')
+    .min(0, 'Ambang low stock tidak boleh negatif.')
+    .max(4294967295, 'Ambang low stock terlalu besar.')
+    .nullable(),
+  is_active: z.boolean(),
+})
+
 export const outletSchema = z.object({
   name: requiredText('Nama outlet'),
   phone: optionalText(30),
@@ -105,6 +118,7 @@ export type RegisterFormValues = z.infer<typeof registerSchema>
 export type BusinessNameFormValues = z.infer<typeof businessNameSchema>
 export type CategoryFormValues = z.infer<typeof categorySchema>
 export type ProductFormValues = z.infer<typeof productSchema>
+export type InventoryItemFormValues = z.infer<typeof inventoryItemSchema>
 export type OutletFormValues = z.infer<typeof outletSchema>
 export type OnboardingFormValues = z.infer<typeof onboardingSchema>
 export type MemberFormValues = z.infer<typeof memberSchema>

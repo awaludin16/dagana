@@ -11,7 +11,11 @@ import type {
   CashSessionListParams,
   CloseCashSessionInput,
   CreateBusinessInput,
+  CreateInventoryItemInput,
   CreateMemberInput,
+  InventoryItem,
+  InventoryItemInput,
+  InventoryListParams,
   Me,
   Member,
   OpenCashSessionInput,
@@ -24,6 +28,8 @@ import type {
   Product,
   ProductInput,
   RoleCatalog,
+  StockAdjustmentInput,
+  StockMovement,
   UpdateMemberInput,
 } from '@/types'
 
@@ -275,6 +281,32 @@ export const api = {
   async closeCashSession(sessionId: number, input: CloseCashSessionInput) {
     return data<CashSession>(
       await request(`/cash-sessions/${sessionId}/close`, { method: 'POST', body: input }),
+    )
+  },
+
+  async inventoryItems(params: InventoryListParams = {}) {
+    return page<InventoryItem>(await request(`/inventory${queryString(params)}`))
+  },
+
+  async inventoryItem(id: number) {
+    return data<InventoryItem>(await request(`/inventory/${id}`))
+  },
+
+  async createInventoryItem(input: CreateInventoryItemInput) {
+    return data<InventoryItem>(await request('/inventory', { method: 'POST', body: input }))
+  },
+
+  async updateInventoryItem(id: number, input: Partial<InventoryItemInput>) {
+    return data<InventoryItem>(await request(`/inventory/${id}`, { method: 'PATCH', body: input }))
+  },
+
+  async inventoryMovements(id: number, params: InventoryListParams = {}) {
+    return page<StockMovement>(await request(`/inventory/${id}/movements${queryString(params)}`))
+  },
+
+  async adjustInventoryStock(id: number, input: StockAdjustmentInput) {
+    return data<StockMovement>(
+      await request(`/inventory/${id}/adjustments`, { method: 'POST', body: input }),
     )
   },
 }
