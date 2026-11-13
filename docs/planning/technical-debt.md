@@ -36,3 +36,13 @@ Daftar masalah teknis yang sudah ada tetapi **tidak diselesaikan pada task/fase 
 **Batasan:** lakukan hanya formatting (`pint`), bukan refactor; jalankan `vendor/bin/pint <file>` per file, lalu `php artisan test` untuk membuktikan tidak ada perubahan perilaku.
 
 **Status:** Selesai (2026-11-13). Eksekusi sesuai batasan: `pint` dijalankan pada 7 file (formatting saja, diff 26 baris), `pint --test` khusus 7 file lalu seluruh proyek lulus (151 file), dan `php artisan test` dijalankan ulang: 126 passed (907 assertions), identik dengan sebelum perubahan format.
+
+## TD-002 — DELETE outlet dengan data historis mengembalikan 500 (2026-11-13)
+
+**Kategori:** Bug (error handling), ditemukan saat audit Phase 1.
+
+**Detail:** `DeleteOutletAction` hanya menjaga invariant "minimal satu outlet per Business". Outlet yang sudah punya order, cash session, atau inventory item tetap coba dihapus dan baru ditolak oleh FK `restrictOnDelete` di database, sehingga client menerima error 500 (QueryException) alih-alih 422 yang jelas. Integritas data aman (history tidak bisa terhapus), tapi kontrak error tidak konsisten dengan konvensi validasi API.
+
+**Instruksi Product Owner:** tambahkan guard eksplisit di `DeleteOutletAction` (tolak 422 bila outlet memiliki order/cash session/inventory), atau putuskan outlet berriwayat tidak boleh dihapus dan gunakan deaktivasi. Tambahkan test untuk kedua jalur.
+
+**Status:** Terbuka.

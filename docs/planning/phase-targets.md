@@ -67,21 +67,24 @@ Belum membangun semua modul bisnis, belum men-deploy ke production, belum mengim
 
 # Phase 1 — Identity, Business, Outlet
 
+> **Status (2026-11-13): Selesai.**
+> Audit ulang menjalankan test Phase 1 (`AuthTest`, `BusinessOnboardingTest`, `BusinessTenantIsolationTest`, `MembershipAccessTest`): 25 passed (216 assertions). Implementasi mengikuti baseline konfirmasi Phase 1 di decision log (Sanctum dual auth, business `name` saja, outlet `name`/`phone`/`address` komposit, wilayah dengan cache + circuit breaker). Catatan gate: entri "Konfirmasi teknis backend Phase 1" di decision log masih berstatus rekomendasi v1 dan belum ada entri persetujuan eksplisit Product Owner (bandingkan D-31/D-32 yang sudah disetujui formal).
+
 ## Target pekerjaan
 
 Menyediakan identitas pengguna dasar dan onboarding bisnis: registrasi, login, logout, profil pengguna, pembuatan Business, pembuatan Outlet pertama, serta pengaturan Business dan Outlet dasar. Fondasi hubungan User–Business–Outlet harus mendukung model Dagana tanpa menganggap user, business, dan outlet sebagai entitas yang sama.
 
 ## Acceptance criteria
 
-- [ ] User dapat registrasi dengan input valid; input tidak valid menghasilkan respons validasi yang konsisten dan tidak membuat record parsial.
-- [ ] User dapat login menggunakan mekanisme autentikasi yang dipilih dan logout sesuai mekanisme tersebut.
-- [ ] Endpoint profil hanya mengembalikan informasi pengguna yang berhak dilihat dan tidak menampilkan hash password atau secret.
-- [ ] User yang berhasil onboarding dapat membuat satu Business dan Outlet pertama.
-- [ ] Pembuatan Business, Outlet, dan relasi awal yang perlu konsisten dilakukan secara atomik; kegagalan di tengah tidak meninggalkan onboarding dalam keadaan rusak.
-- [ ] User yang belum memiliki akses tidak dapat membaca atau mengubah Business/Outlet pengguna lain dengan mengganti ID pada URL atau payload.
-- [ ] Pengaturan dasar Business dan Outlet dapat dibuat/dibaca/diperbarui sesuai scope yang disetujui.
-- [ ] Minimal satu feature test mencakup alur registrasi/login dan satu test mencakup pembuatan Business + Outlet.
-- [ ] Test negatif membuktikan akses lintas-business ditolak.
+- [x] User dapat registrasi dengan input valid; input tidak valid menghasilkan respons validasi yang konsisten dan tidak membuat record parsial. — Lulus; `test_invalid_registration_creates_no_user`, `test_duplicate_email_is_rejected_case_insensitively` (duplicated user dibuat di dalam transaction bersama token).
+- [x] User dapat login menggunakan mekanisme autentikasi yang dipilih dan logout sesuai mekanisme tersebut. — Lulus; mobile Bearer token (`login`, `logout_revokes_only_the_current_token`) dan web SPA session HttpOnly (`web_login`, `web_logout_invalidates_the_session`) sesuai keputusan decision log 2026-11-01.
+- [x] Endpoint profil hanya mengembalikan informasi pengguna yang berhak dilihat dan tidak menampilkan hash password atau secret. — Lulus; `UserResource` whitelist field + `test_profile_returns_only_safe_user_fields`.
+- [x] User yang berhasil onboarding dapat membuat satu Business dan Outlet pertama. — Lulus; `POST /api/v1/businesses` + `CreateBusinessAction`.
+- [x] Pembuatan Business, Outlet, dan relasi awal yang perlu konsisten dilakukan secara atomik; kegagalan di tengah tidak meninggalkan onboarding dalam keadaan rusak. — Lulus; `DB::transaction` + `test_onboarding_rolls_back_when_membership_creation_fails` + `test_invalid_onboarding_leaves_no_partial_records`.
+- [x] User yang belum memiliki akses tidak dapat membaca atau mengubah Business/Outlet pengguna lain dengan mengganti ID pada URL atau payload. — Lulus; `BusinessTenantIsolationTest` (4 test) memakai scope `Business::visibleTo()`/`visibleToOutlet`.
+- [x] Pengaturan dasar Business dan Outlet dapat dibuat/dibaca/diperbarui sesuai scope yang disetujui. — Lulus; business `name`, outlet `name`/`phone`/`address` komposit; `test_business_and_outlet_settings_can_be_read_and_updated` + `test_invalid_settings_update_is_rejected_without_changing_data`.
+- [x] Minimal satu feature test mencakup alur registrasi/login dan satu test mencakup pembuatan Business + Outlet. — Lulus; `AuthTest` (10 test) dan `BusinessOnboardingTest` (5 test).
+- [x] Test negatif membuktikan akses lintas-business ditolak. — Lulus; isolasi business/outlet pada `BusinessTenantIsolationTest` dan `MembershipAccessTest` (owner tidak mengelola membership business lain).
 
 ## Cara verifikasi / bukti
 
