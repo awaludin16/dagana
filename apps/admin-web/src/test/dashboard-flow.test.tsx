@@ -154,7 +154,8 @@ function renderDashboard() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
-  const router = createMemoryRouter(routes, { initialEntries: ['/'] })
+  // Dashboard berada di /dashboard sejak path / menjadi landing page publik.
+  const router = createMemoryRouter(routes, { initialEntries: ['/dashboard'] })
 
   return render(
     <QueryClientProvider client={queryClient}>
