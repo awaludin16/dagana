@@ -24,6 +24,25 @@ class DeleteOutletAction
                 ]);
             }
 
+            // Guard eksplisit: FK restrictOnDelete sudah melindungi data historis,
+            // tapi diterjemahkan ke 422 agar client tidak menerima 500.
+            $hasHistory = collect([
+                'orders',
+                'payments',
+                'cash_sessions',
+                'cash_movements',
+                'inventory_items',
+                'stock_movements',
+            ])->contains(fn (string $table): bool => DB::table($table)
+                ->where('outlet_id', $outlet->id)
+                ->exists());
+
+            if ($hasHistory) {
+                throw ValidationException::withMessages([
+                    'outlet' => 'Outlet memiliki data historis (order, pembayaran, kas, atau inventory) dan tidak dapat dihapus.',
+                ]);
+            }
+
             $outlet->delete();
         });
     }

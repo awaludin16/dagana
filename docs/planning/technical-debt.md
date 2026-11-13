@@ -45,4 +45,4 @@ Daftar masalah teknis yang sudah ada tetapi **tidak diselesaikan pada task/fase 
 
 **Instruksi Product Owner:** tambahkan guard eksplisit di `DeleteOutletAction` (tolak 422 bila outlet memiliki order/cash session/inventory), atau putuskan outlet berriwayat tidak boleh dihapus dan gunakan deaktivasi. Tambahkan test untuk kedua jalur.
 
-**Status:** Terbuka.
+**Status:** Selesai (2026-11-14). Guard eksplisit ditambahkan di `DeleteOutletAction`: outlet dengan data di `orders`, `payments`, `cash_sessions`, `cash_movements`, `inventory_items`, atau `stock_movements` ditolak 422 dengan pesan jelas sebelum FK melarang. Test baru: `test_outlet_with_order_history_cannot_be_deleted` dan `test_outlet_with_inventory_history_cannot_be_deleted` (jalur cash menempuh mekanisme guard yang sama). Verifikasi: `OutletManagementTest` 6 passed, suite penuh 128 passed (915 assertions), `pint --test` lulus.

@@ -4,6 +4,8 @@ namespace Tests\Feature\Api\V1;
 
 use App\Models\Business;
 use App\Models\BusinessMembership;
+use App\Models\InventoryItem;
+use App\Models\Order;
 use App\Models\Outlet;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -71,6 +73,36 @@ class OutletManagementTest extends TestCase
             ->assertJsonValidationErrors('outlet');
 
         $this->assertDatabaseHas('outlets', ['id' => $outlet->id]);
+    }
+
+    public function test_outlet_with_order_history_cannot_be_deleted(): void
+    {
+        [$owner, $business, $outlet] = $this->merchant();
+        $second = Outlet::factory()->for($business)->create();
+        Order::factory()->for($business)->create(['outlet_id' => $second->id]);
+
+        Sanctum::actingAs($owner);
+
+        $this->deleteJson("/api/v1/outlets/{$second->id}")
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('outlet');
+
+        $this->assertDatabaseHas('outlets', ['id' => $second->id]);
+    }
+
+    public function test_outlet_with_inventory_history_cannot_be_deleted(): void
+    {
+        [$owner, $business] = $this->merchant();
+        $second = Outlet::factory()->for($business)->create();
+        InventoryItem::factory()->for($business)->create(['outlet_id' => $second->id]);
+
+        Sanctum::actingAs($owner);
+
+        $this->deleteJson("/api/v1/outlets/{$second->id}")
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('outlet');
+
+        $this->assertDatabaseHas('outlets', ['id' => $second->id]);
     }
 
     public function test_outlet_delete_is_scoped_to_the_authenticated_business(): void
