@@ -29,25 +29,30 @@ Kriteria berikut berlaku untuk semua fase yang menyentuh kode atau konfigurasi:
 
 # Phase 0 — Foundation
 
+> **Status (2026-11-13): Selesai dengan pengecualian yang disetujui.**
+> Audit ulang memverifikasi ulang API test (126 passed), health check, persistensi volume, dan secret hygiene; regresi 4 test admin-web diperbaiki (root cause: dashboard dipindah dari `/` ke `/dashboard`, test diarahkan ke `/dashboard`); TD-001 (pint 7 file) dieksekusi dan ditutup.
+> Pengecualian: (1) CI pipeline baru ditambahkan (`.github/workflows/ci.yml`: pint + test API, lint/type-check/test/build web; Flutter di-skip) tetapi belum pernah dijalankan di runner — bukti lulus baru ada pada push/PR pertama; (2) `flutter analyze`/`flutter test` tidak dapat diverifikasi ulang pada environment ini (SDK Linux WSL tidak tersedia) — verifikasi terakhir lulus 2026-11-01, re-verifikasi di-defer atas keputusan Product Owner.
+
 ## Target pekerjaan
 
 Membangun fondasi repository Dagana dari nol agar development dapat dijalankan ulang secara konsisten. Ini mencakup inisialisasi struktur monorepo, Docker development, scaffold Laravel/React/Flutter sesuai stack, environment configuration, standar agent, serta pemeriksaan otomatis awal. Pada baseline saat ini, Docker dipusatkan pada Laravel API, PostgreSQL, dan Redis; React/Vite dan Flutter/Dart toolchain diinisialisasi pada workspace masing-masing.
 
 ## Acceptance criteria
 
-- [ ] Struktur repository dan lokasi aplikasi terdokumentasi; asumsi awal monorepo (`apps/api`, `apps/admin-web`, `apps/customer-web`, `apps/pos-mobile` untuk Flutter) cocok dengan repository aktual atau telah dikoreksi dalam dokumentasi.
-- [ ] Perintah Docker Compose untuk validasi konfigurasi berhasil dijalankan tanpa error.
-- [ ] Pada repository baru/checkout bersih, langkah setup yang terdokumentasi dapat diikuti untuk membangun dan menjalankan layanan development yang didefinisikan.
-- [ ] Workspace `apps/api`, `apps/admin-web`, `apps/customer-web`, dan `apps/pos-mobile` dibuat dari scaffold resmi Laravel, React/Vite, dan Flutter; versi SDK/toolchain dicatat.
-- [ ] Aplikasi Flutter dapat menjalankan `flutter analyze` dan `flutter test`; aplikasi web dapat menjalankan lint/type-check/build/test yang disediakan; API dapat menjalankan test awal.
-- [ ] `pubspec.lock` untuk aplikasi Flutter dicatat di version control; secret dan file `.env` tidak dicatat.
-- [ ] Laravel API dapat melakukan koneksi ke PostgreSQL menggunakan service name jaringan Compose, bukan `localhost` dari dalam container.
-- [ ] Laravel dapat berkomunikasi dengan Redis bila service tersebut diaktifkan dalam konfigurasi development.
-- [ ] PostgreSQL menggunakan volume persisten; menghentikan lalu menyalakan ulang container tidak menghilangkan data uji.
-- [ ] Health check atau pemeriksaan yang terdokumentasi dapat membedakan layanan siap digunakan dari layanan yang belum siap.
-- [ ] `.env`, kredensial, dan file hasil build/cache tidak ikut ter-commit; contoh environment tidak memuat secret nyata.
-- [ ] Ada perintah test/lint awal yang terdokumentasi dan dapat dijalankan pada komponen yang sudah ada. Komponen yang belum dibuat ditandai sebagai belum berlaku, bukan dilaporkan lulus.
-- [ ] `AGENTS.md`, standar engineering, panduan development, dan aturan Bahasa Indonesia tersedia di repository.
+- [x] Struktur repository dan lokasi aplikasi terdokumentasi; asumsi awal monorepo (`apps/api`, `apps/admin-web`, `apps/customer-web`, `apps/pos-mobile` untuk Flutter) cocok dengan repository aktual atau telah dikoreksi dalam dokumentasi. — Lulus; `docs/operations/development-environment.md` §2.
+- [x] Perintah Docker Compose untuk validasi konfigurasi berhasil dijalankan tanpa error. — Lulus; `docker compose config` (2026-11-01) dan stack berjalan healthy (audit 2026-11-13).
+- [x] Pada repository baru/checkout bersih, langkah setup yang terdokumentasi dapat diikuti untuk membangun dan menjalankan layanan development yang didefinisikan. — Lulus (terverifikasi 2026-11-01; audit 2026-11-13 tidak mengulang dari checkout bersih).
+- [x] Workspace `apps/api`, `apps/admin-web`, `apps/customer-web`, dan `apps/pos-mobile` dibuat dari scaffold resmi Laravel, React/Vite, dan Flutter; versi SDK/toolchain dicatat. — Lulus; tabel toolchain §5.
+- [x] Aplikasi Flutter dapat menjalankan `flutter analyze` dan `flutter test`; aplikasi web dapat menjalankan lint/type-check/build/test yang disediakan; API dapat menjalankan test awal. — Lulus: API 126 test passed (audit 2026-11-13); web lint/type-check lulus dan test 64/64 lulus setelah perbaikan regresi `dashboard-flow.test.tsx`; Flutter lulus 2026-11-01, re-verifikasi di-defer (SDK WSL tidak tersedia).
+- [x] `pubspec.lock` untuk aplikasi Flutter dicatat di version control; secret dan file `.env` tidak dicatat. — Lulus; hanya `.env.example`/`dev.example.json` ter-commit tanpa secret nyata.
+- [x] Laravel API dapat melakukan koneksi ke PostgreSQL menggunakan service name jaringan Compose, bukan `localhost` dari dalam container. — Lulus; `DB_HOST=postgres` di Compose.
+- [x] Laravel dapat berkomunikasi dengan Redis bila service tersebut diaktifkan dalam konfigurasi development. — Lulus; cache/session/queue = redis, health check `redis: ok`.
+- [x] PostgreSQL menggunakan volume persisten; menghentikan lalu menyalakan ulang container tidak menghilangkan data uji. — Lulus; restart terverifikasi 2026-11-01, data lama masih ada pada audit 2026-11-13.
+- [x] Health check atau pemeriksaan yang terdokumentasi dapat membedakan layanan siap digunakan dari layanan yang belum siap. — Lulus; `/up` (liveness) vs `/api/v1/health` (readiness DB+Redis), `200` dengan `database`/`redis` ok.
+- [x] `.env`, kredensial, dan file hasil build/cache tidak ikut ter-commit; contoh environment tidak memuat secret nyata. — Lulus.
+- [x] Ada perintah test/lint awal yang terdokumentasi dan dapat dijalankan pada komponen yang sudah ada. Komponen yang belum dibuat ditandai sebagai belum berlaku, bukan dilaporkan lulus. — Lulus; API (`php artisan test`, `pint --test`), web (`npm run lint/type-check/test`), Flutter (`flutter analyze/test`).
+- [x] `AGENTS.md`, standar engineering, panduan development, dan aturan Bahasa Indonesia tersedia di repository. — Lulus.
+- [x] CI pipeline minimal tersedia: `.github/workflows/ci.yml` menjalankan `pint --test` + `php artisan test` (API, PostgreSQL service) serta lint/type-check/test/build untuk admin-web dan customer-web. Flutter belum masuk pipeline. **Catatan:** workflow baru dibuat (2026-11-13) dan belum pernah dijalankan di GitHub runner; status "lulus" baru dapat diklaim setelah run pertama.
 
 ## Cara verifikasi / bukti
 

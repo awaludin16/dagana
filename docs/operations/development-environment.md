@@ -183,4 +183,4 @@ Verifikasi render aplikasi POS 2026-11-01: target Android belum dapat dijalankan
 
 Verifikasi browser 2026-11-01: dev server `apps/admin-web` (port 5173) dan `apps/customer-web` (port 5174) melayani `200`, deep link route tak dikenal menampilkan halaman not-found, dan render diperiksa dengan Edge headless (`--dump-dom` + screenshot) untuk judul, badge, skip link, dan API base URL.
 
-Yang belum dijalankan atau belum tersedia: menjalankan aplikasi mobile di emulator/perangkat fisik; test end-to-end; CI pipeline; serta konfigurasi production.
+Yang belum dijalankan atau belum tersedia: menjalankan aplikasi mobile di emulator/perangkat fisik; test end-to-end; konfigurasi production. CI pipeline minimal (`​.github/workflows/ci.yml`: pint + test API, lint/type-check/test/build web) ditambahkan 2026-11-13 dan belum pernah dijalankan di GitHub runner.
