@@ -39,12 +39,12 @@ class ReportService
             ->where('o.status', Order::STATUS_PAID)
             ->where('p.paid_date', '>=', $from->startOfDay())
             ->where('p.paid_date', '<=', $to->endOfDay())
-            ->when($outletId !== null, fn($q) => $q->where('o.outlet_id', $outletId))
-            ->when($outletIds !== null, fn($q) => $q->whereIn('o.outlet_id', $outletIds))
+            ->when($outletId !== null, fn ($q) => $q->where('o.outlet_id', $outletId))
+            ->when($outletIds !== null, fn ($q) => $q->whereIn('o.outlet_id', $outletIds))
             ->selectRaw('DATE(p.paid_date) as date, COUNT(*) as transactions, COALESCE(SUM(o.total_amount), 0) as sales_total')
             ->groupBy('date')
             ->get()
-            ->mapWithKeys(fn(object $row): array => [
+            ->mapWithKeys(fn (object $row): array => [
                 (string) $row->date => [
                     'sales_total' => (int) $row->sales_total,
                     'transactions' => (int) $row->transactions,
@@ -90,14 +90,14 @@ class ReportService
             ->where('business_id', $businessId)
             ->where('created_at', '>=', $from->startOfDay())
             ->where('created_at', '<=', $to->endOfDay())
-            ->when($outletId !== null, fn($q) => $q->where('outlet_id', $outletId))
-            ->when($outletIds !== null, fn($q) => $q->whereIn('outlet_id', $outletIds))
+            ->when($outletId !== null, fn ($q) => $q->where('outlet_id', $outletId))
+            ->when($outletIds !== null, fn ($q) => $q->whereIn('outlet_id', $outletIds))
             ->selectRaw('method, status, COUNT(*) as transactions, COALESCE(SUM(amount), 0) as total')
             ->groupBy('method', 'status')
             ->get();
 
-        $byMethod = $rows->filter(fn(object $r) => $r->status === Payment::STATUS_PAID)
-            ->map(fn(object $r): array => [
+        $byMethod = $rows->filter(fn (object $r) => $r->status === Payment::STATUS_PAID)
+            ->map(fn (object $r): array => [
                 'method' => $r->method,
                 'transactions' => (int) $r->transactions,
                 'total' => (int) $r->total,
@@ -107,7 +107,7 @@ class ReportService
             ->all();
 
         $byStatus = $rows->groupBy('status')
-            ->map(fn(Collection $group, string $status): array => [
+            ->map(fn (Collection $group, string $status): array => [
                 'status' => $status,
                 'transactions' => (int) $group->sum('transactions'),
                 'total' => (int) $group->sum('total'),
@@ -136,8 +136,8 @@ class ReportService
             ->where('o.status', Order::STATUS_PAID)
             ->where('p.paid_date', '>=', $from->startOfDay())
             ->where('p.paid_date', '<=', $to->endOfDay())
-            ->when($outletId !== null, fn($q) => $q->where('o.outlet_id', $outletId))
-            ->when($outletIds !== null, fn($q) => $q->whereIn('o.outlet_id', $outletIds))
+            ->when($outletId !== null, fn ($q) => $q->where('o.outlet_id', $outletId))
+            ->when($outletIds !== null, fn ($q) => $q->whereIn('o.outlet_id', $outletIds))
             ->selectRaw('o.membership_id, u.name as operator_name, COUNT(*) as transactions, COALESCE(SUM(o.total_amount), 0) as sales_total')
             ->groupBy('o.membership_id', 'operator_name')
             ->orderByDesc('sales_total')
@@ -159,8 +159,8 @@ class ReportService
             ->where('business_id', $businessId)
             ->where('opened_at', '>=', $from->startOfDay())
             ->where('opened_at', '<=', $to->endOfDay())
-            ->when($outletId !== null, fn($q) => $q->where('outlet_id', $outletId))
-            ->when($outletIds !== null, fn($q) => $q->whereIn('outlet_id', $outletIds))
+            ->when($outletId !== null, fn ($q) => $q->where('outlet_id', $outletId))
+            ->when($outletIds !== null, fn ($q) => $q->whereIn('outlet_id', $outletIds))
             ->with('movements:id,cash_session_id,type,amount')
             ->orderByDesc('id')
             ->paginate($perPage);
@@ -187,8 +187,8 @@ class ReportService
 
         return InventoryItem::query()
             ->where('inventory_items.business_id', $businessId)
-            ->when($outletId !== null, fn($q) => $q->where('inventory_items.outlet_id', $outletId))
-            ->when($outletIds !== null, fn($q) => $q->whereIn('inventory_items.outlet_id', $outletIds))
+            ->when($outletId !== null, fn ($q) => $q->where('inventory_items.outlet_id', $outletId))
+            ->when($outletIds !== null, fn ($q) => $q->whereIn('inventory_items.outlet_id', $outletIds))
             ->when($lowStockOnly, function (Builder $q) {
                 $q->whereColumn('stock.stock', '<=', 'inventory_items.low_stock_threshold')
                     ->whereNotNull('inventory_items.low_stock_threshold');

@@ -52,7 +52,7 @@ class ReportController extends Controller
         $paginator = $this->service->cash($businessId, $outletId, $outletIds, $from, $to, $this->perPage($request));
 
         return response()->json([
-            'data' => collect($paginator->items())->map(fn(CashSession $session): array => $this->cashRow($session))->all(),
+            'data' => collect($paginator->items())->map(fn (CashSession $session): array => $this->cashRow($session))->all(),
             'meta' => $this->meta($paginator),
         ]);
     }
@@ -73,7 +73,7 @@ class ReportController extends Controller
 
         return response()->json([
             'data' => collect($paginator->items())
-                ->map(fn(InventoryItem $item): array => [
+                ->map(fn (InventoryItem $item): array => [
                     'id' => $item->id,
                     'business_id' => $item->business_id,
                     'outlet_id' => $item->outlet_id,
@@ -138,7 +138,7 @@ class ReportController extends Controller
     {
         $byType = $session->movements
             ->groupBy('type')
-            ->map(fn($group, string $type): array => ['type' => $type, 'amount' => (int) $group->sum('amount')])
+            ->map(fn ($group, string $type): array => ['type' => $type, 'amount' => (int) $group->sum('amount')])
             ->values();
 
         $netMovement = $session->netMovement();

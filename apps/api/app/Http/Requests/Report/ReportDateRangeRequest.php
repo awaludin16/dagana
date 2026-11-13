@@ -46,7 +46,7 @@ class ReportDateRangeRequest extends FormRequest
             }
 
             if (strtotime($to) - strtotime($from) > self::MAX_DAYS * 86400) {
-                $validator->errors()->add('to', 'Rentang laporan maksimal ' . self::MAX_DAYS . ' hari.');
+                $validator->errors()->add('to', 'Rentang laporan maksimal '.self::MAX_DAYS.' hari.');
             }
         });
     }
