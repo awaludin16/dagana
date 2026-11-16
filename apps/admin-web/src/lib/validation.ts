@@ -70,7 +70,12 @@ export const inventoryItemSchema = z.object({
 
 export const outletSchema = z.object({
   name: requiredText('Nama outlet'),
-  phone: requiredText('Nomor telepon', 30),
+  phone: z
+    .string()
+    .trim()
+    .min(1, 'Nomor telepon wajib diisi.')
+    .transform((value) => value.replace(/\D/g, ''))
+    .refine((digits) => /^\d{10,13}$/.test(digits), 'Nomor telepon harus 10 sampai 13 digit.'),
   address: addressSchema,
 })
 

@@ -166,6 +166,34 @@ class BusinessOnboardingTest extends TestCase
         $this->assertDatabaseCount('business_memberships', 0);
     }
 
+    public function test_onboarding_rejects_outlet_phone_outside_10_to_13_digits(): void
+    {
+        $user = User::factory()->create();
+
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/v1/businesses', [
+            'business' => ['name' => 'Warung Budi'],
+            'outlet' => [
+                'name' => 'Outlet Pusat',
+                'phone' => '081234567',
+                'address' => [
+                    'street' => 'Jl. Merdeka No. 1',
+                    'village' => 'Kelurahan Menteng',
+                    'district' => 'Kecamatan Menteng',
+                    'regency' => 'Jakarta Pusat',
+                    'province' => 'DKI JAKARTA',
+                    'postal_code' => '10310',
+                ],
+            ],
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('outlet.phone');
+
+        $this->assertDatabaseCount('businesses', 0);
+        $this->assertDatabaseCount('outlets', 0);
+    }
+
     public function test_user_cannot_create_a_second_business(): void
     {
         $user = User::factory()->create();

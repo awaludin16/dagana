@@ -83,6 +83,49 @@ class OutletManagementTest extends TestCase
         $this->assertDatabaseCount('outlets', 1);
     }
 
+    public function test_outlet_phone_is_normalized_and_must_be_10_to_13_digits(): void
+    {
+        [$owner, , $outlet] = $this->merchant();
+
+        Sanctum::actingAs($owner);
+
+        $address = [
+            'street' => 'Jl. Cabang No. 2',
+            'village' => 'Desa Cabang',
+            'district' => 'Kecamatan Cabang',
+            'regency' => 'Kota Cabang',
+            'province' => 'PROVINSI CABANG',
+            'postal_code' => '54321',
+        ];
+
+        foreach (['081234567', '08123456789012', 'telepon'] as $phone) {
+            $this->postJson('/api/v1/outlets', [
+                'name' => 'Outlet Cabang',
+                'phone' => $phone,
+                'address' => $address,
+                'business_id' => 999,
+            ])
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors('phone');
+        }
+
+        $this->postJson('/api/v1/outlets', [
+            'name' => 'Outlet Cabang',
+            'phone' => '0812-3456-789',
+            'address' => $address,
+            'business_id' => 999,
+        ])
+            ->assertCreated();
+
+        $this->assertDatabaseHas('outlets', ['phone' => '08123456789']);
+
+        $this->patchJson("/api/v1/outlets/{$outlet->id}", ['phone' => '081'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('phone');
+
+        $this->assertDatabaseCount('outlets', 2);
+    }
+
     public function test_outlet_update_cannot_clear_phone_or_send_partial_address(): void
     {
         [$owner, , $outlet] = $this->merchant();

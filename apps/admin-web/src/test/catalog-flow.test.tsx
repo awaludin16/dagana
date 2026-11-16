@@ -12,14 +12,14 @@ const outlet = {
   id: 23,
   business_id: business.id,
   name: 'Outlet Utama',
-  phone: null,
+  phone: '081298765432',
   address: {
-    street: null,
-    village: null,
-    district: null,
-    regency: null,
-    province: null,
-    postal_code: null,
+    street: 'Jl. Merdeka No. 1',
+    village: 'Kelurahan Menteng',
+    district: 'Kecamatan Menteng',
+    regency: 'Jakarta Pusat',
+    province: 'DKI JAKARTA',
+    postal_code: '10310',
   },
 }
 const catalogPermissions = [

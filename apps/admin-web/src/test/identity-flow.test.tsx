@@ -180,7 +180,7 @@ describe('identity and merchant onboarding', () => {
       target: { value: outlet.name },
     })
     fireEvent.change(screen.getByLabelText('Nomor telepon'), {
-      target: { value: outlet.phone },
+      target: { value: '0812-9876-5432' },
     })
     fireEvent.change(screen.getByLabelText('Jalan'), {
       target: { value: address.street },
@@ -212,9 +212,21 @@ describe('identity and merchant onboarding', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Simpan dan lanjutkan' }))
 
+    expect(await screen.findByRole('heading', { name: 'Kedai Pagi' })).toBeVisible()
+
+    fireEvent.click(screen.getByRole('link', { name: 'Outlet' }))
+
     expect(await screen.findByRole('heading', { name: 'Outlet' })).toBeVisible()
     expect(screen.getByLabelText('Nama business')).toHaveValue('Kedai Pagi')
     expect(screen.getByText('Outlet Utama')).toBeVisible()
+
+    const onboardingCall = fetchMock.mock.calls.find(
+      ([input, init]) => String(input).endsWith('/businesses') && init?.method === 'POST',
+    )
+    const onboardingBody = JSON.parse(String(onboardingCall?.[1]?.body)) as {
+      outlet: { phone: string }
+    }
+    expect(onboardingBody.outlet.phone).toBe('081298765432')
 
     const registerCall = fetchMock.mock.calls.find(
       ([input, init]) => String(input).endsWith('/auth/web/register') && init?.method === 'POST',

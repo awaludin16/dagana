@@ -98,7 +98,7 @@ Autentikasi web admin memakai Laravel Sanctum SPA session: browser memanggil `GE
 | `GET` | `/api/v1/regions/districts/{regency}` | bearer atau session | Daftar kecamatan. |
 | `GET` | `/api/v1/regions/villages/{district}` | bearer atau session | Daftar desa/kelurahan beserta kode pos. |
 
-Business hanya menyimpan `name`. Outlet menyimpan `name` (wajib), `phone` (wajib sejak 2026-11-16), dan alamat komposit `address` (`street`, `village`, `district`, `regency`, `province`, `postal_code`) yang **seluruhnya wajib** sejak 2026-11-16 (lihat decision log). Pada onboarding, `business` hanya memuat `name`; `phone` dan alamat hanya dikirim di `outlet`. Pada `PATCH` outlet, `address` boleh tidak dikirim (tidak berubah), tetapi bila dikirim harus lengkap; `phone` tidak dapat dikosongkan.
+Business hanya menyimpan `name`. Outlet menyimpan `name` (wajib), `phone` (wajib sejak 2026-11-16, dinormalisasi ke digit saja lalu divalidasi 10–13 digit), dan alamat komposit `address` (`street`, `village`, `district`, `regency`, `province`, `postal_code`) yang **seluruhnya wajib** sejak 2026-11-16 (lihat decision log). Pada onboarding, `business` hanya memuat `name`; `phone` dan alamat hanya dikirim di `outlet`. Pada `PATCH` outlet, `address` boleh tidak dikirim (tidak berubah), tetapi bila dikirim harus lengkap; `phone` tidak dapat dikosongkan.
 
 Endpoint wilayah memakai cache backend (data fresh 1 hari, stale hingga 7 hari) dan circuit breaker (3 kegagalan berturut-turut membuka breaker selama 1 menit). Jika penyedia eksternal gagal, backend tetap melayani data cache terakhir; frontend tidak boleh memanggil penyedia wilayah secara langsung.
 

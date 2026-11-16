@@ -130,7 +130,7 @@ export function SearchableSelect({
           )}
         >
           <span className={cn('truncate', !value && 'text-muted-foreground')}>
-            {isLoading ? 'Memuat...' : (value ?? placeholder ?? `Pilih ${label.toLowerCase()}`)}
+            {isLoading ? 'Memuat...' : (value ?? placeholder) || `Pilih ${label.toLowerCase()}`}
           </span>
           <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
         </button>

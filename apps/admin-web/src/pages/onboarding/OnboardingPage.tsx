@@ -40,7 +40,7 @@ export function OnboardingPage() {
     onSuccess: async () => {
       const profile = await api.profile()
       if (profile) startSession(profile)
-      navigate('/outlets', { replace: true })
+      navigate('/dashboard', { replace: true })
     },
   })
 
@@ -53,7 +53,7 @@ export function OnboardingPage() {
       />
     )
   }
-  if (access.membership) return <Navigate to="/outlets" replace />
+  if (access.membership) return <Navigate to="/dashboard" replace />
 
   const submit = handleSubmit((values) => {
     createBusiness.mutate(
@@ -61,7 +61,7 @@ export function OnboardingPage() {
         business: values.business,
         outlet: {
           ...values.outlet,
-          phone: values.outlet.phone.trim(),
+          phone: values.outlet.phone?.trim() ?? '',
           address: normalizeAddress(values.outlet.address),
         },
       },
