@@ -386,7 +386,7 @@ function OutletDialog({
     mutationFn: (values: OutletFormValues) => {
       const input = {
         name: values.name,
-        phone: values.phone?.trim() || null,
+        phone: values.phone.trim(),
         address: normalizeAddress(values.address),
       }
 
@@ -445,7 +445,8 @@ function OutletDialog({
             <FormField
               {...register('phone')}
               id="outlet-phone"
-              label="Nomor telepon (opsional)"
+              label="Nomor telepon"
+              required
               type="tel"
               autoComplete="tel"
               maxLength={30}

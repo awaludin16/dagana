@@ -2,12 +2,12 @@ import type { Address, Outlet } from '@/types'
 
 export function normalizeAddress(address: Address): Address {
   return {
-    street: address.street?.trim() || null,
-    village: address.village?.trim() || null,
-    district: address.district?.trim() || null,
-    regency: address.regency?.trim() || null,
-    province: address.province?.trim() || null,
-    postal_code: address.postal_code?.trim() || null,
+    street: address.street.trim(),
+    village: address.village.trim(),
+    district: address.district.trim(),
+    regency: address.regency.trim(),
+    province: address.province.trim(),
+    postal_code: address.postal_code.trim(),
   }
 }
 

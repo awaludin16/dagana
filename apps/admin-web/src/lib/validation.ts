@@ -3,21 +3,18 @@ import { z } from 'zod'
 const requiredText = (label: string, max = 255) =>
   z.string().trim().min(1, `${label} wajib diisi.`).max(max, `${label} maksimal ${max} karakter.`)
 
-const optionalText = (max = 255) =>
-  z.string().trim().max(max, `Maksimal ${max} karakter.`).nullable()
-
 const addressSchema = z.object({
-  street: optionalText(),
-  village: optionalText(),
-  district: optionalText(),
-  regency: optionalText(),
-  province: optionalText(),
+  street: requiredText('Jalan'),
+  village: requiredText('Desa/Kelurahan'),
+  district: requiredText('Kecamatan'),
+  regency: requiredText('Kabupaten/Kota'),
+  province: requiredText('Provinsi'),
   postal_code: z
     .string()
     .trim()
+    .min(1, 'Kode pos wajib diisi.')
     .max(10, 'Kode pos maksimal 10 karakter.')
-    .regex(/^\d*$/, 'Kode pos hanya boleh berisi angka.')
-    .nullable(),
+    .regex(/^\d+$/, 'Kode pos hanya boleh berisi angka.'),
 })
 
 export const loginSchema = z.object({
@@ -73,7 +70,7 @@ export const inventoryItemSchema = z.object({
 
 export const outletSchema = z.object({
   name: requiredText('Nama outlet'),
-  phone: optionalText(30),
+  phone: requiredText('Nomor telepon', 30),
   address: addressSchema,
 })
 

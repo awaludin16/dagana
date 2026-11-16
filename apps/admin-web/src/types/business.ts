@@ -1,19 +1,19 @@
 export type Address = {
-  street: string | null
-  village: string | null
-  district: string | null
-  regency: string | null
-  province: string | null
-  postal_code: string | null
+  street: string
+  village: string
+  district: string
+  regency: string
+  province: string
+  postal_code: string
 }
 
 export const emptyAddress: Address = {
-  street: null,
-  village: null,
-  district: null,
-  regency: null,
-  province: null,
-  postal_code: null,
+  street: '',
+  village: '',
+  district: '',
+  regency: '',
+  province: '',
+  postal_code: '',
 }
 
 export type Business = {
@@ -27,7 +27,7 @@ export type Outlet = {
   id: number
   business_id: number
   name: string
-  phone: string | null
+  phone: string
   address: Address
   created_at?: string
   updated_at?: string
@@ -35,7 +35,7 @@ export type Outlet = {
 
 export type OutletInput = {
   name: string
-  phone: string | null
+  phone: string
   address: Address
 }
 

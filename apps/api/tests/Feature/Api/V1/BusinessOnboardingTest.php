@@ -100,7 +100,14 @@ class BusinessOnboardingTest extends TestCase
             'outlet' => [
                 'name' => 'Outlet Pusat',
                 'phone' => '081298765432',
-                'address' => ['street' => 'Jl. Merdeka No. 1', 'village' => 'Menteng'],
+                'address' => [
+                    'street' => 'Jl. Merdeka No. 1',
+                    'village' => 'Menteng',
+                    'district' => 'Kecamatan Menteng',
+                    'regency' => 'Jakarta Pusat',
+                    'province' => 'DKI JAKARTA',
+                    'postal_code' => '10310',
+                ],
             ],
         ])->assertCreated();
 
@@ -124,7 +131,35 @@ class BusinessOnboardingTest extends TestCase
             'outlet' => ['name' => '', 'address' => ['street' => ['not-a-string']]],
         ])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['business.name', 'outlet.name', 'outlet.address.street']);
+            ->assertJsonValidationErrors([
+                'business.name',
+                'outlet.name',
+                'outlet.phone',
+                'outlet.address.street',
+                'outlet.address.village',
+                'outlet.address.district',
+                'outlet.address.regency',
+                'outlet.address.province',
+                'outlet.address.postal_code',
+            ]);
+
+        $this->assertDatabaseCount('businesses', 0);
+        $this->assertDatabaseCount('outlets', 0);
+        $this->assertDatabaseCount('business_memberships', 0);
+    }
+
+    public function test_onboarding_requires_outlet_phone_and_full_address(): void
+    {
+        $user = User::factory()->create();
+
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/v1/businesses', [
+            'business' => ['name' => 'Warung Budi'],
+            'outlet' => ['name' => 'Outlet Pusat'],
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['outlet.phone', 'outlet.address.street']);
 
         $this->assertDatabaseCount('businesses', 0);
         $this->assertDatabaseCount('outlets', 0);
@@ -137,16 +172,31 @@ class BusinessOnboardingTest extends TestCase
 
         Sanctum::actingAs($user);
 
-        $payload = [
-            'business' => ['name' => 'Warung Budi'],
-            'outlet' => ['name' => 'Outlet Pusat'],
+        $address = [
+            'street' => 'Jl. Kedua No. 1',
+            'village' => 'Kelurahan Pagi',
+            'district' => 'Kecamatan Pagi',
+            'regency' => 'Jakarta Barat',
+            'province' => 'DKI JAKARTA',
+            'postal_code' => '11220',
         ];
 
-        $this->postJson('/api/v1/businesses', $payload)->assertCreated();
+        $this->postJson('/api/v1/businesses', [
+            'business' => ['name' => 'Warung Budi'],
+            'outlet' => [
+                'name' => 'Outlet Pusat',
+                'phone' => '081298765432',
+                'address' => $address,
+            ],
+        ])->assertCreated();
 
         $this->postJson('/api/v1/businesses', [
             'business' => ['name' => 'Warung Kedua'],
-            'outlet' => ['name' => 'Outlet Kedua'],
+            'outlet' => [
+                'name' => 'Outlet Kedua',
+                'phone' => '081298765433',
+                'address' => $address,
+            ],
         ])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('business');
@@ -165,7 +215,18 @@ class BusinessOnboardingTest extends TestCase
             app(CreateBusinessAction::class)->execute(
                 $user,
                 ['name' => 'Warung Kedua'],
-                ['name' => 'Outlet Kedua'],
+                [
+                    'name' => 'Outlet Kedua',
+                    'phone' => '081298765433',
+                    'address' => [
+                        'street' => 'Jl. Kedua No. 1',
+                        'village' => 'Kelurahan Pagi',
+                        'district' => 'Kecamatan Pagi',
+                        'regency' => 'Jakarta Barat',
+                        'province' => 'DKI JAKARTA',
+                        'postal_code' => '11220',
+                    ],
+                ],
             );
 
             $this->fail('Expected the unique membership constraint to reject the second onboarding.');

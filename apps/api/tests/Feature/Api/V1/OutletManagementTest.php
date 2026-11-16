@@ -62,6 +62,56 @@ class OutletManagementTest extends TestCase
         $this->assertDatabaseCount('outlets', 1);
     }
 
+    public function test_outlet_store_requires_phone_and_full_address(): void
+    {
+        [$owner] = $this->merchant();
+
+        Sanctum::actingAs($owner);
+
+        $this->postJson('/api/v1/outlets', ['name' => 'Outlet Cabang'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors([
+                'phone',
+                'address.street',
+                'address.village',
+                'address.district',
+                'address.regency',
+                'address.province',
+                'address.postal_code',
+            ]);
+
+        $this->assertDatabaseCount('outlets', 1);
+    }
+
+    public function test_outlet_update_cannot_clear_phone_or_send_partial_address(): void
+    {
+        [$owner, , $outlet] = $this->merchant();
+
+        Sanctum::actingAs($owner);
+
+        $this->patchJson("/api/v1/outlets/{$outlet->id}", ['phone' => ''])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('phone');
+
+        $this->patchJson("/api/v1/outlets/{$outlet->id}", [
+            'address' => ['street' => 'Jl. Setengah Alamat'],
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors([
+                'address.village',
+                'address.district',
+                'address.regency',
+                'address.province',
+                'address.postal_code',
+            ]);
+
+        $this->assertDatabaseHas('outlets', [
+            'id' => $outlet->id,
+            'phone' => $outlet->phone,
+            'street' => $outlet->street,
+        ]);
+    }
+
     public function test_last_outlet_cannot_be_deleted(): void
     {
         [$owner, , $outlet] = $this->merchant();

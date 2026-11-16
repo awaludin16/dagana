@@ -23,8 +23,8 @@ class StoreBusinessRequest extends FormRequest
             'business.name' => ['required', 'string', 'max:255'],
             'outlet' => ['required', 'array'],
             'outlet.name' => ['required', 'string', 'max:255'],
-            'outlet.phone' => ['nullable', 'string', 'max:30'],
-            ...Address::rules('outlet.address'),
+            'outlet.phone' => ['required', 'string', 'max:30'],
+            ...Address::rules('outlet.address', required: true),
         ];
     }
 

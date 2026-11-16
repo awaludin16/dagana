@@ -19,8 +19,8 @@ class StoreOutletRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:30'],
-            ...Address::rules('address'),
+            'phone' => ['required', 'string', 'max:30'],
+            ...Address::rules('address', required: true),
         ];
     }
 }

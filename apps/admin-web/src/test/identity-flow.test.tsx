@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -56,6 +56,9 @@ const ownerMembership = {
 const profile = { ...user, membership: ownerMembership }
 const emptyProfile = { ...user, membership: null }
 const provinces = [{ id: '31', name: 'DKI JAKARTA' }]
+const regencies = [{ id: '31.1', name: 'Jakarta Pusat' }]
+const districts = [{ id: '31.1.1', name: 'Kecamatan Menteng' }]
+const villages = [{ id: '31.1.1.1', name: 'Kelurahan Menteng', postal_code: '10310' }]
 
 function jsonResponse(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -130,6 +133,9 @@ describe('identity and merchant onboarding', () => {
         })
       }
       if (url.endsWith('/regions/provinces')) return jsonResponse({ data: provinces })
+      if (url.includes('/regions/regencies/')) return jsonResponse({ data: regencies })
+      if (url.includes('/regions/districts/')) return jsonResponse({ data: districts })
+      if (url.includes('/regions/villages/')) return jsonResponse({ data: villages })
       if (url.endsWith('/outlets') && method === 'GET') {
         return jsonResponse({ data: currentOutlets })
       }
@@ -173,6 +179,37 @@ describe('identity and merchant onboarding', () => {
     fireEvent.change(screen.getByLabelText('Nama outlet'), {
       target: { value: outlet.name },
     })
+    fireEvent.change(screen.getByLabelText('Nomor telepon'), {
+      target: { value: outlet.phone },
+    })
+    fireEvent.change(screen.getByLabelText('Jalan'), {
+      target: { value: address.street },
+    })
+
+    await waitFor(() => expect(screen.getByLabelText('Provinsi')).toBeEnabled())
+    fireEvent.click(screen.getByLabelText('Provinsi'))
+    fireEvent.click(
+      within(await screen.findByRole('option', { name: 'DKI JAKARTA' })).getByRole('button'),
+    )
+    await waitFor(() => expect(screen.getByLabelText('Kabupaten/Kota')).toBeEnabled())
+    fireEvent.click(screen.getByLabelText('Kabupaten/Kota'))
+    fireEvent.click(
+      within(await screen.findByRole('option', { name: 'Jakarta Pusat' })).getByRole('button'),
+    )
+    await waitFor(() => expect(screen.getByLabelText('Kecamatan')).toBeEnabled())
+    fireEvent.click(screen.getByLabelText('Kecamatan'))
+    fireEvent.click(
+      within(await screen.findByRole('option', { name: 'Kecamatan Menteng' })).getByRole('button'),
+    )
+    await waitFor(() => expect(screen.getByLabelText('Desa/Kelurahan')).toBeEnabled())
+    fireEvent.click(screen.getByLabelText('Desa/Kelurahan'))
+    fireEvent.click(
+      within(await screen.findByRole('option', { name: /Kelurahan Menteng/ })).getByRole('button'),
+    )
+    fireEvent.change(screen.getByLabelText('Kode pos'), {
+      target: { value: address.postal_code },
+    })
+
     fireEvent.click(screen.getByRole('button', { name: 'Simpan dan lanjutkan' }))
 
     expect(await screen.findByRole('heading', { name: 'Outlet' })).toBeVisible()

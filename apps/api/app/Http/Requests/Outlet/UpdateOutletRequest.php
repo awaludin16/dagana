@@ -19,7 +19,7 @@ class UpdateOutletRequest extends FormRequest
     {
         return [
             'name' => ['sometimes', 'required', 'string', 'max:255'],
-            'phone' => ['sometimes', 'nullable', 'string', 'max:30'],
+            'phone' => ['sometimes', 'required', 'string', 'max:30'],
             ...Address::rules('address'),
         ];
     }

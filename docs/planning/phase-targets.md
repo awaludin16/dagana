@@ -69,6 +69,7 @@ Belum membangun semua modul bisnis, belum men-deploy ke production, belum mengim
 
 > **Status (2026-11-13): Selesai.**
 > Audit ulang menjalankan test Phase 1 (`AuthTest`, `BusinessOnboardingTest`, `BusinessTenantIsolationTest`, `MembershipAccessTest`): 25 passed (216 assertions). Implementasi mengikuti baseline konfirmasi Phase 1 di decision log (Sanctum dual auth, business `name` saja, outlet `name`/`phone`/`address` komposit, wilayah dengan cache + circuit breaker). Catatan gate: entri "Konfirmasi teknis backend Phase 1" di decision log masih berstatus rekomendasi v1 dan belum ada entri persetujuan eksplisit Product Owner (bandingkan D-31/D-32 yang sudah disetujui formal).
+> **Revisi baseline (2026-11-16, disetujui Product Owner):** `phone` dan seluruh komponen alamat outlet menjadi wajib (detail di decision log); diuji dengan test onboarding/outlet terkait — suite penuh 131 passed (949 assertions).
 
 ## Target pekerjaan
 

@@ -61,7 +61,7 @@ export function OnboardingPage() {
         business: values.business,
         outlet: {
           ...values.outlet,
-          phone: values.outlet.phone?.trim() || null,
+          phone: values.outlet.phone.trim(),
           address: normalizeAddress(values.outlet.address),
         },
       },
@@ -80,8 +80,8 @@ export function OnboardingPage() {
           <p className="text-sm font-medium text-primary">Langkah 1 dari 1</p>
           <h1 className="mt-2 text-page-title tracking-tight">Siapkan bisnis Anda</h1>
           <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-            Business cukup memiliki nama. Nomor telepon dan alamat diisi pada outlet pertama dan
-            dapat diubah kapan saja.
+            Business cukup memiliki nama. Nomor telepon dan alamat lengkap outlet pertama wajib
+            diisi dan dapat diubah kapan saja.
           </p>
         </div>
         <span className="hidden size-12 shrink-0 place-items-center rounded-lg bg-dagana-primary-soft text-dagana-primary sm:grid">
@@ -134,7 +134,8 @@ export function OnboardingPage() {
               <FormField
                 {...register('outlet.phone')}
                 id="onboarding-outlet-phone"
-                label="Nomor telepon (opsional)"
+                label="Nomor telepon"
+                required
                 type="tel"
                 autoComplete="tel"
                 placeholder="08xxxxxxxxxx"

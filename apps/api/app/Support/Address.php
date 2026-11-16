@@ -13,15 +13,23 @@ final class Address
     public const FIELDS = ['street', 'village', 'district', 'regency', 'province', 'postal_code'];
 
     /**
+     * Validation rules for the composite address.
+     *
+     * Required mode (create): the address object and every component are mandatory.
+     * Partial mode (PATCH): the address object may be omitted, but when it is
+     * sent, every component must be filled — no half-updated addresses.
+     *
      * @return array<string, list<string>>
      */
-    public static function rules(string $prefix = 'address'): array
+    public static function rules(string $prefix = 'address', bool $required = false): array
     {
-        $rules = [$prefix => ['sometimes', 'nullable', 'array']];
+        $rules = $required
+            ? [$prefix => ['required', 'array']]
+            : [$prefix => ['sometimes', 'nullable', 'array']];
 
         foreach (self::FIELDS as $field) {
             $rules["{$prefix}.{$field}"] = [
-                'nullable',
+                $required ? 'required' : "required_with:{$prefix}",
                 'string',
                 $field === 'postal_code' ? 'max:10' : 'max:255',
             ];

@@ -64,18 +64,20 @@ export function AddressFields<T extends FieldValues>({
       <FormField
         name={`${idPrefix}-street`}
         label="Jalan"
+        required
         value={value.street ?? ''}
         maxLength={255}
         placeholder="Contoh: Jl. Merdeka No. 1"
         containerClassName="sm:col-span-2"
         disabled={disabled}
         error={errorFor('street')}
-        onChange={(event) => onChange({ ...value, street: event.target.value || null })}
+        onChange={(event) => onChange({ ...value, street: event.target.value })}
       />
 
       <SearchableSelect
         id={`${idPrefix}-province`}
         label="Provinsi"
+        required
         value={value.province}
         options={provinces.data ?? []}
         isLoading={provinces.isPending}
@@ -86,11 +88,11 @@ export function AddressFields<T extends FieldValues>({
         onChange={(option) =>
           onChange({
             ...value,
-            province: option?.name ?? null,
-            regency: null,
-            district: null,
-            village: null,
-            postal_code: null,
+            province: option?.name ?? '',
+            regency: '',
+            district: '',
+            village: '',
+            postal_code: '',
           })
         }
       />
@@ -98,6 +100,7 @@ export function AddressFields<T extends FieldValues>({
       <SearchableSelect
         id={`${idPrefix}-regency`}
         label="Kabupaten/Kota"
+        required
         value={value.regency}
         options={regencies.data ?? []}
         isLoading={regencies.isPending && Boolean(province)}
@@ -108,10 +111,10 @@ export function AddressFields<T extends FieldValues>({
         onChange={(option) =>
           onChange({
             ...value,
-            regency: option?.name ?? null,
-            district: null,
-            village: null,
-            postal_code: null,
+            regency: option?.name ?? '',
+            district: '',
+            village: '',
+            postal_code: '',
           })
         }
       />
@@ -119,6 +122,7 @@ export function AddressFields<T extends FieldValues>({
       <SearchableSelect
         id={`${idPrefix}-district`}
         label="Kecamatan"
+        required
         value={value.district}
         options={districts.data ?? []}
         isLoading={districts.isPending && Boolean(regency)}
@@ -129,9 +133,9 @@ export function AddressFields<T extends FieldValues>({
         onChange={(option) =>
           onChange({
             ...value,
-            district: option?.name ?? null,
-            village: null,
-            postal_code: null,
+            district: option?.name ?? '',
+            village: '',
+            postal_code: '',
           })
         }
       />
@@ -139,6 +143,7 @@ export function AddressFields<T extends FieldValues>({
       <SearchableSelect
         id={`${idPrefix}-village`}
         label="Desa/Kelurahan"
+        required
         value={value.village}
         options={villages.data ?? []}
         isLoading={villages.isPending && Boolean(district)}
@@ -149,8 +154,8 @@ export function AddressFields<T extends FieldValues>({
         onChange={(option) =>
           onChange({
             ...value,
-            village: option?.name ?? null,
-            postal_code: option?.postal_code ?? null,
+            village: option?.name ?? '',
+            postal_code: option?.postal_code ?? '',
           })
         }
       />
@@ -158,13 +163,14 @@ export function AddressFields<T extends FieldValues>({
       <FormField
         name={`${idPrefix}-postal_code`}
         label="Kode pos"
+        required
         value={value.postal_code ?? ''}
         inputMode="numeric"
         maxLength={10}
         placeholder="Terisi otomatis dari desa"
         disabled={disabled}
         error={errorFor('postal_code')}
-        onChange={(event) => onChange({ ...value, postal_code: event.target.value || null })}
+        onChange={(event) => onChange({ ...value, postal_code: event.target.value })}
       />
     </div>
   )

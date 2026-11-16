@@ -12,6 +12,7 @@ export type SearchableOption = {
 type SearchableSelectProps = {
   id: string
   label: string
+  required?: boolean
   value: string | null
   options: SearchableOption[]
   isLoading: boolean
@@ -26,6 +27,7 @@ type SearchableSelectProps = {
 export function SearchableSelect({
   id,
   label,
+  required = false,
   value,
   options,
   isLoading,
@@ -104,7 +106,10 @@ export function SearchableSelect({
 
   return (
     <div className="space-y-1.5" ref={wrapperRef}>
-      <label htmlFor={id} className="text-sm font-medium">
+      <label
+        htmlFor={id}
+        className={`text-sm font-medium ${required ? 'after:ml-0.5 after:text-destructive after:content-["*"]' : ''}`}
+      >
         {label}
       </label>
 
