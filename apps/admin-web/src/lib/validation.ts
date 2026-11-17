@@ -92,6 +92,7 @@ export const memberSchema = z
     password: z.string(),
     role: z.enum(['MANAGER', 'CASHIER'], { message: 'Pilih role Manager atau Kasir.' }),
     outlet_ids: z.array(z.number()).min(1, 'Pilih minimal satu outlet.'),
+    extra_permissions: z.array(z.string()),
   })
   .superRefine((values, context) => {
     if (values.mode !== 'create') return

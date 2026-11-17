@@ -50,6 +50,7 @@ const ownerMembership = {
   user,
   business,
   outlets: [outlet],
+  extra_permissions: [],
   permissions,
 }
 
@@ -62,6 +63,7 @@ const cashierMember = {
   user: { id: 9, name: 'Budi Santoso', email: 'budi@example.com', email_verified_at: null },
   business,
   outlets: [outlet],
+  extra_permissions: [],
   permissions: ['business.read', 'outlets.read', 'orders.create', 'orders.read'],
 }
 
@@ -74,6 +76,7 @@ const managerMembership = {
   user: { id: 10, name: 'Citra Dewi', email: 'citra@example.com', email_verified_at: null },
   business,
   outlets: [outlet],
+  extra_permissions: ['products.create'],
   permissions: ['business.read', 'members.read', 'members.update', 'outlets.read', 'orders.read'],
 }
 
@@ -231,6 +234,7 @@ describe('manajemen anggota tim (Phase 2)', () => {
           },
           business,
           outlets: [outlet],
+          extra_permissions: [],
           permissions: ['orders.create', 'orders.read'],
         }
         members = [...members, createdMember]
@@ -294,6 +298,60 @@ describe('manajemen anggota tim (Phase 2)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Simpan Perubahan' }))
 
     await waitFor(() => expect(updated).toBe(true))
+  })
+
+  it('mengatur izin tambahan lewat toggle tanpa menampilkan string izin mentah', async () => {
+    let patchBody: Record<string, unknown> | null = null
+
+    sessionMock(async (input, init) => {
+      const url = String(input)
+      const method = init?.method ?? 'GET'
+
+      if (url.endsWith('/me')) {
+        return jsonResponse({ data: { ...user, membership: ownerMembership } })
+      }
+      if (url.endsWith('/outlets')) return jsonResponse({ data: [outlet] })
+      if (url.endsWith('/roles')) return jsonResponse({ data: rolesCatalog })
+      if (url.endsWith('/members/3') && method === 'PATCH') {
+        patchBody = JSON.parse(String(init?.body)) as Record<string, unknown>
+        return jsonResponse({ data: managerMembership })
+      }
+      if (url.endsWith('/members')) {
+        return jsonResponse({ data: [ownerMembership, managerMembership] })
+      }
+
+      return null
+    })
+
+    renderAt()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Ubah' }))
+    expect(await screen.findByRole('heading', { name: 'Ubah role & akses outlet' })).toBeVisible()
+
+    // Label ramah pengguna, bukan string mentah seperti 'members.read'.
+    expect(screen.getByText('Tambah menu')).toBeVisible()
+    expect(screen.queryByText('members.read')).not.toBeInTheDocument()
+
+    // Izin tambahan yang sudah ada tampil aktif dan dapat dicabut lewat toggle.
+    const granted = screen.getByRole('switch', { name: 'Cabut Tambah menu' })
+    expect(granted).toHaveAttribute('aria-checked', 'true')
+    fireEvent.click(granted)
+    expect(screen.getByRole('switch', { name: 'Beri Tambah menu' })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    )
+
+    // Izin bawaan role MANAGER tampil terkunci.
+    const preset = screen.getByRole('switch', { name: /Lihat anggota tim/ })
+    expect(preset).toHaveAttribute('aria-checked', 'true')
+    expect(preset).toBeDisabled()
+
+    // Beri satu izin baru, lalu simpan.
+    fireEvent.click(screen.getByRole('switch', { name: 'Beri Catat & konfirmasi pembayaran' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Simpan Perubahan' }))
+
+    await waitFor(() => expect(patchBody).not.toBeNull())
+    expect(patchBody!.extra_permissions).toEqual(['payments.create'])
   })
 
   it('menghapus anggota secara permanen setelah konfirmasi', async () => {

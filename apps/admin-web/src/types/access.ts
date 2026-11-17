@@ -11,6 +11,7 @@ export type Member = {
   user: { id: number; name: string; email: string }
   business: { id: number; name: string }
   outlets: { id: number; name: string }[]
+  extra_permissions: string[]
   permissions: string[]
 }
 
@@ -25,10 +26,12 @@ export type CreateMemberInput = {
   password: string
   role: Exclude<Role, 'OWNER'>
   outlet_ids: number[]
+  extra_permissions?: string[]
 }
 
 export type UpdateMemberInput = {
   role?: Exclude<Role, 'OWNER'>
   status?: MembershipStatus
   outlet_ids?: number[]
+  extra_permissions?: string[]
 }
