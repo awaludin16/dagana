@@ -22,6 +22,8 @@ class EnsurePermission
             throw new AuthorizationException('Membership aktif diperlukan.');
         }
 
+        EnsureEmailVerified::assertVerified($request->user());
+
         if (! $membership->hasPermission($permission)) {
             throw new AuthorizationException('Anda tidak memiliki izin untuk aksi ini.');
         }

@@ -441,3 +441,21 @@ Dagana akan diinisialisasi ulang dari baseline project baru. Ini adalah keputusa
 - Jangan migrasikan kode lama, migration lama, database dump, build output, atau secret secara otomatis.
 - Bila repository target sudah berisi pekerjaan, perubahan destruktif tetap memerlukan persetujuan eksplisit.
 - Docker development tetap untuk Laravel API, PostgreSQL, Redis, dan layanan pendukung yang memang diperlukan. Flutter SDK dan Android tooling berjalan di host.
+
+## Keputusan email akun (2026-11-18)
+
+Status: **Disetujui** (scope MVP, implementasi selesai 2026-11-18).
+
+Keputusan:
+
+1. **Verifikasi email wajib hanya untuk akun self-register (Owner).** Registrasi mandiri membuat akun tanpa `email_verified_at`, mengirim email verifikasi, dan **endpoint bisnis diblokir (403)** sampai verifikasi. Login tetap diizinkan sehingga UI bisa menampilkan layar "cek email Anda" dengan tombol kirim ulang.
+2. **Akun employee yang dibuat langsung oleh Owner otomatis terverifikasi** (`CreateMemberAction` mengisi `email_verified_at`): Owner memvouch email karyawan (konsisten dengan keputusan direct-create 2026-11-16); karyawan tidak menerima email verifikasi.
+3. **Data lama di-grandfathered**: migration `2026_11_18_000000_add_password_reset_tokens_and_mark_users_verified` menandai semua user existing sebagai terverifikasi, sehingga user lama tidak dipaksa verifikasi ulang.
+4. **Forgot password** tersedia untuk semua akun: `POST /auth/forgot-password` selalu merespons sama (anti email-enumeration), reset (`POST /auth/reset-password`) memperbarui password dan **mencabut semua API token** user. Tautan reset mengarah ke halaman admin-web.
+5. **Tautan email** (verifikasi & reset) dibangun sebagai URL bertanda tangan ke endpoint API, lalu parameternya (`id`, `hash`, `expires`, `signature` / `token`, `email`) diteruskan ke halaman admin-web yang memanggil endpoint API tersebut. Frontend URL diambil dari `FRONTEND_URL` (`config('app.frontend_url')`).
+6. **Mail dev stack**: Mailpit ditambahkan ke `compose.yaml` (SMTP `:1025`, UI `:8025`); container API dikonfigurasi `MAIL_MAILER=smtp`, `MAIL_HOST=mailpit`. `.env.example` mengarah ke `127.0.0.1:1025` untuk workflow host.
+7. **Email dikirim sinkron** (tanpa `ShouldQueue`) untuk MVP karena belum ada queue worker di deployment; jika nanti worker ditambahkan, notifikasi dapat di-queue tanpa perubahan endpoint.
+
+Dampak implementasi: middleware `EnsureEmailVerified` (alias `email-verified`) dipakai di `POST /businesses` dan di dalam `EnsurePermission`; `config/passwords.php` dibuat (belum ada sebelumnya); tabel `password_reset_tokens` (migration guard `hasTable` karena tabel sudah ada di DB dev lama); UI admin-web menambah halaman `/forgot-password`, `/reset-password`, `/verify-email`, layar `VerifyEmailRequired` pada `RequireSession`, dan link "Lupa kata sandi?" di halaman login. POS mobile MVP cukup membuka URL halaman reset web (belum ada UI native — dibuka lewat browser).
+
+Catatan operasional: `apps/api/.env` milik developer (tidak dikomit) sempat berisi `MAIL_HOST=://gmail.com` yang salah format; untuk SMTP Gmail gunakan host `smtp.gmail.com`, port `587`, enkripsi `tls`, dengan app password.

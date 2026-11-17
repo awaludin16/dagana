@@ -76,6 +76,8 @@ Requirement produk yang mendasari API: `docs/requirements/identity-and-access.md
 
 Autentikasi web admin memakai Laravel Sanctum SPA session: browser memanggil `GET /sanctum/csrf-cookie`, lalu login/register melalui endpoint `/auth/web/*` dengan cookie `dagana-session` yang `HttpOnly` dan `XSRF-TOKEN` yang dapat dibaca JavaScript. Setiap request yang mengubah data mengirim header `X-XSRF-TOKEN` dan `credentials: include`; token tidak disimpan di `localStorage`. Klien mobile tetap memakai Sanctum personal access token (`Authorization: Bearer <token>`) dan wajib menyimpannya di secure storage. Semua response resource memakai envelope `data`.
 
+Verifikasi email hanya diwajibkan untuk akun self-register (Owner): selama `email_verified_at` masih `null`, `EnsureEmailVerified` menolak endpoint bisnis dengan 403; akun employee yang dibuat Owner otomatis terverifikasi. Tautan verifikasi/reset di email mengarah ke halaman admin-web yang meneruskan parameternya ke endpoint API (keputusan email 2026-11-18).
+
 | Method | Path | Auth | Keterangan |
 |---|---|---|---|
 | `POST` | `/api/v1/auth/register` | publik, throttle 6/menit | Membuat user dan bearer token untuk mobile; tidak membuat business. |
@@ -84,6 +86,10 @@ Autentikasi web admin memakai Laravel Sanctum SPA session: browser memanggil `GE
 | `POST` | `/api/v1/auth/web/register` | publik, throttle 6/menit | Membuat user dan session web; response tidak memuat token. |
 | `POST` | `/api/v1/auth/web/login` | publik, throttle 6/menit | Membuat session web; response tidak memuat token. |
 | `POST` | `/api/v1/auth/web/logout` | session | Menghapus session web; `204`. |
+| `POST` | `/api/v1/auth/forgot-password` | publik, throttle 10/menit | Selalu `200` dengan pesan sama (anti email-enumeration); kirim tautan reset ke email terdaftar. |
+| `POST` | `/api/v1/auth/reset-password` | publik, throttle 10/menit | Validasi token reset, ganti password, cabut semua API token user. |
+| `GET` | `/api/v1/auth/email/verify/{id}/{hash}` | publik, middleware `signed` | Verifikasi email via tautan bertanda tangan (kedaluwarsa 60 menit); tanpa auth. |
+| `POST` | `/api/v1/auth/email/verification-notification` | bearer atau session, throttle 6/menit | Kirim ulang email verifikasi untuk user yang belum terverifikasi. |
 | `GET` | `/api/v1/me` | bearer atau session | Profil user; tidak memuat password/remember token. |
 | `POST` | `/api/v1/businesses` | bearer atau session | Onboarding atomik: business + outlet pertama + owner membership. |
 | `GET` | `/api/v1/businesses/{business}` | bearer atau session, membership aktif | 404 bila business bukan milik user. |
