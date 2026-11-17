@@ -349,3 +349,14 @@ Employee Ready
 Owner tetap dapat menggunakan POS setelah employee ditambahkan.
 
 ---
+## Verifikasi Email dan Atur Ulang Password
+
+Keputusan (2026-11-18): verifikasi email hanya wajib untuk akun self-register (Owner).
+
+- Registrasi mandiri membuat akun tanpa `email_verified_at` dan mengirim email verifikasi. Login tetap diizinkan, tetapi endpoint bisnis ditolak `403` sampai email terverifikasi; UI menampilkan layar "cek email Anda" dengan tombol kirim ulang tautan.
+- Akun employee yang dibuat langsung oleh Owner otomatis terverifikasi (Owner memvouch email karyawan); karyawan tidak menerima email verifikasi.
+- Tautan verifikasi bertanda tangan (kedaluwarsa 60 menit) dan hanya valid untuk satu email; tautan kedaluwarsa/invalid ditolak.
+- User yang terdaftar sebelum fitur ini tidak diwajibkan verifikasi ulang (grandfathered).
+- Lupa password: user memasukkan email, sistem selalu menjawab dengan pesan sama (tidak membocorkan keberadaan akun), dan mengirim tautan reset ke email terdaftar (kedaluwarsa 60 menit).
+- Reset password memperbarui password dan mencabut semua sesi token user; respons konsisten dan throttle per permintaan.
+- Tautan verifikasi/reset membuka halaman admin-web (`/verify-email`, `/reset-password`); POS mobile cukup membuka URL halaman reset web lewat browser.
