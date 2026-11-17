@@ -35,10 +35,23 @@ Route::prefix('v1')->group(function () {
         ->middleware('throttle:6,1')
         ->name('api.v1.auth.web.login');
 
+    Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword'])
+        ->middleware('throttle:10,1')
+        ->name('api.v1.auth.forgot-password');
+    Route::post('/auth/reset-password', [AuthController::class, 'resetPassword'])
+        ->middleware('throttle:10,1')
+        ->name('api.v1.auth.reset-password');
+    Route::get('/auth/email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])
+        ->middleware('signed')
+        ->name('api.v1.auth.email.verify');
+
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/auth/logout', [AuthController::class, 'logout'])->name('api.v1.auth.logout');
         Route::post('/auth/web/logout', [AuthController::class, 'webLogout'])
             ->name('api.v1.auth.web.logout');
+        Route::post('/auth/email/verification-notification', [AuthController::class, 'resendVerification'])
+            ->middleware('throttle:6,1')
+            ->name('api.v1.auth.email.verification.send');
         Route::get('/me', ProfileController::class)->name('api.v1.me');
 
         Route::get('/regions/provinces', [RegionController::class, 'provinces'])
@@ -58,7 +71,9 @@ Route::prefix('v1')->group(function () {
             ->name('api.v1.regions.villages');
 
         // Available before onboarding so a user without a membership can create one.
-        Route::post('/businesses', [BusinessController::class, 'store'])->name('api.v1.businesses.store');
+        Route::post('/businesses', [BusinessController::class, 'store'])
+            ->middleware('email-verified')
+            ->name('api.v1.businesses.store');
 
         Route::get('/businesses/{business}', [BusinessController::class, 'show'])
             ->middleware('permission:business.read')

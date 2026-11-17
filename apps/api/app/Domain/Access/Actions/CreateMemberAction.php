@@ -40,6 +40,9 @@ class CreateMemberAction
                 'email' => $data['email'],
                 'password' => $data['password'],
             ]);
+            // Owner memvouch email employee karena direct-create tanpa
+            // email invitation (keputusan 2026-11-16).
+            $user->forceFill(['email_verified_at' => now()])->save();
 
             $membership = BusinessMembership::create([
                 'business_id' => $actor->business_id,
