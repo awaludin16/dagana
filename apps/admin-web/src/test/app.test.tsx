@@ -30,7 +30,7 @@ const ownerProfile = {
   id: 1,
   name: 'Owner Dagana',
   email: 'owner@dagana.test',
-  email_verified_at: null,
+  email_verified_at: '2026-01-01T00:00:00+00:00',
   membership: {
     id: 1,
     role: 'OWNER',

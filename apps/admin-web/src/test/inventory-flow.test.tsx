@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SessionProvider } from '@/auth/SessionProvider'
 import { routes } from '@/router'
 
-const user = { id: 8, name: 'Ayu', email: 'ayu@example.com', email_verified_at: null }
+const user = { id: 8, name: 'Ayu', email: 'ayu@example.com', email_verified_at: '2026-01-01T00:00:00+00:00' }
 const outlet = { id: 23, name: 'Outlet Utama' }
 const secondOutlet = { id: 24, name: 'Outlet Cabang' }
 

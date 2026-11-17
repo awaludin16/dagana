@@ -22,6 +22,20 @@ export const loginSchema = z.object({
   password: z.string().min(1, 'Kata sandi wajib diisi.'),
 })
 
+export const forgotPasswordSchema = z.object({
+  email: requiredText('Email').email('Format email belum valid.'),
+})
+
+export const resetPasswordSchema = z
+  .object({
+    password: z.string().min(8, 'Kata sandi minimal 8 karakter.'),
+    password_confirmation: z.string().min(1, 'Ulangi kata sandi.'),
+  })
+  .refine((values) => values.password === values.password_confirmation, {
+    message: 'Kata sandi tidak sama.',
+    path: ['password_confirmation'],
+  })
+
 export const registerSchema = z
   .object({
     name: requiredText('Nama lengkap'),
@@ -117,6 +131,8 @@ export const memberSchema = z
   })
 
 export type LoginFormValues = z.infer<typeof loginSchema>
+export type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>
+export type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>
 export type RegisterFormValues = z.infer<typeof registerSchema>
 export type BusinessNameFormValues = z.infer<typeof businessNameSchema>
 export type CategoryFormValues = z.infer<typeof categorySchema>
