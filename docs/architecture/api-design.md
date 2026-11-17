@@ -164,7 +164,11 @@ Authorization memakai middleware `permission:<resource.action>` yang memeriksa m
 | `DELETE` | `/api/v1/members/{membership}` | `members.delete` | Hard delete membership employee; hanya Owner, tidak dapat menghapus Owner atau dirinya sendiri, dan token user dicabut. |
 | `GET` | `/api/v1/roles` | `members.read` | Katalog tiga role preset beserta permission-nya untuk kebutuhan UI. |
 
-`members.delete` menghapus record membership secara permanen, tetapi mempertahankan user untuk atribusi historis. Owner tidak dapat dihapus melalui endpoint ini. Untuk sekadar mencabut akses sementara, gunakan `PATCH` dengan field `status` agar membership dan outlet access dapat diaktifkan kembali.
+`members.delete` menghapus record membership secara permanen, tetapi mempertahankan user untuk atribusi historis. Owner tidak dapat dihapus melalui endpoint ini. Member yang masih menjadi referensi data historis (order, pembayaran, sesi kas, kas masuk/keluar, atau stock movement) ditolak `422`; gunakan `PATCH` dengan field `status` untuk mencabut akses sementara agar membership dan outlet access dapat diaktifkan kembali.
+
+`POST /members` dan `PATCH /members/{membership}` menerima field opsional `extra_permissions` (array izin `resource.action` dari katalog D-03, revisi D-04 2026-11-17): izin tambahan di luar preset role; mengirim daftar berarti mengganti seluruh izin tambahan member (izin dicabut dengan menghapusnya dari daftar). Hanya Owner yang dapat mengirim field ini (aktor lain → `403`). Izin preset role yang dikirim ulang atau izin di luar katalog ditolak `422`. Response `MemberResource` menambahkan `extra_permissions` (daftar izin tambahan) di samping `permissions` (izin efektif = preset ∪ extra).
+
+`GET /api/v1/members` mengembalikan seluruh membership Business tanpa parameter pagination; diterima Product Owner (2026-11-16) sebagai pengecualian kecil dari aturan pagination umum karena jumlah membership per Business terbatas pada MVP.
 
 Owner memiliki seluruh permission katalog dan akses ke semua outlet secara implisit. Manager dan Cashier hanya dapat mengakses outlet yang tercatat di `outlet_accesses`. Manager tidak dapat mengubah/menonaktifkan Owner, mengubah aksesnya sendiri, memberi role `OWNER`, atau memberi outlet access di luar outlet yang ia akses. Owner tidak dapat diubah melalui endpoint member karena Business harus tetap memiliki tepat satu Owner.
 

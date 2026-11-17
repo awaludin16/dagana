@@ -40,6 +40,7 @@ class MemberResource extends JsonResource
                         ? $this->outletAccesses->pluck('outlet')->filter()->values()
                         : collect()),
             )->resolve(),
+            'extra_permissions' => $this->extraPermissions(),
             'permissions' => $this->permissions(),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),

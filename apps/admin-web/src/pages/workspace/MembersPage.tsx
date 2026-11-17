@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/dialog'
 import { ApiError, api } from '@/lib/api'
 import { apiErrorMessage, applyApiErrors, getFieldError, hasFieldErrors } from '@/lib/form-errors'
+import { permissionLabel, PERMISSION_GROUPS } from '@/lib/permission-labels'
 import { cn } from '@/lib/utils'
 import { memberSchema, type MemberFormValues } from '@/lib/validation'
 import type { Member, MembershipStatus, Outlet, Role, RoleCatalog } from '@/types'
@@ -337,6 +338,8 @@ export function MembersPage() {
           mode={dialog.mode}
           member={dialog.mode === 'update' ? dialog.member : undefined}
           outlets={outletList}
+          roles={roleCatalog}
+          isOwnerActor={membership?.role === 'OWNER'}
           onClose={() => setDialog(null)}
           onSaved={handleSaved}
         />
@@ -456,6 +459,57 @@ export function MembersPage() {
   )
 }
 
+function PermissionToggle({
+  label,
+  checked,
+  locked,
+  disabled,
+  onToggle,
+}: {
+  label: string
+  checked: boolean
+  locked: boolean
+  disabled: boolean
+  onToggle: () => void
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={`${checked && locked ? label : checked ? `Cabut ${label}` : `Beri ${label}`}${locked ? ' (bawaan role, terkunci)' : ''}`}
+      disabled={disabled || locked}
+      onClick={onToggle}
+      className={cn(
+        'flex min-h-11 items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left text-sm transition focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40 disabled:cursor-not-allowed',
+        checked
+          ? 'border-dagana-primary bg-dagana-primary-soft'
+          : 'border-input bg-background hover:bg-muted/50',
+        (disabled || locked) && 'opacity-70',
+      )}
+    >
+      <span className="min-w-0">
+        {label}
+        {locked ? <span className="ml-2 text-xs text-muted-foreground">bawaan role</span> : null}
+      </span>
+      <span
+        aria-hidden="true"
+        className={cn(
+          'relative h-5 w-9 shrink-0 rounded-full transition',
+          checked ? 'bg-dagana-primary' : 'bg-muted-foreground/30',
+        )}
+      >
+        <span
+          className={cn(
+            'absolute top-0.5 size-4 rounded-full bg-white shadow transition-all',
+            checked ? 'left-4.5' : 'left-0.5',
+          )}
+        />
+      </span>
+    </button>
+  )
+}
+
 function RoleBadge({ role }: { role: Role }) {
   const tone =
     role === 'OWNER'
@@ -499,9 +553,9 @@ function RoleAccessSummary({ roles }: { roles: RoleCatalog[] }) {
               {role.permissions.map((permission) => (
                 <li
                   key={permission}
-                  className="rounded-md bg-muted px-2 py-1 font-mono text-[0.6875rem] text-muted-foreground"
+                  className="rounded-md bg-muted px-2 py-1 text-[0.6875rem] text-muted-foreground"
                 >
-                  {permission === '*' ? 'semua izin' : permission}
+                  {permissionLabel(permission)}
                 </li>
               ))}
             </ul>
@@ -516,11 +570,21 @@ type MemberDialogProps = {
   mode: 'create' | 'update'
   member?: Member
   outlets: Outlet[]
+  roles: RoleCatalog[]
+  isOwnerActor: boolean
   onClose: () => void
   onSaved: (message: string) => Promise<void>
 }
 
-function MemberDialog({ mode, member, outlets, onClose, onSaved }: MemberDialogProps) {
+function MemberDialog({
+  mode,
+  member,
+  outlets,
+  roles,
+  isOwnerActor,
+  onClose,
+  onSaved,
+}: MemberDialogProps) {
   const isCreate = mode === 'create'
   const {
     register,
@@ -538,12 +602,19 @@ function MemberDialog({ mode, member, outlets, onClose, onSaved }: MemberDialogP
       password: '',
       role: member?.role === 'MANAGER' ? 'MANAGER' : 'CASHIER',
       outlet_ids: member?.outlets.map((outlet) => outlet.id) ?? [],
+      extra_permissions: member?.extra_permissions ?? [],
     },
     mode: 'onBlur',
   })
   const outletIds = useWatch({ control, name: 'outlet_ids' }) ?? []
   const outletError = getFieldError(errors, 'outlet_ids.0') ?? getFieldError(errors, 'outlet_ids')
   const roleError = getFieldError(errors, 'role')
+  const selectedRole = useWatch({ control, name: 'role' })
+  const extraPermissions = useWatch({ control, name: 'extra_permissions' }) ?? []
+  const presetPermissions =
+    roles.find((preset) => preset.role === selectedRole)?.permissions ?? []
+  const permissionError =
+    getFieldError(errors, 'extra_permissions.0') ?? getFieldError(errors, 'extra_permissions')
 
   const mutation = useMutation({
     mutationFn: (values: MemberFormValues) =>
@@ -554,10 +625,12 @@ function MemberDialog({ mode, member, outlets, onClose, onSaved }: MemberDialogP
             password: values.password,
             role: values.role,
             outlet_ids: values.outlet_ids,
+            extra_permissions: values.extra_permissions,
           })
         : api.updateMember(member!.id, {
             role: values.role,
             outlet_ids: values.outlet_ids,
+            extra_permissions: values.extra_permissions,
           }),
     onSuccess: async () => {
       await onSaved(isCreate ? 'Anggota baru berhasil ditambahkan.' : 'Perubahan anggota disimpan.')
@@ -570,6 +643,14 @@ function MemberDialog({ mode, member, outlets, onClose, onSaved }: MemberDialogP
       : [...outletIds, id]
 
     setValue('outlet_ids', next, { shouldDirty: true, shouldValidate: true })
+  }
+
+  function togglePermission(permission: string) {
+    const next = extraPermissions.includes(permission)
+      ? extraPermissions.filter((item) => item !== permission)
+      : [...extraPermissions, permission]
+
+    setValue('extra_permissions', next, { shouldDirty: true })
   }
 
   const submit = handleSubmit((values) => {
@@ -706,6 +787,53 @@ function MemberDialog({ mode, member, outlets, onClose, onSaved }: MemberDialogP
             {outletError ? (
               <p id="member-outlets-message" role="alert" className="text-sm text-destructive">
                 {outletError}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-sm font-medium">Izin tambahan</span>
+              <span className="text-xs text-muted-foreground">
+                {extraPermissions.length} izin tambahan
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Izin bawaan role {ROLE_LABELS[selectedRole]} aktif otomatis dan tidak dapat dicabut
+              (ditampilkan terkunci).{' '}
+              {isOwnerActor
+                ? 'Tekan tombol untuk memberikan atau mencabut izin lain sesuai kebutuhan anggota ini.'
+                : 'Hanya Owner yang dapat mengatur izin tambahan.'}
+            </p>
+            <div className="max-h-72 space-y-3 overflow-y-auto rounded-lg border bg-muted/30 p-3">
+              {PERMISSION_GROUPS.map((group) => (
+                <fieldset key={group.title} className="space-y-1.5" disabled={mutation.isPending}>
+                  <legend className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {group.title}
+                  </legend>
+                  <div className="grid gap-1.5 sm:grid-cols-2">
+                    {group.items.map((permission) => {
+                      const isPreset = presetPermissions.includes(permission)
+                      const checked = isPreset || extraPermissions.includes(permission)
+
+                      return (
+                        <PermissionToggle
+                          key={permission}
+                          label={permissionLabel(permission)}
+                          checked={checked}
+                          locked={isPreset}
+                          disabled={mutation.isPending || !isOwnerActor}
+                          onToggle={() => togglePermission(permission)}
+                        />
+                      )
+                    })}
+                  </div>
+                </fieldset>
+              ))}
+            </div>
+            {permissionError ? (
+              <p role="alert" className="text-sm text-destructive">
+                {permissionError}
               </p>
             ) : null}
           </div>

@@ -21,9 +21,23 @@
 - **Kontrak snapshot Phase 4:** terdokumentasi di `docs/architecture/api-design.md` bagian "Phase 3 contract — catalog": order item menyimpan snapshot `product_id`/`name`/`price`, checkout wajib mengambil ulang menu via `Product::sellable()`, dan perubahan catalog tidak boleh mengubah snapshot histori.
 - **Verifikasi penuh AC "menu nonaktif tidak bisa masuk transaksi":** menunggu jalur checkout Phase 4; saat ini sudah ada guard domain `Product::sellable()` beserta test scope-nya.
 
-## Konfirmasi teknis backend Phase 2 (2026-11-02)
+## Konfirmasi teknis backend Phase 2 (2026-11-02) — status: disetujui
 
-- **Katalog permission dan role preset:** implementasi mengikuti baseline D-03 sampai D-05. Status D-03–D-05 tetap **rekomendasi v1 yang menunggu persetujuan Product Owner**, sehingga katalog permission, batas Manager, dan model outlet access dapat direvisi bila keputusan final berbeda. Tidak ada custom role atau permission override.
+**Status:** disetujui Product Owner (2026-11-16). Keputusan berikut menjadi baseline Phase 2; perubahan di masa depan harus melalui revisi keputusan dan test terkait.
+
+**Keputusan yang dikunci (disetujui Product Owner, 2026-11-17):**
+
+1. **Izin tambahan per member (`extra_permissions`) difinalisasi** sesuai revisi D-04 2026-11-17: Owner-only, seluruh katalog D-03 boleh diberikan, preset tidak dapat dicabut/dikirim ulang (422), Manager dengan field izin ditolak 403, dan izin efektif = preset ∪ extra. Kontrak: `POST /members` dan `PATCH /members/{id}` menerima field `extra_permissions` (array of `resource.action`).
+
+**Keputusan yang dikunci (disetujui Product Owner, 2026-11-16):**
+
+1. **Penambahan employee memakai direct-create** dengan password awal dari operator; email invitation (token, kedaluwarsa, pengiriman) bukan bagian MVP dan tidak boleh diklaim tersedia. Jika kelak dibutuhkan, menjadi keputusan baru.
+2. **Manager boleh mengangkat employee menjadi MANAGER** (role setara level Manager sendiri); Manager tetap tidak dapat mengubah Owner, mengubah membership-nya sendiri, atau memberi outlet di luar aksesnya.
+3. **`GET /api/v1/members` mengembalikan seluruh membership Business tanpa pagination**; diterima sebagai pengecualian kecil dari kontrak pagination karena jumlah membership per Business terbatas pada MVP.
+4. **Audit log belum mencatat perubahan role/outlet access** karena modul audit belum dibangun; tetap menjadi dependency D-28 dan dicatat sebagai pengecualian status Phase 2 ("Selesai dengan pengecualian yang disetujui").
+5. D-03, D-04, dan D-05 resmi disetujui sebagai baseline authorization MVP (2026-11-16).
+
+- **Katalog permission dan role preset:** implementasi mengikuti baseline D-03 sampai D-05. Status D-03–D-05 tetap **rekomendasi v1 yang menunggu persetujuan Product Owner**, sehingga katalog permission, batas Manager, dan model outlet access dapat direvisi bila keputusan final berbeda. Tidak ada custom role atau permission override. *(Diperbarui 2026-11-16: D-03–D-05 disetujui; lihat status di masing-masing keputusan.)*
 - **Outlet access:** Owner memperoleh seluruh outlet secara implisit; Manager dan Cashier memakai baris eksplisit pada `outlet_accesses`. Manager tidak dapat memberikan outlet di luar aksesnya sendiri.
 - **Penambahan employee:** `POST /api/v1/members` membuat akun employee langsung dengan password awal dari operator. Alur undangan via email (token, kedaluwarsa, pengiriman) belum diputuskan dan belum diimplementasikan.
 - **Penonaktifan dan hard delete member:** `PATCH /api/v1/members/{membership}` dengan field `status` (`ACTIVE`/`INACTIVE`) memakai permission `members.update`; deaktivasi mencabut token tetapi mempertahankan record membership dan outlet access. `DELETE /api/v1/members/{membership}` memakai `members.delete` untuk hard delete membership employee; hanya Owner yang boleh, tidak dapat menghapus Owner atau dirinya sendiri, dan token user dicabut. User dipertahankan untuk atribusi historis.
@@ -63,6 +77,8 @@
 
 ### D-03 — Permission catalog MVP
 
+**Status:** disetujui Product Owner (2026-11-16). Katalog berikut adalah baseline final MVP, termasuk tambahan `inventory.create` dan `inventory.update` dari D-32. Perubahan kategori/kata kunci permission di masa depan wajib lewat revisi keputusan, bukan langsung di kode. Catatan: `members.invite` tetap menjadi permission untuk endpoint pembuatan employee (alur direct-create, lihat konfirmasi teknis Phase 2).
+
 **Keputusan:** gunakan permission eksplisit berbentuk `resource.action`. Katalog awal:
 
 - `business.read`, `business.update`
@@ -89,11 +105,27 @@ Permission dapat ditambah ketika requirement yang sah muncul. Jangan menggunakan
 
 ### D-04 — Custom role tidak masuk MVP
 
-**Keputusan:** MVP hanya menyediakan preset `OWNER`, `MANAGER`, dan `CASHIER`. Tidak ada custom role atau permission override per membership; preset dikelola terpusat. Perubahan role hanya dilakukan Owner dan tidak boleh menaikkan akses melebihi batas sistem.
+**Status:** disetujui Product Owner (2026-11-16); **direvisi (2026-11-17, disetujui Product Owner)** dengan tambahan izin per-member di bawah.
+
+**Keputusan:** MVP hanya menyediakan preset `OWNER`, `MANAGER`, dan `CASHIER`. Tidak ada custom role; preset dikelola terpusat. Perubahan role hanya dilakukan Owner dan tidak boleh menaikkan akses melebihi batas sistem.
+
+**Revisi 2026-11-17 — izin tambahan per member (extra permissions):**
+
+- Owner dapat **memberikan dan mencabut izin tambahan** di luar preset role untuk tiap member melalui `POST /members` dan `PATCH /members/{id}` dengan field `extra_permissions`.
+- Hanya izin dari katalog D-03 yang valid; izin di luar katalog ditolak 422.
+- **Preset role tidak dapat dicabut** dan tidak boleh dikirim sebagai extra (422). Izin efektif = preset role ∪ extra permissions.
+- Hanya Owner yang dapat mengatur field ini; Manager/PATCH lain dengan field `extra_permissions` ditolak 403.
+- Saat role member berubah, override yang kini menjadi preset role baru dibersihkan otomatis.
+- Tabel `membership_permission_overrides` (unique per membership+permission) menyimpan extra; deaktivasi member tidak menghapus extra dan member non-aktif tetap tanpa izin efektif.
+- UI wajib menampilkan izin dengan label ramah pengguna; string mentah `resource.action` tidak boleh muncul di UI.
+
+**Verifikasi:** test MemberPermissionTest (grant/revoke, katalog-only, preset ditolak, role berubah di request sama, Manager ditolak 403, deaktivasi/reaktivasi, `/me` mencerminkan izin efektif) dan test web members-flow (toggle tanpa string mentah).
 
 **Verifikasi:** merchant tidak dapat membuat role, mengubah preset, atau memberikan permission override; Manager tidak dapat menaikkan haknya sendiri atau mengubah Owner.
 
 ### D-05 — Permission per Outlet
+
+**Status:** disetujui Product Owner (2026-11-16).
 
 **Keputusan:** tidak membuat permission matrix yang berbeda untuk setiap outlet pada MVP. Membership menyimpan set outlet yang boleh diakses; permission efektif membership berlaku pada outlet-outlet tersebut. Otorisasi untuk resource outlet harus memvalidasi kedua hal: permission tindakan dan akses ke outlet terkait.
 

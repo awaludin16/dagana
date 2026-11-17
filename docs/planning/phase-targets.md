@@ -99,22 +99,35 @@ Keputusan MVP: satu User hanya dapat terhubung ke satu Business; satu Business d
 
 # Phase 2 — Membership, Role, Permission
 
+> **Status (2026-11-17): Selesai dengan pengecualian yang disetujui — gate ditutup kembali.**
+> Gate dibuka ulang 2026-11-17 untuk fitur izin tambahan per member (revisi D-04) dan kembali ditutup setelah verifikasi lulus: `MemberPermissionTest` 8 passed (36 assertions), suite penuh 141 passed (1005 assertions) pada PostgreSQL, `pint --test` 156 files PASS, test web admin-web 65/65 lulus, type-check + lint lulus.
+> Pengecualian yang disetujui: (1) audit log belum mencatat perubahan role/permission/outlet access — modul audit belum dibangun, dicatat sebagai dependency D-28; (2) alur email invitation tidak masuk MVP — direct-create dengan password awal difinalisasi; (3) `GET /members` tanpa pagination diterima sebagai pengecualian kecil dari kontrak api-design.
+
 ## Target pekerjaan
 
 Membangun relasi membership antara user dan business, role sebagai permission preset, permission sebagai dasar authorization, serta outlet access. Mendukung owner-as-operator dan employee opsional; owner tetap dapat berjualan setelah employee ditambahkan.
 
 ## Acceptance criteria
 
-- [ ] Membership memiliki Business dan status yang dapat diverifikasi; user tanpa membership aktif tidak dapat mengakses konteks business tersebut.
-- [ ] Role preset awal yang dibutuhkan tersedia sesuai scope yang disetujui, hanya Owner, Manager, dan Cashier. Tidak ada custom role atau permission override pada MVP.
-- [ ] Permission dicek pada backend untuk endpoint/aksi terlindungi; menyembunyikan tombol di frontend saja tidak dianggap authorization.
-- [ ] User dengan permission yang sesuai dapat melakukan aksi; user tanpa permission menerima penolakan yang sesuai.
-- [ ] Akses outlet yang diizinkan berfungsi; akses ke outlet di luar cakupan ditolak walaupun user terdaftar di Business yang sama.
-- [ ] Owner mendapatkan permission default yang cukup untuk onboarding, POS, payment, cash, products, reports, inventory, settings dan billing sesuai hak akses dan scope fitur yang sudah tersedia.
-- [ ] Pembuatan employee/invitation dan assignment membership, role/permission, serta outlet access dapat divalidasi sesuai alur yang diimplementasikan.
-- [ ] Owner dapat tetap menggunakan POS setelah employee dibuat; employee setup bukan prasyarat untuk memulai penjualan.
-- [ ] Test otomatis mencakup izin diberikan, izin ditolak, membership nonaktif, dan akses outlet yang tidak diizinkan.
-- [ ] Perubahan permission penting tercatat dalam audit log ketika fitur audit yang relevan tersedia; bila audit belum dibangun, kebutuhan tersebut dicatat sebagai dependency.
+- [x] Membership memiliki Business dan status yang dapat diverifikasi; user tanpa membership aktif tidak dapat mengakses konteks business tersebut. — Lulus; `EnsurePermission` menolak membership kosong/non-aktif (403); `test_inactive_membership_cannot_access_business_context`; unique `user_id` pada `business_memberships` (D-01).
+- [x] Role preset awal yang dibutuhkan tersedia sesuai scope yang disetujui, hanya Owner, Manager, dan Cashier. Tidak ada custom role atau permission override pada MVP. — Lulus; `PermissionCatalog::ROLES`, `GET /api/v1/roles`, D-04 disetujui.
+- [x] Permission dicek pada backend untuk endpoint/aksi terlindungi; menyembunyikan tombol di frontend saja tidak dianggap authorization. — Lulus; middleware `permission:<resource.action>` pada seluruh route terlindungi.
+- [x] User dengan permission yang sesuai dapat melakukan aksi; user tanpa permission menerima penolakan yang sesuai. — Lulus; test positif/negatif pada `MembershipAccessTest` dan `MemberManagementTest`.
+- [x] Akses outlet yang diizinkan berfungsi; akses ke outlet di luar cakupan ditolak walaupun user terdaftar di Business yang sama. — Lulus; `canAccessOutlet()` dipakai konsisten di Order/Payment/Cash/Inventory/Report/Checkout; akses di luar cakupan → 404 tanpa bocoran data (D-05 disetujui).
+- [x] Owner mendapatkan permission default yang cukup untuk onboarding, POS, payment, cash, products, reports, inventory, settings dan billing sesuai hak akses dan scope fitur yang sudah tersedia. — Lulus; Owner = seluruh katalog D-03 (47 permission, termasuk `inventory.create`/`inventory.update` dari D-32); endpoint settings/billing memang scope fase lain.
+- [x] Pembuatan employee/invitation dan assignment membership, role/permission, serta outlet access dapat divalidasi sesuai alur yang diimplementasikan. — Lulus; direct-create tanpa email invitation difinalisasi (keputusan 2026-11-16); token dicabut saat deaktivasi/hard delete; Manager hanya dapat grant outlet miliknya sendiri.
+- [x] Owner dapat tetap menggunakan POS setelah employee dibuat; employee setup bukan prasyarat untuk memulai penjualan. — Lulus; `test_owner_can_operate_without_creating_any_employee`.
+- [x] Test otomatis mencakup izin diberikan, izin ditolak, membership nonaktif, dan akses outlet yang tidak diizinkan. — Lulus; 17 test Phase 2 passed (114 assertions), suite penuh 133 passed (969 assertions) pada 2026-11-16.
+- [x] Perubahan permission penting tercatat dalam audit log ketika fitur audit yang relevan tersedia; bila audit belum dibangun, kebutuhan tersebut dicatat sebagai dependency. — Terhalang/disetujui: modul audit belum dibangun; dicatat sebagai dependency D-28 dan pengecualian status fase ini.
+
+## Acceptance criteria tambahan — izin tambahan per member (revisi D-04, 2026-11-17)
+
+- [x] Owner dapat memberikan izin tambahan di luar preset saat membuat member (`POST /members` dengan `extra_permissions`); izin efektif member = preset ∪ extra dan ditegakkan middleware permission backend. — Lulus; `test_owner_can_grant_extra_permission_on_create_and_backend_honors_it` (kasir dengan `products.create` berhasil `POST /products`).
+- [x] Owner dapat mencabut izin tambahan melalui `PATCH /members/{id}`; akses member ke resource terkait berhenti setelah izin dicabut. — Lulus; `test_owner_can_revoke_extra_permission` (kasir ditolak 403 setelah izin dicabut).
+- [x] Izin di luar katalog D-03 dan izin yang merupakan preset role ditolak 422 tanpa mengubah data. — Lulus; `test_extra_permission_must_come_from_the_catalog`, `test_role_preset_permission_cannot_be_sent_as_extra`, `test_preset_check_follows_the_role_sent_in_the_same_request`.
+- [x] Hanya Owner yang dapat mengatur `extra_permissions`; aktor lain dengan field tersebut ditolak 403 tanpa membuat/mengubah record. — Lulus; `test_manager_cannot_set_extra_permissions` (PATCH dan POST).
+- [x] Izin tambahan bertahan saat deaktivasi/reaktivasi; member non-aktif tetap tanpa izin efektif. — Lulus; `test_extra_permissions_survive_deactivation_and_reactivation` + `test_me_reflects_effective_and_extra_permissions`.
+- [x] UI admin-web menampilkan izin sebagai toggle berlabel ramah (tanpa string `resource.action` mentah); preset tampil terkunci; hanya Owner yang aktif toggle-nya. — Lulus; test web 65/65 (termasuk test baru alur toggle).
 
 ## Cara verifikasi / bukti
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Member;
 
+use App\Domain\Access\PermissionCatalog;
 use App\Models\BusinessMembership;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -28,6 +29,12 @@ class UpdateMemberRequest extends FormRequest
                 'integer',
                 'distinct',
                 Rule::exists('outlets', 'id')->where('business_id', $businessId),
+            ],
+            'extra_permissions' => ['sometimes', 'array'],
+            'extra_permissions.*' => [
+                'string',
+                'distinct',
+                Rule::in(PermissionCatalog::PERMISSIONS),
             ],
         ];
     }

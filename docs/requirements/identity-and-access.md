@@ -214,6 +214,8 @@ MVP hanya memiliki tiga role preset:
 - `MANAGER`: mengelola operasional dan employee sesuai permission yang diberikan; tidak dapat menonaktifkan atau mengambil alih Owner.
 - `CASHIER`: menjalankan penjualan, pembayaran, dan Cash Session sesuai permission.
 
+**Revisi (2026-11-17, disetujui): izin tambahan per member.** Owner dapat memberikan atau mencabut izin tambahan (`extra_permissions`) dari katalog `resource.action` di luar preset role untuk setiap member, saat membuat maupun mengubah member. Izin efektif member = preset role ∪ izin tambahan. Preset role tidak dapat dicabut. Hanya Owner yang dapat mengatur izin tambahan. UI menampilkan izin sebagai toggle berlabel ramah pengguna; string katalog mentah tidak boleh ditampilkan.
+
 Baseline akses role:
 
 | Kapabilitas | Owner | Manager | Cashier |
@@ -302,7 +304,7 @@ settings.update
 
 - Backend memeriksa permission dan Business/Outlet scope pada setiap operasi; menyembunyikan tombol di frontend bukan pengamanan.
 - `delete` berarti menghapus record, bukan soft-delete. Gunakan `delete` hanya untuk resource yang aman dihapus; untuk master data yang masih punya referensi historis, gunakan perubahan status/deaktivasi melalui permission `update` dan method `PATCH`.
-- User/member yang tidak lagi boleh mengakses Business dinonaktifkan melalui `PATCH /api/v1/members/{membership}` dengan field `status` dan permission `members.update`. Deaktivasi mencabut token tetapi mempertahankan record membership dan outlet access; reaktivasi memakai role dan outlet yang sama. `DELETE /api/v1/members/{membership}` dengan permission `members.delete` melakukan hard delete membership employee; hanya Owner yang boleh, tidak dapat menghapus Owner atau dirinya sendiri, token dicabut, dan user dipertahankan untuk atribusi historis.
+- User/member yang tidak lagi boleh mengakses Business dinonaktifkan melalui `PATCH /api/v1/members/{membership}` dengan field `status` dan permission `members.update`. Deaktivasi mencabut token tetapi mempertahankan record membership dan outlet access; reaktivasi memakai role dan outlet yang sama. `DELETE /api/v1/members/{membership}` dengan permission `members.delete` melakukan hard delete membership employee; hanya Owner yang boleh, tidak dapat menghapus Owner atau dirinya sendiri, token dicabut, dan user dipertahankan untuk atribusi historis. Member yang masih direferensikan data historis (order, pembayaran, kas, stok) ditolak `422` dan harus dinonaktifkan alih-alih dihapus.
 - Order selesai, payment, cash movement, stock movement, dan audit log **tidak boleh dihapus permanen**. Koreksi dilakukan melalui cancel, refund, reversal, atau adjustment yang tercatat.
 - Business tidak memiliki permission `business.delete` pada MVP; perubahan pengaturan Business memakai `business.update`. Penghapusan Business belum diimplementasikan.
 - Perubahan role hanya dapat dilakukan Owner; Manager tidak dapat mengubah role Owner atau menaikkan hak aksesnya sendiri.
@@ -310,7 +312,7 @@ settings.update
 
 ### 2 Pengelolaan Role
 
-MVP tidak menyediakan custom role atau arbitrary per-user permission overrides. Role preset dikelola terpusat dan tidak dapat diedit oleh merchant. Perubahan role atau permission memerlukan revisi PRD/ADR.
+MVP tidak menyediakan custom role. Role preset dikelola terpusat dan tidak dapat diedit oleh merchant. Satu-satunya penyesuaian izin yang diizinkan adalah izin tambahan per member dari katalog yang sudah disetujui (revisi 2026-11-17 di atas); permission baru memerlukan revisi PRD/ADR.
 
 ---
 
@@ -328,19 +330,19 @@ Employee tidak wajib dibuat pada onboarding.
 
 Employee management hanya dibutuhkan ketika merchant mulai bekerja dengan orang lain.
 
-Flow:
+Flow (MVP, disetujui 2026-11-16 — direct-create tanpa email invitation):
 
 ```text
-Owner
-  ↓
+Owner/Manager
+  ↓
 Employee Management
-  ↓
-Invite Employee
-  ↓
-Select Role / Permission
-  ↓
+  ↓
+Buat Akun Employee (nama, email, password awal dari operator)
+  ↓
+Select Role (hanya MANAGER / CASHIER)
+  ↓
 Select Outlet Access
-  ↓
+  ↓
 Employee Ready
 ```
 
