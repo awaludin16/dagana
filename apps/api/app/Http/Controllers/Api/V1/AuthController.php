@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Resources\UserResource;
+use App\Models\BusinessMembership;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -44,6 +45,8 @@ class AuthController extends Controller
                 'email' => __('auth.failed'),
             ]);
         }
+
+        $this->rejectInactiveMembership($user);
 
         $token = $user->createToken($data['device_name'] ?? 'api')->plainTextToken;
 
@@ -87,6 +90,8 @@ class AuthController extends Controller
             ]);
         }
 
+        $this->rejectInactiveMembership($user);
+
         Auth::guard('web')->login($user);
         $request->session()->regenerate();
 
@@ -103,5 +108,20 @@ class AuthController extends Controller
         $request->session()->regenerateToken();
 
         return response()->json(null, 204);
+    }
+
+    /**
+     * Deactivation revokes tokens; do not hand out a new one. Users without a
+     * membership (fresh registration before onboarding) may still log in.
+     */
+    private function rejectInactiveMembership(User $user): void
+    {
+        $membership = $user->membership;
+
+        if ($membership && $membership->status === BusinessMembership::STATUS_INACTIVE) {
+            throw ValidationException::withMessages([
+                'email' => 'Akun Anda dinonaktifkan. Hubungi Owner bisnis.',
+            ]);
+        }
     }
 }
