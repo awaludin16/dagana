@@ -116,15 +116,23 @@ export function LoginPage() {
         </Button>
       </form>
 
-      <p className="mt-7 text-center text-sm text-muted-foreground">
-        Belum punya akun?{' '}
+      <div className="mt-7 flex items-center justify-between gap-4 text-sm text-muted-foreground">
         <Link
-          to="/register"
-          className="font-semibold text-foreground underline-offset-4 hover:underline"
+          to="/forgot-password"
+          className="min-h-11 rounded-sm font-medium text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40"
         >
-          Daftar
+          Lupa kata sandi?
         </Link>
-      </p>
+        <p>
+          Belum punya akun?{' '}
+          <Link
+            to="/register"
+            className="font-semibold text-foreground underline-offset-4 hover:underline"
+          >
+            Daftar
+          </Link>
+        </p>
+      </div>
     </section>
   )
 }
