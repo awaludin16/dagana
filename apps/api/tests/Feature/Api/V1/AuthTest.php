@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api\V1;
 
+use App\Models\BusinessMembership;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
@@ -142,6 +143,33 @@ class AuthTest extends TestCase
             ->assertJsonValidationErrors('email');
 
         $this->assertDatabaseCount('users', 1);
+    }
+
+    public function test_inactive_member_cannot_log_in_on_any_path(): void
+    {
+        $user = User::factory()->has(BusinessMembership::factory()->state([
+            'status' => BusinessMembership::STATUS_INACTIVE,
+        ]), 'membership')->create([
+            'email' => 'nonaktif@example.com',
+            'password' => Hash::make('password123'),
+        ]);
+
+        $this->postJson('/api/v1/auth/login', [
+            'email' => 'nonaktif@example.com',
+            'password' => 'password123',
+            'device_name' => 'pos-mobile',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('email');
+
+        $this->postJson('/api/v1/auth/web/login', [
+            'email' => 'nonaktif@example.com',
+            'password' => 'password123',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('email');
+
+        $this->assertDatabaseCount('personal_access_tokens', 0);
     }
 
     public function test_user_can_login_with_valid_credentials(): void
