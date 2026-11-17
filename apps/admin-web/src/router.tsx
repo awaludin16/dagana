@@ -4,7 +4,10 @@ import { AnonymousOnly, RequirePermission, RequireSession } from '@/components/R
 import { AppLayout } from '@/components/layout/AppLayout'
 import { AuthLayout } from '@/components/layout/AuthLayout'
 import { LoginPage } from '@/pages/auth/LoginPage'
+import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage'
 import { RegisterPage } from '@/pages/auth/RegisterPage'
+import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage'
+import { VerifyEmailPage } from '@/pages/auth/VerifyEmailPage'
 import { OnboardingPage } from '@/pages/onboarding/OnboardingPage'
 import { LandingPage } from '@/pages/landing/LandingPage'
 import { DashboardPage } from '@/pages/workspace/DashboardPage'
@@ -112,10 +115,14 @@ export const routes: RouteObject[] = [
         children: [
           { path: '/login', element: <LoginPage /> },
           { path: '/register', element: <RegisterPage /> },
+          { path: '/forgot-password', element: <ForgotPasswordPage /> },
+          { path: '/reset-password', element: <ResetPasswordPage /> },
         ],
       },
     ],
   },
+  // Halaman tujuan tautan verifikasi email; diakses dengan atau tanpa sesi.
+  { path: '/verify-email', element: <VerifyEmailPage /> },
   { path: '*', element: <NotFoundPage /> },
 ]
 
