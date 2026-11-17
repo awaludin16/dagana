@@ -22,7 +22,7 @@ Semua workspace memakai scaffold resmi (`create vite`, `flutter create`) tanpa m
 
 File yang tersedia:
 
-- `compose.yaml` — service `api`, `postgres`, `redis` dengan health check.
+- `compose.yaml` — service `api`, `postgres`, `redis`, `mailpit` dengan health check.
 - `docker/php/Dockerfile.dev` — PHP 8.5 CLI + `pdo_pgsql`, `redis`, `intl`.
 - `docker/php/entrypoint.sh` — menjalankan `composer install` bila `vendor` belum ada.
 - `docker/postgres/init/01-test-database.sh` — membuat database uji `<POSTGRES_DB>_test` saat volume pertama kali dibuat.
@@ -61,6 +61,7 @@ Test memakai database `dagana_test` (lihat `apps/api/phpunit.xml`), sehingga `Re
 ### Catatan penting
 
 - Koneksi antar-container memakai nama service `postgres` dan `redis`. Nilai `127.0.0.1` hanya dipakai untuk akses dari host (mis. `apps/api/.env` saat menjalankan PHP langsung di host).
+- **Email development memakai Mailpit**: SMTP di `localhost:1025`, UI inbox di `http://localhost:8025` (service `mailpit` di `compose.yaml`). Container API dikonfigurasi `MAIL_HOST=mailpit` sehingga semua email verifikasi/reset masuk ke Mailpit, bukan keluar ke internet. Untuk SMTP Gmail di `.env` host, gunakan `MAIL_HOST=smtp.gmail.com`, port `587`, enkripsi `tls`, dan app password.
 - Container API tidak memakai `apps/api/.env`; konfigurasi runtime berasal dari blok `environment` pada `compose.yaml`. File `.env` di `apps/api` hanya untuk workflow host.
 - Server dijalankan dengan `php -S 0.0.0.0:8000 -t public public/index.php`, bukan `php artisan serve`. `artisan serve` men-spawn child process dengan environment bersih sehingga `.env` hasil scaffold (`sqlite`, `127.0.0.1`) menimpa environment Compose.
 - Container berjalan sebagai root; `vendor` yang dibuat saat boot pertama dimiliki root di host. Jalankan Composer dari dalam container agar konsisten.
