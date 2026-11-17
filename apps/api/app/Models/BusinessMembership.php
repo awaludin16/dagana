@@ -51,6 +51,14 @@ class BusinessMembership extends Model
         return $this->hasMany(OutletAccess::class, 'membership_id');
     }
 
+    /**
+     * @return HasMany<MembershipPermissionOverride, $this>
+     */
+    public function permissionOverrides(): HasMany
+    {
+        return $this->hasMany(MembershipPermissionOverride::class, 'membership_id');
+    }
+
     public function isActive(): bool
     {
         return $this->status === self::STATUS_ACTIVE;
@@ -62,11 +70,31 @@ class BusinessMembership extends Model
     }
 
     /**
+     * Izin efektif = preset role + izin tambahan dari Owner (revisi D-04).
+     * Membership non-aktif selalu tanpa izin; data override tetap tersimpan.
+     *
      * @return list<string>
      */
     public function permissions(): array
     {
-        return $this->isActive() ? PermissionCatalog::forRole($this->role) : [];
+        if (! $this->isActive()) {
+            return [];
+        }
+
+        return array_values(array_unique([
+            ...PermissionCatalog::forRole($this->role),
+            ...$this->extraPermissions(),
+        ]));
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function extraPermissions(): array
+    {
+        return $this->relationLoaded('permissionOverrides')
+            ? $this->permissionOverrides->pluck('permission')->all()
+            : $this->permissionOverrides()->pluck('permission')->all();
     }
 
     public function hasPermission(string $permission): bool

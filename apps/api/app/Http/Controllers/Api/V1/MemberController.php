@@ -23,7 +23,7 @@ class MemberController extends Controller
         return MemberResource::collection(
             BusinessMembership::query()
                 ->where('business_id', $actor->business_id)
-                ->with('user', 'business.outlets', 'outletAccesses.outlet')
+                ->with('user', 'business.outlets', 'outletAccesses.outlet', 'permissionOverrides')
                 ->orderBy('id')
                 ->get(),
         );
@@ -61,7 +61,7 @@ class MemberController extends Controller
     {
         return BusinessMembership::query()
             ->where('business_id', $request->user()->membership->business_id)
-            ->with('user', 'business.outlets', 'outletAccesses.outlet')
+            ->with('user', 'business.outlets', 'outletAccesses.outlet', 'permissionOverrides')
             ->findOrFail($membershipId);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Domain\Access\Actions;
 
+use App\Domain\Access\PermissionCatalog;
 use App\Models\BusinessMembership;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
@@ -12,8 +13,9 @@ class UpdateMemberAction
     /**
      * Managers may manage employees, but never the owner or their own access.
      * Status changes are updates: INACTIVE revokes tokens, ACTIVE restores access.
+     * Hanya Owner yang dapat mengatur izin tambahan di luar preset (revisi D-04).
      *
-     * @param  array{role?: string, status?: string, outlet_ids?: list<int>}  $data
+     * @param  array{role?: string, status?: string, outlet_ids?: list<int>, extra_permissions?: list<string>}  $data
      */
     public function execute(BusinessMembership $actor, BusinessMembership $target, array $data): BusinessMembership
     {
@@ -25,6 +27,14 @@ class UpdateMemberAction
             throw new AuthorizationException('Anda tidak dapat mengubah akses Anda sendiri.');
         }
 
+        if (array_key_exists('extra_permissions', $data)) {
+            if (! $actor->isOwner()) {
+                throw new AuthorizationException('Hanya Owner yang dapat mengatur izin tambahan.');
+            }
+
+            CreateMemberAction::assertExtraPermissions($data['role'] ?? $target->role, $data['extra_permissions']);
+        }
+
         if (array_key_exists('outlet_ids', $data) && ! $actor->canGrantOutletAccess($data['outlet_ids'])) {
             throw ValidationException::withMessages([
                 'outlet_ids' => 'Anda hanya dapat memberikan outlet yang Anda akses sendiri.',
@@ -34,6 +44,12 @@ class UpdateMemberAction
         return DB::transaction(function () use ($target, $data): BusinessMembership {
             if (array_key_exists('role', $data)) {
                 $target->update(['role' => $data['role']]);
+
+                // Izin yang kini menjadi preset role baru tidak lagi disimpan
+                // sebagai override agar daftar extra_permissions tetap bersih.
+                $target->permissionOverrides()
+                    ->whereIn('permission', PermissionCatalog::forRole($data['role']))
+                    ->delete();
             }
 
             if (array_key_exists('status', $data)) {
@@ -51,7 +67,14 @@ class UpdateMemberAction
                 );
             }
 
-            return $target->load('user', 'outletAccesses.outlet', 'business.outlets');
+            if (array_key_exists('extra_permissions', $data)) {
+                $target->permissionOverrides()->delete();
+                $target->permissionOverrides()->createMany(
+                    collect($data['extra_permissions'])->map(fn (string $permission): array => ['permission' => $permission])->all(),
+                );
+            }
+
+            return $target->load('user', 'outletAccesses.outlet', 'business.outlets', 'permissionOverrides');
         });
     }
 }
