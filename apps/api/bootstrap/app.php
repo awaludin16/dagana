@@ -3,6 +3,7 @@
 use App\Http\Middleware\EnsurePermission;
 use App\Http\Middleware\ForceJsonResponse;
 use Illuminate\Auth\AuthenticationException;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -41,6 +42,22 @@ return Application::configure(basePath: dirname(__DIR__))
                     return response()->json([
                         'message' => $exception->getMessage(),
                     ], 401);
+                }
+
+                return null;
+            },
+        );
+
+        // Jangan pernah bocorkan SQL/detail database ke client, termasuk di
+        // mode debug. Domain guard mengembalikan 422 sebelum sampai di sini.
+        $exceptions->render(
+            function (QueryException $exception, Request $request) {
+                if ($request->is('api/*')) {
+                    report($exception);
+
+                    return response()->json([
+                        'message' => 'Layanan sedang mengalami gangguan. Silakan coba lagi.',
+                    ], 500);
                 }
 
                 return null;

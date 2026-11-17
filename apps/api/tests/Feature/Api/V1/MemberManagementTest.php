@@ -5,6 +5,7 @@ namespace Tests\Feature\Api\V1;
 use App\Domain\Access\PermissionCatalog;
 use App\Models\Business;
 use App\Models\BusinessMembership;
+use App\Models\Order;
 use App\Models\Outlet;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -253,6 +254,26 @@ class MemberManagementTest extends TestCase
         $this->assertDatabaseMissing('outlet_accesses', ['membership_id' => $membershipId]);
         $this->assertDatabaseCount('personal_access_tokens', 0);
         $this->assertDatabaseHas('users', ['id' => $employee->id]);
+    }
+
+    public function test_member_with_transaction_history_cannot_be_hard_deleted(): void
+    {
+        [$owner, $business, $outlet] = $this->merchant();
+        $employee = $this->employee($business, [$outlet], BusinessMembership::ROLE_CASHIER);
+        $membershipId = $employee->membership->id;
+
+        Order::factory()->for($business)->create([
+            'outlet_id' => $outlet->id,
+            'membership_id' => $membershipId,
+        ]);
+
+        Sanctum::actingAs($owner);
+
+        $this->deleteJson("/api/v1/members/{$membershipId}")
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('member');
+
+        $this->assertDatabaseHas('business_memberships', ['id' => $membershipId]);
     }
 
     public function test_owner_cannot_hard_delete_the_owner_or_self(): void
