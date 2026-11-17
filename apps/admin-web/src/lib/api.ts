@@ -158,6 +158,31 @@ export const api = {
     return data<Me>(await request('/auth/web/login', { method: 'POST', body: input }))
   },
 
+  async forgotPassword(input: { email: string }) {
+    const response = await request('/auth/forgot-password', { method: 'POST', body: input })
+    return (await response.json()) as { message: string }
+  },
+
+  async resetPassword(input: { email: string; token: string; password: string }) {
+    const response = await request('/auth/reset-password', {
+      method: 'POST',
+      body: { ...input, password_confirmation: input.password },
+    })
+    return (await response.json()) as { message: string }
+  },
+
+  async verifyEmail(id: string, hash: string, expires: string, signature: string) {
+    const response = await request(
+      `/auth/email/verify/${id}/${hash}?expires=${expires}&signature=${signature}`,
+    )
+    return (await response.json()) as { message: string }
+  },
+
+  async resendVerification() {
+    const response = await request('/auth/email/verification-notification', { method: 'POST' })
+    return (await response.json()) as { message: string }
+  },
+
   async logout() {
     await request('/auth/web/logout', { method: 'POST' })
   },
