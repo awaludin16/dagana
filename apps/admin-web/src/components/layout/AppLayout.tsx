@@ -105,7 +105,7 @@ export function AppLayout() {
           aria-label="Beranda Dagana"
           className="inline-flex min-h-11 items-center rounded-sm"
         >
-          <BrandLogo mode="full" className="h-7" />
+          <BrandLogo mode="full" className="h-10" />
         </Link>
         <Button
           type="button"
@@ -148,8 +148,8 @@ export function AppLayout() {
             aria-label="Beranda Dagana"
             className="inline-flex min-h-11 items-center rounded-sm"
           >
-            <BrandLogo mode="full" className={cn('h-12', collapsed && 'lg:hidden')} />
-            <BrandLogo mode="icon" className={cn('size-9', !collapsed && 'lg:hidden')} />
+            <BrandLogo mode="full" className={cn('h-10', collapsed && 'lg:hidden')} />
+            <BrandLogo mode="icon" className={cn('size-8', !collapsed && 'hidden')} />
           </Link>
           <Button
             type="button"
