@@ -8,6 +8,7 @@ import {
   Trash2,
   UserPlus,
   Users,
+  EllipsisVertical,
 } from 'lucide-react'
 import { useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
@@ -28,6 +29,14 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -35,6 +44,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { ApiError, api } from '@/lib/api'
 import { apiErrorMessage, applyApiErrors, getFieldError, hasFieldErrors } from '@/lib/form-errors'
 import { permissionLabel, PERMISSION_GROUPS } from '@/lib/permission-labels'
@@ -56,7 +72,6 @@ export function MembersPage() {
   const access = useAccess()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
-
   const [dialog, setDialog] = useState<MemberDialogState | null>(null)
   const [statusChange, setStatusChange] = useState<{
     member: Member
@@ -213,122 +228,142 @@ export function MembersPage() {
         </p>
       ) : null}
 
-      <section className="overflow-hidden rounded-xl border bg-card">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[44rem] text-sm">
-            <thead>
-              <tr className="border-b bg-muted/50 text-left text-muted-foreground">
-                <th className="p-4 font-medium">Anggota</th>
-                <th className="p-4 font-medium">Role</th>
-                <th className="p-4 font-medium">Status</th>
-                <th className="p-4 font-medium">Akses Outlet</th>
-                <th className="p-4 text-right font-medium">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {memberList.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="p-8 text-center text-muted-foreground">
-                    Belum ada anggota tim dalam Business ini.
-                  </td>
-                </tr>
-              ) : (
-                memberList.map((member) => (
-                  <tr key={member.id} className="align-top">
-                    <td className="p-4">
-                      <div className="flex items-center gap-3">
-                        <span
-                          className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-foreground"
-                          aria-hidden="true"
-                        >
-                          <Users className="size-4.5" />
-                        </span>
-                        <div className="min-w-0">
-                          <p className="truncate font-medium">{member.user.name}</p>
-                          <p className="truncate text-sm text-muted-foreground">
-                            {member.user.email}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <RoleBadge role={member.role} />
-                    </td>
-                    <td className="p-4">
-                      <Badge
-                        variant={member.status === 'ACTIVE' ? 'secondary' : 'destructive'}
-                        className={cn(
-                          'rounded-full',
-                          member.status === 'ACTIVE' &&
-                            'bg-dagana-success-container text-dagana-success',
-                        )}
-                      >
-                        {member.status === 'ACTIVE' ? 'Aktif' : 'Nonaktif'}
-                      </Badge>
-                    </td>
-                    <td className="max-w-56 p-4">
-                      {isOwner(member) ? (
-                        <span className="text-sm text-muted-foreground">Semua outlet</span>
-                      ) : member.outlets.length === 0 ? (
-                        <span className="text-sm text-muted-foreground">Tanpa akses outlet</span>
-                      ) : (
-                        <span className="text-sm">
-                          {member.outlets.map((outlet) => outlet.name).join(', ')}
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-4">
-                      <div className="flex justify-end gap-2">
-                        {canActOnMember(member) && canUpdate ? (
-                          <>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setDialog({ mode: 'update', member })}
-                            >
-                              <Pencil aria-hidden="true" className="size-4" />
-                              Ubah
-                            </Button>
-                            <Button
-                              type="button"
-                              variant={member.status === 'ACTIVE' ? 'destructive' : 'outline'}
-                              size="sm"
-                              onClick={() =>
-                                setStatusChange({
-                                  member,
-                                  status: member.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE',
-                                })
-                              }
-                            >
-                              {member.status === 'ACTIVE' ? 'Nonaktifkan' : 'Aktifkan'}
-                            </Button>
-                          </>
-                        ) : null}
-                        {canActOnMember(member) && canDelete ? (
+      <Table className="min-w-[44rem]">
+        <TableHeader>
+          <TableRow className="bg-muted/50">
+            <TableHead className="p-4">Anggota</TableHead>
+            <TableHead className="p-4">Role</TableHead>
+            <TableHead className="p-4">Status</TableHead>
+            <TableHead className="p-4">Akses Outlet</TableHead>
+            <TableHead className="p-4">Aksi</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {memberList.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={5} className="p-8 text-center text-muted-foreground">
+                Belum ada anggota tim dalam Business ini.
+              </TableCell>
+            </TableRow>
+          ) : (
+            memberList.map((member) => (
+              <TableRow key={member.id} className="align-top">
+                <TableCell className="p-4">
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-foreground"
+                      aria-hidden="true"
+                    >
+                      <Users className="size-4.5" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{member.user.name}</p>
+                      <p className="truncate text-sm text-muted-foreground">{member.user.email}</p>
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell className="p-4">
+                  <RoleBadge role={member.role} />
+                </TableCell>
+                <TableCell className="p-4">
+                  <Badge
+                    variant={member.status === 'ACTIVE' ? 'secondary' : 'destructive'}
+                    className={cn(
+                      'rounded-full',
+                      member.status === 'ACTIVE' &&
+                        'bg-dagana-success-container text-dagana-success',
+                    )}
+                  >
+                    {member.status === 'ACTIVE' ? 'Aktif' : 'Nonaktif'}
+                  </Badge>
+                </TableCell>
+                <TableCell className="block max-w-56 p-4">
+                  {isOwner(member) ? (
+                    <span className="text-sm text-muted-foreground">Semua outlet</span>
+                  ) : member.outlets.length === 0 ? (
+                    <span className="text-sm text-muted-foreground">Tanpa akses outlet</span>
+                  ) : (
+                    <span className="text-sm">
+                      {member.outlets.map((outlet) => outlet.name).join(', ')}
+                    </span>
+                  )}
+                </TableCell>
+                <TableCell className="p-4">
+                  <div className="flex justify-start gap-2">
+                    {canActOnMember(member) ? (
+                      <>
+                        {canUpdate ? (
                           <Button
                             type="button"
-                            variant="ghost"
-                            size="sm"
-                            aria-label={`Hapus ${member.user.name}`}
-                            onClick={() => setDeleteTarget(member)}
+                            variant="original"
+                            size="icon"
+                            className="text-muted-foreground hover:text-foreground"
+                            aria-label={`Ubah ${member.user.name}`}
+                            onClick={() => setDialog({ mode: 'update', member })}
                           >
-                            <Trash2 aria-hidden="true" className="size-4" />
-                            Hapus
+                            <Pencil aria-hidden="true" />
                           </Button>
                         ) : null}
-                        {!canActOnMember(member) ? (
-                          <span className="text-xs text-muted-foreground">—</span>
+                        {canUpdate || canDelete ? (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="original"
+                                size="icon"
+                                className="text-muted-foreground hover:text-foreground"
+                                aria-label={`Aksi lain untuk ${member.user.name}`}
+                              >
+                                <EllipsisVertical aria-hidden="true" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {canUpdate ? (
+                                <DropdownMenuItem
+                                  onSelect={() =>
+                                    setStatusChange({
+                                      member,
+                                      status: member.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE',
+                                    })
+                                  }
+                                >
+                                  {member.status === 'ACTIVE' ? (
+                                    <>
+                                      <ShieldAlert className="text-destructive" />
+                                      Nonaktifkan akses
+                                    </>
+                                  ) : (
+                                    <>
+                                      <ShieldCheck />
+                                      Aktifkan kembali
+                                    </>
+                                  )}
+                                </DropdownMenuItem>
+                              ) : null}
+                              {canUpdate && canDelete ? <DropdownMenuSeparator /> : null}
+                              {canDelete ? (
+                                <DropdownMenuItem
+                                  className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                                  onSelect={() => setDeleteTarget(member)}
+                                >
+                                  <Trash2 />
+                                  Hapus permanen
+                                </DropdownMenuItem>
+                              ) : null}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         ) : null}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+                      </>
+                    ) : (
+                      <span className="text-xs mx-auto text-muted-foreground">—</span>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
 
       <RoleAccessSummary roles={roleCatalog} />
 
@@ -611,8 +646,7 @@ function MemberDialog({
   const roleError = getFieldError(errors, 'role')
   const selectedRole = useWatch({ control, name: 'role' })
   const extraPermissions = useWatch({ control, name: 'extra_permissions' }) ?? []
-  const presetPermissions =
-    roles.find((preset) => preset.role === selectedRole)?.permissions ?? []
+  const presetPermissions = roles.find((preset) => preset.role === selectedRole)?.permissions ?? []
   const permissionError =
     getFieldError(errors, 'extra_permissions.0') ?? getFieldError(errors, 'extra_permissions')
 

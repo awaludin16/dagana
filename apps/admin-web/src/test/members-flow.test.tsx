@@ -154,7 +154,9 @@ describe('manajemen anggota tim (Phase 2)', () => {
     expect(within(table).getByText('Owner')).toBeInTheDocument()
     expect(within(table).getAllByText('Aktif')).toHaveLength(2)
     expect(within(table).getByText('Outlet Utama')).toBeInTheDocument()
-    expect(within(table).getByRole('button', { name: 'Hapus Budi Santoso' })).toBeInTheDocument()
+    expect(
+      within(table).getByRole('button', { name: 'Aksi lain untuk Budi Santoso' }),
+    ).toBeInTheDocument()
 
     expect(screen.getByRole('heading', { name: 'Ringkasan role & hak akses' })).toBeVisible()
     expect(screen.getByText('semua izin')).toBeInTheDocument()
@@ -292,7 +294,7 @@ describe('manajemen anggota tim (Phase 2)', () => {
 
     renderAt()
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Ubah' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Ubah Citra Dewi' }))
     expect(await screen.findByRole('heading', { name: 'Ubah role & akses outlet' })).toBeVisible()
 
     fireEvent.click(screen.getByRole('button', { name: 'Simpan Perubahan' }))
@@ -325,7 +327,7 @@ describe('manajemen anggota tim (Phase 2)', () => {
 
     renderAt()
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Ubah' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Ubah Citra Dewi' }))
     expect(await screen.findByRole('heading', { name: 'Ubah role & akses outlet' })).toBeVisible()
 
     // Label ramah pengguna, bukan string mentah seperti 'members.read'.
@@ -379,7 +381,8 @@ describe('manajemen anggota tim (Phase 2)', () => {
 
     renderAt()
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Hapus Budi Santoso' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Aksi lain untuk Budi Santoso' }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Hapus permanen' }))
     expect(await screen.findByRole('heading', { name: 'Hapus anggota permanen?' })).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Hapus permanen' }))
 
