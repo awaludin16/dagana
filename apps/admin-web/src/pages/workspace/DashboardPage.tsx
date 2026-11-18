@@ -20,6 +20,14 @@ import { SectionTitle } from '@/components/SectionTitle'
 import { SummaryCard } from '@/components/SummaryCard'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { api } from '@/lib/api'
 import { apiErrorMessage } from '@/lib/form-errors'
 import {
@@ -421,38 +429,40 @@ function RecentOrdersSection({ outlets }: { outlets: { id: number; name: string 
           Belum ada transaksi tercatat. Mulai jualan untuk melihat riwayat di sini.
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border bg-card">
-          <table className="w-full text-sm" aria-label="Transaksi terbaru">
-            <thead>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <tr key={headerGroup.id} className="border-b text-left text-muted-foreground">
-                  {headerGroup.headers.map((header) => (
-                    <th
-                      key={header.id}
-                      className={`p-3 font-medium ${header.column.id === 'total_amount' ? 'text-right' : ''}`}
-                    >
-                      {header.isPlaceholder ? null : <table.FlexRender header={header} />}
-                    </th>
-                  ))}
-                </tr>
-              ))}
-            </thead>
-            <tbody className="divide-y">
-              {table.getRowModel().rows.map((row) => (
-                <tr key={row.id}>
-                  {row.getAllCells().map((cell) => (
-                    <td
-                      key={cell.id}
-                      className={`p-3 ${cell.column.id === 'total_amount' ? 'text-right font-medium tabular-nums' : ''}`}
-                    >
-                      <table.FlexRender cell={cell} />
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table aria-label="Transaksi terbaru">
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead
+                    key={header.id}
+                    className={header.column.id === 'total_amount' ? 'text-right' : ''}
+                  >
+                    {header.isPlaceholder ? null : <table.FlexRender header={header} />}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows.map((row) => (
+              <TableRow key={row.id}>
+                {row.getAllCells().map((cell) => (
+                  <TableCell
+                    key={cell.id}
+                    className={
+                      cell.column.id === 'total_amount'
+                        ? 'text-right font-medium tabular-nums'
+                        : ''
+                    }
+                  >
+                    <table.FlexRender cell={cell} />
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
     </div>
   )

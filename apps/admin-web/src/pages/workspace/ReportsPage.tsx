@@ -16,6 +16,7 @@ import { ErrorState, LoadingState } from '@/components/PageFeedback'
 import { SectionTitle } from '@/components/SectionTitle'
 import { SummaryCard } from '@/components/SummaryCard'
 import { Badge } from '@/components/ui/badge'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import {
   cashSessionStatusClass,
   cashSessionStatusLabel,
@@ -311,54 +312,50 @@ function PaymentsSection({ params }: { params: ReportRangeParams }) {
   return (
     <div className="space-y-3">
       <SectionTitle icon={CreditCard}>Pembayaran</SectionTitle>
-      <div className="overflow-x-auto rounded-xl border bg-card">
-        <table className="w-full text-sm" aria-label="Pembayaran per metode (hanya lunas)">
-          <thead>
-            <tr className="border-b text-left text-muted-foreground">
-              <th className="p-3 font-medium">Metode</th>
-              <th className="p-3 font-medium">Transaksi</th>
-              <th className="p-3 text-right font-medium">Total</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {by_method.map((row) => (
-              <tr key={row.method}>
-                <td className="p-3 font-medium">{paymentMethodLabel(row.method)}</td>
-                <td className="p-3 tabular-nums">{formatNumber(row.transactions)}</td>
-                <td className="p-3 text-right font-medium tabular-nums">
-                  {formatRupiah(row.total)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Table aria-label="Pembayaran per metode (hanya lunas)">
+        <TableHeader>
+          <TableRow>
+            <TableHead>Metode</TableHead>
+            <TableHead>Transaksi</TableHead>
+            <TableHead className="text-right">Total</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {by_method.map((row) => (
+            <TableRow key={row.method}>
+              <TableCell className="font-medium">{paymentMethodLabel(row.method)}</TableCell>
+              <TableCell className="tabular-nums">{formatNumber(row.transactions)}</TableCell>
+              <TableCell className="text-right font-medium tabular-nums">
+                {formatRupiah(row.total)}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
       <p className="text-xs text-muted-foreground">
         Tabel di atas hanya pembayaran Terkonfirmasi. Pembayaran menunggu/gagal tidak pernah
         digabung ke angka lunas.
       </p>
-      <div className="overflow-x-auto rounded-xl border bg-card">
-        <table className="w-full text-sm" aria-label="Pembayaran per status">
-          <thead>
-            <tr className="border-b text-left text-muted-foreground">
-              <th className="p-3 font-medium">Status</th>
-              <th className="p-3 font-medium">Transaksi</th>
-              <th className="p-3 text-right font-medium">Total</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {by_status.map((row) => (
-              <tr key={row.status}>
-                <td className="p-3 font-medium">{paymentStatusLabel(row.status)}</td>
-                <td className="p-3 tabular-nums">{formatNumber(row.transactions)}</td>
-                <td className="p-3 text-right font-medium tabular-nums">
-                  {formatRupiah(row.total)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Table aria-label="Pembayaran per status">
+        <TableHeader>
+          <TableRow>
+            <TableHead>Status</TableHead>
+            <TableHead>Transaksi</TableHead>
+            <TableHead className="text-right">Total</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {by_status.map((row) => (
+            <TableRow key={row.status}>
+              <TableCell className="font-medium">{paymentStatusLabel(row.status)}</TableCell>
+              <TableCell className="tabular-nums">{formatNumber(row.transactions)}</TableCell>
+              <TableCell className="text-right font-medium tabular-nums">
+                {formatRupiah(row.total)}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   )
 }
@@ -395,26 +392,26 @@ function OperatorsSection({ params }: { params: ReportRangeParams }) {
       ) : (
         <>
           <div className="overflow-x-auto rounded-xl border bg-card">
-            <table className="w-full text-sm" aria-label="Agregasi transaksi per operator">
-              <thead>
-                <tr className="border-b text-left text-muted-foreground">
-                  <th className="p-3 font-medium">Operator</th>
-                  <th className="p-3 font-medium">Transaksi</th>
-                  <th className="p-3 text-right font-medium">Total penjualan</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
+            <Table aria-label="Agregasi transaksi per operator">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Operator</TableHead>
+                  <TableHead>Transaksi</TableHead>
+                  <TableHead className="text-right">Total penjualan</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {rows.map((row) => (
-                  <tr key={row.membership_id}>
-                    <td className="p-3 font-medium">{row.operator_name}</td>
-                    <td className="p-3 tabular-nums">{formatNumber(row.transactions)}</td>
-                    <td className="p-3 text-right font-medium tabular-nums">
+                  <TableRow key={row.membership_id}>
+                    <TableCell className="font-medium">{row.operator_name}</TableCell>
+                    <TableCell className="tabular-nums">{formatNumber(row.transactions)}</TableCell>
+                    <TableCell className="text-right font-medium tabular-nums">
                       {formatRupiah(row.sales_total)}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
           <MetaNote shown={rows.length} total={operators.data.meta.total} />
         </>
@@ -595,27 +592,27 @@ function InventorySection({ params }: { params: ReportRangeParams }) {
       ) : (
         <>
           <div className="overflow-x-auto rounded-xl border bg-card">
-            <table className="w-full text-sm" aria-label="Laporan inventory">
-              <thead>
-                <tr className="border-b text-left text-muted-foreground">
-                  <th className="p-3 font-medium">Item</th>
-                  <th className="p-3 font-medium">Saldo stok</th>
-                  <th className="p-3 font-medium">Movement rentang</th>
-                  <th className="p-3 font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
+            <Table aria-label="Laporan inventory">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Item</TableHead>
+                  <TableHead>Saldo stok</TableHead>
+                  <TableHead>Movement rentang</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {rows.map((row) => (
-                  <tr key={row.id}>
-                    <td className="p-3 font-medium">{row.name}</td>
-                    <td className="p-3 tabular-nums">
+                  <TableRow key={row.id}>
+                    <TableCell className="font-medium">{row.name}</TableCell>
+                    <TableCell className="tabular-nums">
                       {formatNumber(row.current_stock)} {row.unit}
-                    </td>
-                    <td className="p-3 tabular-nums">
+                    </TableCell>
+                    <TableCell className="tabular-nums">
                       {row.movements_net > 0 ? '+' : ''}
                       {formatNumber(row.movements_net)} ({formatNumber(row.movements_count)}x)
-                    </td>
-                    <td className="p-3">
+                    </TableCell>
+                    <TableCell>
                       {row.is_low_stock && (
                         <Badge className="border-dagana-warning/20 bg-dagana-warning-container text-dagana-warning">
                           Stok rendah
@@ -625,11 +622,11 @@ function InventorySection({ params }: { params: ReportRangeParams }) {
                       {!row.is_low_stock && row.is_active ? (
                         <span className="text-muted-foreground">—</span>
                       ) : null}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
           <MetaNote shown={rows.length} total={inventory.data.meta.total} />
         </>

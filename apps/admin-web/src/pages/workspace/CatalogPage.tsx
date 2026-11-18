@@ -15,6 +15,14 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { FormField } from '@/components/FormField'
 import { CatalogFormDialog } from '@/pages/workspace/CatalogFormDialog'
 import { api } from '@/lib/api'
@@ -575,43 +583,41 @@ function ProductList({
   onDeactivate: (item: Product) => void
 }) {
   return (
-    <>
-      <div className="hidden overflow-x-auto md:block">
-        <table className="w-full min-w-[52rem] text-left text-sm">
-          <thead>
-            <tr className="border-b bg-muted/50 text-muted-foreground">
-              <th className="p-3 font-medium">Menu</th>
-              <th className="p-3 font-medium">Kategori</th>
-              <th className="p-3 text-right font-medium">Harga</th>
-              <th className="p-3 font-medium">Status</th>
-              <th className="p-3 text-right font-medium">Tindakan</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => (
-              <tr key={item.id} className="border-b last:border-0">
-                <td className="p-3 font-medium">{item.name}</td>
-                <td className="p-3 text-muted-foreground">
-                  {item.category?.name ?? 'Tanpa kategori'}
-                </td>
-                <td className="p-3 text-right tabular-nums">{formatRupiah(item.price)}</td>
-                <td className="p-3">
-                  <ProductStatus item={item} />
-                </td>
-                <td className="p-3">
-                  <ItemActions
-                    itemName={item.name}
-                    canUpdate={canUpdate}
-                    canDeactivate={item.is_active}
-                    onEdit={() => onEdit(item)}
-                    onDeactivate={() => onDeactivate(item)}
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+    <div className="hidden md:block">
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-muted/50">
+            <TableHead className="p-4">Menu</TableHead>
+            <TableHead className="p-4">Kategori</TableHead>
+            <TableHead className="p-4">Harga</TableHead>
+            <TableHead className="p-4">Status</TableHead>
+            <TableHead className="p-4">Tindakan</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {items.map((item) => (
+            <TableRow key={item.id}>
+              <TableCell className="p-4 font-medium">{item.name}</TableCell>
+              <TableCell className="p-4 text-muted-foreground">
+                {item.category?.name ?? 'Tanpa kategori'}
+              </TableCell>
+              <TableCell className="p-4 tabular-nums">{formatRupiah(item.price)}</TableCell>
+              <TableCell className="p-4">
+                <ProductStatus item={item} />
+              </TableCell>
+              <TableCell className="p-4">
+                <ItemActions
+                  itemName={item.name}
+                  canUpdate={canUpdate}
+                  canDeactivate={item.is_active}
+                  onEdit={() => onEdit(item)}
+                  onDeactivate={() => onDeactivate(item)}
+                />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
       <ul className="space-y-3 md:hidden">
         {items.map((item) => (
           <li key={item.id} className="rounded-lg border p-4">
@@ -637,7 +643,7 @@ function ProductList({
           </li>
         ))}
       </ul>
-    </>
+    </div>
   )
 }
 
@@ -667,38 +673,36 @@ function CategoryList({
 }) {
   return (
     <>
-      <div className="hidden overflow-x-auto md:block">
-        <table className="w-full min-w-[32rem] text-left text-sm">
-          <thead>
-            <tr className="border-b bg-muted/50 text-muted-foreground">
-              <th className="p-3 font-medium">Kategori</th>
-              <th className="p-3 font-medium">Status</th>
-              <th className="p-3 text-right font-medium">Tindakan</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => (
-              <tr key={item.id} className="border-b last:border-0">
-                <td className="p-3 font-medium">{item.name}</td>
-                <td className="p-3">
-                  <Badge variant={item.is_active ? 'default' : 'outline'}>
-                    {item.is_active ? 'Aktif' : 'Nonaktif'}
-                  </Badge>
-                </td>
-                <td className="p-3">
-                  <ItemActions
-                    itemName={item.name}
-                    canUpdate={canUpdate}
-                    canDeactivate={item.is_active}
-                    onEdit={() => onEdit(item)}
-                    onDeactivate={() => onDeactivate(item)}
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Table className="hidden md:block min-w-[32rem]">
+        <TableHeader>
+          <TableRow className="bg-muted/50">
+            <TableHead>Kategori</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="text-right">Tindakan</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {items.map((item) => (
+            <TableRow key={item.id}>
+              <TableCell className="font-medium">{item.name}</TableCell>
+              <TableCell>
+                <Badge variant={item.is_active ? 'default' : 'outline'}>
+                  {item.is_active ? 'Aktif' : 'Nonaktif'}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                <ItemActions
+                  itemName={item.name}
+                  canUpdate={canUpdate}
+                  canDeactivate={item.is_active}
+                  onEdit={() => onEdit(item)}
+                  onDeactivate={() => onDeactivate(item)}
+                />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
       <ul className="space-y-3 md:hidden">
         {items.map((item) => (
           <li
@@ -741,7 +745,7 @@ function ItemActions({
   if (!canUpdate) return null
 
   return (
-    <div className="flex justify-end gap-2">
+    <div className="flex justify-start gap-2">
       <Button
         type="button"
         variant="outline"

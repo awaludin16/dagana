@@ -24,6 +24,14 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { FormField } from '@/components/FormField'
 import { InventoryItemFormDialog } from '@/pages/workspace/InventoryItemFormDialog'
 import { formatQuantity, InventoryStockDialog } from '@/pages/workspace/InventoryStockDialog'
@@ -370,53 +378,53 @@ function InventoryList({
 
   return (
     <>
-      <div className="hidden overflow-x-auto md:block">
-        <table className="w-full min-w-[56rem] text-left text-sm">
-          <thead>
-            <tr className="border-b bg-muted/50 text-muted-foreground">
-              <th className="p-3 font-medium">Item</th>
-              <th className="p-3 font-medium">Outlet</th>
-              <th className="p-3 text-right font-medium">Saldo</th>
-              <th className="p-3 text-right font-medium">Ambang low stock</th>
-              <th className="p-3 font-medium">Status</th>
-              <th className="p-3 text-right font-medium">Tindakan</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => (
-              <tr key={item.id} className="border-b last:border-0">
-                <td className="p-3 font-medium">{item.name}</td>
-                <td className="p-3 text-muted-foreground">{outletName(item.outlet_id)}</td>
-                <td className="p-3 text-right tabular-nums">
-                  <span className="font-semibold">
-                    {formatQuantity(item.current_stock, item.unit)}
-                  </span>
-                  <StockBadges item={item} />
-                </td>
-                <td className="p-3 text-right tabular-nums text-muted-foreground">
-                  {item.low_stock_threshold === null
-                    ? 'Tidak dipantau'
-                    : formatQuantity(item.low_stock_threshold, item.unit)}
-                </td>
-                <td className="p-3">
-                  <Badge variant={item.is_active ? 'default' : 'outline'}>
-                    {item.is_active ? 'Aktif' : 'Nonaktif'}
-                  </Badge>
-                </td>
-                <td className="p-3">
-                  <ItemActions
-                    item={item}
-                    canUpdate={canUpdate}
-                    onEdit={() => onEdit(item)}
-                    onDeactivate={() => onDeactivate(item)}
-                    onOpenStock={() => onOpenStock(item)}
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Table className="hidden md:block min-w-[56rem]">
+        <TableHeader>
+          <TableRow className="bg-muted/50">
+            <TableHead>Item</TableHead>
+            <TableHead>Outlet</TableHead>
+            <TableHead className="text-right">Saldo</TableHead>
+            <TableHead className="text-right">Ambang low stock</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="text-right">Tindakan</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {items.map((item) => (
+            <TableRow key={item.id}>
+              <TableCell className="font-medium">{item.name}</TableCell>
+              <TableCell className="text-muted-foreground">
+                {outletName(item.outlet_id)}
+              </TableCell>
+              <TableCell className="text-right tabular-nums">
+                <span className="font-semibold">
+                  {formatQuantity(item.current_stock, item.unit)}
+                </span>
+                <StockBadges item={item} />
+              </TableCell>
+              <TableCell className="text-right tabular-nums text-muted-foreground">
+                {item.low_stock_threshold === null
+                  ? 'Tidak dipantau'
+                  : formatQuantity(item.low_stock_threshold, item.unit)}
+              </TableCell>
+              <TableCell>
+                <Badge variant={item.is_active ? 'default' : 'outline'}>
+                  {item.is_active ? 'Aktif' : 'Nonaktif'}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                <ItemActions
+                  item={item}
+                  canUpdate={canUpdate}
+                  onEdit={() => onEdit(item)}
+                  onDeactivate={() => onDeactivate(item)}
+                  onOpenStock={() => onOpenStock(item)}
+                />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
       <ul className="space-y-3 md:hidden">
         {items.map((item) => (
           <li key={item.id} className="space-y-3 rounded-lg border p-4">
