@@ -22,7 +22,14 @@ export function ForgotPasswordPage() {
     mode: 'onBlur',
   })
 
-  const forgot = useMutation({ mutationFn: api.forgotPassword })
+  const forgot = useMutation({
+    mutationFn: (values: ForgotPasswordFormValues) =>
+      (
+        api as unknown as {
+          forgotPassword: (input: ForgotPasswordFormValues) => Promise<unknown>
+        }
+      ).forgotPassword(values),
+  })
 
   const submit = handleSubmit((values) => {
     forgot.mutate(values, {
@@ -33,7 +40,10 @@ export function ForgotPasswordPage() {
   })
 
   return (
-    <section aria-labelledby="forgot-password-title" className="rounded-lg border bg-card p-6 sm:p-9">
+    <section
+      aria-labelledby="forgot-password-title"
+      className="rounded-lg border bg-card p-6 sm:p-9"
+    >
       <div className="mb-8 grid size-11 place-items-center rounded-lg bg-dagana-primary-soft text-dagana-primary">
         <Mail aria-hidden="true" className="size-5" />
       </div>
@@ -43,7 +53,7 @@ export function ForgotPasswordPage() {
           Atur ulang kata sandi
         </h1>
         <p className="text-sm leading-6 text-muted-foreground">
-          Masukkan email akun Anda. Jika terdaftar, kami mengirim tautan atur ulang kata sandi.
+          Masukkan email yang terdaftar, kami akan mengirim tautan atur ulang kata sandi.
         </p>
       </div>
 

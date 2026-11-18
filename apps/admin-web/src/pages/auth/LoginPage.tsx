@@ -1,10 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
-import { ArrowRight, KeyRound, LoaderCircle } from 'lucide-react'
+import { ArrowRight, LoaderCircle, Eye, EyeOff } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { Link, useLocation, useNavigate } from 'react-router'
+import { BrandLogo } from '@/components/Logo'
 
 import { useSession } from '@/auth/SessionContext'
+import { useState } from 'react'
 import { FormField } from '@/components/FormField'
 import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
@@ -12,6 +14,8 @@ import { apiErrorMessage, applyApiErrors, getFieldError, hasFieldErrors } from '
 import { loginSchema, type LoginFormValues } from '@/lib/validation'
 
 export function LoginPage() {
+  const [showPassword, setShowPassword] = useState(false)
+
   const { startSession, message: sessionMessage } = useSession()
   const navigate = useNavigate()
   const location = useLocation()
@@ -52,16 +56,13 @@ export function LoginPage() {
 
   return (
     <section aria-labelledby="login-title" className="rounded-lg border bg-card p-6 sm:p-9">
-      <div className="mb-8 grid size-11 place-items-center rounded-lg bg-dagana-primary-soft text-dagana-primary">
-        <KeyRound aria-hidden="true" className="size-5" />
-      </div>
+      <BrandLogo mode="icon" className="mx-auto mb-8 mt-2 h-10 w-auto" />
       <div className="mb-7 space-y-2">
-        <p className="text-sm font-medium text-muted-foreground">Selamat datang kembali</p>
-        <h1 id="login-title" className="text-page-title tracking-tight">
-          Masuk ke Dagana
+        <h1 id="login-title" className="text-page-title tracking-tight mb-0 text-foreground">
+          Welcome Back!
         </h1>
         <p className="text-sm leading-6 text-muted-foreground">
-          Lanjutkan mengelola bisnis dan outlet Anda.
+          Please enter your details to sign in to your account.
         </p>
       </div>
 
@@ -94,16 +95,38 @@ export function LoginPage() {
           disabled={login.isPending}
           error={getFieldError(errors, 'email')}
         />
-        <FormField
-          {...register('password')}
-          label="Kata sandi"
-          type="password"
-          autoComplete="current-password"
-          placeholder="Masukkan kata sandi"
-          required
-          disabled={login.isPending}
-          error={getFieldError(errors, 'password')}
-        />
+        <div className="flex flex-col gap-1 mb-6 relative">
+          <FormField
+            {...register('password')}
+            label="Kata sandi"
+            type={showPassword ? 'text' : 'password'}
+            autoComplete="current-password"
+            placeholder="Masukkan kata sandi"
+            containerClassName="mb-1"
+            required
+            disabled={login.isPending}
+            error={getFieldError(errors, 'password')}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="absolute right-1 top-6 z-10 rounded-full p-1 text-muted-foreground hover:bg-transparent hover:text-foreground"
+            onClick={() => setShowPassword((prev) => !prev)}
+          >
+            {showPassword ? (
+              <EyeOff aria-hidden="true" className="size-5" />
+            ) : (
+              <Eye aria-hidden="true" className="size-5" />
+            )}
+          </Button>
+          <Link
+            to="/forgot-password"
+            className="self-end w-fit text-sm text-foreground underline-offset-4 hover:underline"
+          >
+            Lupa kata sandi?
+          </Link>
+        </div>
         <Button type="submit" className="h-11 w-full gap-2" disabled={login.isPending}>
           {login.isPending ? (
             <LoaderCircle
@@ -116,23 +139,15 @@ export function LoginPage() {
         </Button>
       </form>
 
-      <div className="mt-7 flex items-center justify-between gap-4 text-sm text-muted-foreground">
+      <p className="mt-10 text-center text-sm text-muted-foreground">
+        Belum punya akun?{' '}
         <Link
-          to="/forgot-password"
-          className="min-h-11 rounded-sm font-medium text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40"
+          to="/register"
+          className="font-semibold text-foreground underline-offset-4 hover:underline"
         >
-          Lupa kata sandi?
+          Daftar
         </Link>
-        <p>
-          Belum punya akun?{' '}
-          <Link
-            to="/register"
-            className="font-semibold text-foreground underline-offset-4 hover:underline"
-          >
-            Daftar
-          </Link>
-        </p>
-      </div>
+      </p>
     </section>
   )
 }

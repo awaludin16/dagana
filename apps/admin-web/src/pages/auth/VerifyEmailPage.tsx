@@ -19,7 +19,17 @@ export function VerifyEmailPage() {
   const signature = params.get('signature') ?? ''
 
   const verify = useMutation({
-    mutationFn: () => api.verifyEmail(id, hash, expires, signature),
+    mutationFn: () =>
+      (
+        api as unknown as {
+          verifyEmail: (
+            id: string,
+            hash: string,
+            expires: string,
+            signature: string,
+          ) => Promise<{ message?: string }>
+        }
+      ).verifyEmail(id, hash, expires, signature),
   })
 
   useEffect(() => {
@@ -91,7 +101,12 @@ function StatusCard({
       className="mx-auto mt-24 w-full max-w-md rounded-lg border bg-card p-6 text-center sm:p-9"
     >
       <div className="mb-6 grid place-items-center">
-        {icon ?? <LoaderCircle aria-hidden="true" className="size-6 animate-spin motion-reduce:animate-none" />}
+        {icon ?? (
+          <LoaderCircle
+            aria-hidden="true"
+            className="size-6 animate-spin motion-reduce:animate-none"
+          />
+        )}
       </div>
       <h1 id="verify-email-title" className="text-page-title tracking-tight">
         {title}

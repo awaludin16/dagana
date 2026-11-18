@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
-import { KeyRound, LoaderCircle } from 'lucide-react'
+import { KeyRound, LoaderCircle, Eye, EyeOff } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router'
 
@@ -9,8 +9,11 @@ import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
 import { apiErrorMessage, applyApiErrors, getFieldError, hasFieldErrors } from '@/lib/form-errors'
 import { resetPasswordSchema, type ResetPasswordFormValues } from '@/lib/validation'
+import { useState } from 'react'
 
 export function ResetPasswordPage() {
+  const [showPassword, setShowPassword] = useState(false)
+  const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false)
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const email = params.get('email') ?? ''
@@ -28,7 +31,16 @@ export function ResetPasswordPage() {
   })
 
   const reset = useMutation({
-    mutationFn: api.resetPassword,
+    mutationFn: (values: ResetPasswordFormValues) =>
+      (
+        api as unknown as {
+          resetPassword: (input: {
+            email: string
+            token: string
+            password: string
+          }) => Promise<unknown>
+        }
+      ).resetPassword({ email, token, password: values.password }),
     onSuccess: () => {
       navigate('/login', {
         replace: true,
@@ -38,14 +50,11 @@ export function ResetPasswordPage() {
   })
 
   const submit = handleSubmit((values) => {
-    reset.mutate(
-      { email, token, password: values.password },
-      {
-        onError: (error) => {
-          applyApiErrors(error, setError)
-        },
+    reset.mutate(values, {
+      onError: (error) => {
+        applyApiErrors(error, setError)
       },
-    )
+    })
   })
 
   if (!email || !token) {
@@ -55,7 +64,10 @@ export function ResetPasswordPage() {
   }
 
   return (
-    <section aria-labelledby="reset-password-title" className="rounded-lg border bg-card p-6 sm:p-9">
+    <section
+      aria-labelledby="reset-password-title"
+      className="rounded-lg border bg-card p-6 sm:p-9"
+    >
       <div className="mb-8 grid size-11 place-items-center rounded-lg bg-dagana-primary-soft text-dagana-primary">
         <KeyRound aria-hidden="true" className="size-5" />
       </div>
@@ -75,31 +87,64 @@ export function ResetPasswordPage() {
           role="alert"
           className="mb-5 rounded-lg border border-destructive/30 bg-destructive/5 px-3.5 py-3 text-sm text-destructive"
         >
-          {apiErrorMessage(reset.error, 'Pengaturan ulang belum berhasil. Minta tautan baru jika tautan sudah kedaluwarsa.')}
+          {apiErrorMessage(
+            reset.error,
+            'Pengaturan ulang belum berhasil. Minta tautan baru jika tautan sudah kedaluwarsa.',
+          )}
         </p>
       ) : null}
 
       <form className="space-y-5" onSubmit={submit} noValidate aria-busy={reset.isPending}>
-        <FormField
-          {...register('password')}
-          label="Kata sandi baru"
-          type="password"
-          autoComplete="new-password"
-          placeholder="Minimal 8 karakter"
-          required
-          disabled={reset.isPending}
-          error={getFieldError(errors, 'password')}
-        />
-        <FormField
-          {...register('password_confirmation')}
-          label="Ulangi kata sandi baru"
-          type="password"
-          autoComplete="new-password"
-          placeholder="Ulangi kata sandi"
-          required
-          disabled={reset.isPending}
-          error={getFieldError(errors, 'password_confirmation')}
-        />
+        <div className="flex-col gap-1 mb-6 relative">
+          <FormField
+            {...register('password')}
+            label="Kata sandi baru"
+            type={showPassword ? 'text' : 'password'}
+            autoComplete="new-password"
+            placeholder="Minimal 8 karakter"
+            required
+            disabled={reset.isPending}
+            error={getFieldError(errors, 'password')}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="absolute right-1 top-6 z-10 rounded-full p-1 text-muted-foreground hover:bg-transparent hover:text-foreground"
+            onClick={() => setShowPassword((prev) => !prev)}
+          >
+            {showPassword ? (
+              <EyeOff aria-hidden="true" className="size-5" />
+            ) : (
+              <Eye aria-hidden="true" className="size-5" />
+            )}
+          </Button>
+        </div>
+        <div className="flex-col gap-1 mb-6 relative">
+          <FormField
+            {...register('password_confirmation')}
+            label="Ulangi kata sandi baru"
+            type={showPasswordConfirmation ? 'text' : 'password'}
+            autoComplete="new-password"
+            placeholder="Ulangi kata sandi"
+            required
+            disabled={reset.isPending}
+            error={getFieldError(errors, 'password_confirmation')}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="absolute right-1 top-6 z-10 rounded-full p-1 text-muted-foreground hover:bg-transparent hover:text-foreground"
+            onClick={() => setShowPasswordConfirmation((prev) => !prev)}
+          >
+            {showPasswordConfirmation ? (
+              <EyeOff aria-hidden="true" className="size-5" />
+            ) : (
+              <Eye aria-hidden="true" className="size-5" />
+            )}
+          </Button>
+        </div>
         <Button type="submit" className="h-11 w-full" disabled={reset.isPending}>
           {reset.isPending ? (
             <LoaderCircle
