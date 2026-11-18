@@ -169,6 +169,7 @@ PHP dan Composer mengikuti constraint `apps/api/composer.json` dan `apps/api/com
 - `.env.docker.example` dan `apps/api/.env.example` hanya berisi nilai disposable untuk development.
 - `APP_KEY` default pada `compose.yaml` hanya untuk development. Ganti dengan `php artisan key:generate --show` bila perlu; jangan gunakan nilai ini di production.
 - Jangan mengarahkan development tooling ke database production.
+- **Email per environment**: development memakai Mailpit (SMTP `:1025`, UI `:8025`). Image production (`apps/api/Dockerfile`) tidak perlu perubahan untuk mailer; SMTP dikonfigurasi lewat environment variable runtime, mis. Gmail: `MAIL_MAILER=smtp`, `MAIL_HOST=smtp.gmail.com`, `MAIL_PORT=587`, `MAIL_ENCRYPTION=tls`, `MAIL_USERNAME`/`MAIL_PASSWORD` (app password), `MAIL_FROM_ADDRESS`. Entrypoint menjalankan `config:clear` + `config:cache` saat boot sehingga nilai env baru selalu terbaca ulang; kredensial dikirim via environment/secret deployment, bukan file yang ikut image.
 
 ## 7. Status verifikasi
 
