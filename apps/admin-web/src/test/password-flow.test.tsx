@@ -131,7 +131,7 @@ describe('password reset and email verification flows', () => {
     renderAt('/reset-password')
 
     await waitFor(() => {
-      expect(screen.getByText(/masukkan email akun anda/i)).toBeInTheDocument()
+      expect(screen.getByText(/masukkan email yang terdaftar/i)).toBeInTheDocument()
     })
   })
 

@@ -52,7 +52,7 @@ describe('admin web routes', () => {
   it('requires a session to enter the workspace', async () => {
     renderAt('/dashboard')
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Masuk ke Dagana' })).toBeVisible()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Welcome Back!' })).toBeVisible()
     expect(screen.getByRole('main')).toBeInTheDocument()
     expect(screen.getByLabelText('Email')).toBeRequired()
     expect(screen.getByLabelText('Kata sandi')).toHaveAttribute('type', 'password')

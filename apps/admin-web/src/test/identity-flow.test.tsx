@@ -161,7 +161,7 @@ describe('identity and merchant onboarding', () => {
     })
 
     renderAt('/register')
-    expect(await screen.findByRole('heading', { name: 'Buat akun Dagana' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Getting Started' })).toBeVisible()
 
     fireEvent.change(screen.getByLabelText('Nama lengkap'), { target: { value: 'Ayu' } })
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: user.email } })
@@ -268,7 +268,7 @@ describe('identity and merchant onboarding', () => {
     })
 
     renderAt('/register')
-    expect(await screen.findByRole('heading', { name: 'Buat akun Dagana' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Getting Started' })).toBeVisible()
 
     fireEvent.change(screen.getByLabelText('Nama lengkap'), { target: { value: 'Ayu' } })
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: user.email } })
@@ -299,7 +299,7 @@ describe('identity and merchant onboarding', () => {
     })
 
     renderAt('/login')
-    expect(await screen.findByRole('heading', { name: 'Masuk ke Dagana' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Welcome Back!' })).toBeVisible()
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: user.email } })
     fireEvent.change(screen.getByLabelText('Kata sandi'), { target: { value: 'password123' } })
     fireEvent.click(screen.getByRole('button', { name: 'Masuk' }))
@@ -350,7 +350,7 @@ describe('identity and merchant onboarding', () => {
     renderAt('/outlets')
     fireEvent.click(await screen.findByRole('button', { name: 'Keluar' }))
 
-    expect(await screen.findByRole('heading', { name: 'Masuk ke Dagana' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Welcome Back!' })).toBeVisible()
     expect(localStorage.length).toBe(0)
 
     const logoutCall = fetchMock.mock.calls.find(
@@ -380,7 +380,7 @@ describe('identity and merchant onboarding', () => {
     })
 
     renderAt('/login')
-    expect(await screen.findByRole('heading', { name: 'Masuk ke Dagana' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Welcome Back!' })).toBeVisible()
 
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'wrong@example.com' } })
     fireEvent.change(screen.getByLabelText('Kata sandi'), { target: { value: 'wrongpass' } })
@@ -405,7 +405,7 @@ describe('identity and merchant onboarding', () => {
     })
 
     renderAt('/login')
-    expect(await screen.findByRole('heading', { name: 'Masuk ke Dagana' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Welcome Back!' })).toBeVisible()
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ayu@example.com' } })
     fireEvent.change(screen.getByLabelText('Kata sandi'), { target: { value: 'password123' } })
     fireEvent.click(screen.getByRole('button', { name: 'Masuk' }))
@@ -430,7 +430,7 @@ describe('identity and merchant onboarding', () => {
 
     renderAt('/outlets')
 
-    expect(await screen.findByRole('heading', { name: 'Masuk ke Dagana' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Welcome Back!' })).toBeVisible()
     expect(screen.getByRole('status')).toHaveTextContent('Sesi berakhir')
     expect(localStorage.length).toBe(0)
   })
