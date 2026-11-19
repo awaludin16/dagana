@@ -381,7 +381,11 @@ describe('manajemen anggota tim (Phase 2)', () => {
 
     renderAt()
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Aksi lain untuk Budi Santoso' }))
+    // Radix membuka DropdownMenu saat pointerdown pada trigger, bukan saat click.
+    fireEvent.pointerDown(
+      await screen.findByRole('button', { name: 'Aksi lain untuk Budi Santoso' }),
+      { button: 0, ctrlKey: false },
+    )
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Hapus permanen' }))
     expect(await screen.findByRole('heading', { name: 'Hapus anggota permanen?' })).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Hapus permanen' }))
