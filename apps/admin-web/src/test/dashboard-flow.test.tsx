@@ -16,7 +16,7 @@ const ownerMembership = {
   status: 'ACTIVE',
   business: { id: 12, name: 'Kedai Pagi' },
   outlets: [outletA, outletB],
-  permissions: ['reports.read', 'cash.read', 'inventory.read', 'orders.read', 'orders.create'],
+  permissions: ['reports.read', 'cash.read', 'orders.read', 'orders.create'],
 }
 
 // Fixture: rentang 1–7 Nov (7 hari). Kartu memakai hari terakhir rentang
@@ -51,35 +51,6 @@ const openSessions = [
     closed_at: null,
     closed_by_membership_id: null,
     created_at: '2026-11-07T08:00:00+07:00',
-  },
-]
-
-const lowStockItems = [
-  {
-    id: 9,
-    business_id: 12,
-    outlet_id: outletA.id,
-    name: 'Susu UHT',
-    unit: 'ml',
-    low_stock_threshold: 2000,
-    current_stock: 1500,
-    is_low_stock: true,
-    is_active: true,
-    created_at: '2026-11-01T00:00:00+07:00',
-    updated_at: '2026-11-01T00:00:00+07:00',
-  },
-  {
-    id: 10,
-    business_id: 12,
-    outlet_id: outletA.id,
-    name: 'Gula Pasir',
-    unit: 'g',
-    low_stock_threshold: 500,
-    current_stock: 300,
-    is_low_stock: true,
-    is_active: true,
-    created_at: '2026-11-01T00:00:00+07:00',
-    updated_at: '2026-11-01T00:00:00+07:00',
   },
 ]
 
@@ -142,7 +113,6 @@ function mockApi(membership: typeof ownerMembership | null) {
     }
     if (url.pathname.endsWith('/reports/sales')) return jsonResponse({ data: salesReport })
     if (url.pathname.endsWith('/cash-sessions')) return jsonResponse(pageResponse(openSessions))
-    if (url.pathname.endsWith('/inventory')) return jsonResponse(pageResponse(lowStockItems))
     if (url.pathname.endsWith('/orders')) return jsonResponse(pageResponse(recentOrders))
     throw new Error(`Unexpected request: ${url.pathname}${url.search}`)
   })
@@ -173,7 +143,7 @@ describe('dashboard (Owner Dashboard)', () => {
     localStorage.clear()
   })
 
-  it('menampilkan kartu hari ini, tren 7 hari, status kas, stok rendah, transaksi terbaru, dan aksi mulai jualan', async () => {
+  it('menampilkan kartu hari ini, tren 7 hari, status kas, transaksi terbaru, dan aksi mulai jualan', async () => {
     mockApi(ownerMembership)
 
     renderDashboard()
@@ -198,10 +168,6 @@ describe('dashboard (Owner Dashboard)', () => {
     expect(screen.getByText('Terbuka')).toBeVisible()
     expect(screen.getByText('Kas awal').nextElementSibling).toHaveTextContent(/Rp.?500\.000/)
     expect(screen.getByText('Kas saat ini').nextElementSibling).toHaveTextContent(/Rp.?640\.000/)
-
-    // Stok rendah dengan badge dari ambang API.
-    expect(screen.getByText('Susu UHT')).toBeVisible()
-    expect(screen.getAllByText('Stok rendah').length).toBeGreaterThanOrEqual(2)
 
     // Transaksi terbaru sebagai tabel TanStack: kolom waktu, outlet, total, status.
     const ordersTable = screen.getByRole('table', { name: 'Transaksi terbaru' })
@@ -230,16 +196,15 @@ describe('dashboard (Owner Dashboard)', () => {
 
     renderDashboard()
 
-    // Transaksi terbaru tetap tampil; widget reports/cash/inventory tidak.
+    // Transaksi terbaru tetap tampil; widget reports/cash tidak.
     expect(await screen.findByRole('table', { name: 'Transaksi terbaru' })).toBeVisible()
     expect(screen.queryByText('Penjualan hari ini')).not.toBeInTheDocument()
     expect(screen.queryByText('Status kas')).not.toBeInTheDocument()
-    expect(screen.queryByText('Stok rendah')).not.toBeInTheDocument()
     // CASHIER tetap bisa jualan.
     expect(screen.getByRole('link', { name: 'Mulai Jualan' })).toHaveAttribute('href', '/pos')
   })
 
-  it('menampilkan empty state saat tidak ada sesi kas dan tidak ada stok rendah', async () => {
+  it('menampilkan empty state saat tidak ada sesi kas dan transaksi', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = new URL(String(input))
       if (url.pathname.endsWith('/sanctum/csrf-cookie')) return new Response(null, { status: 204 })
@@ -248,7 +213,6 @@ describe('dashboard (Owner Dashboard)', () => {
       }
       if (url.pathname.endsWith('/reports/sales')) return jsonResponse({ data: salesReport })
       if (url.pathname.endsWith('/cash-sessions')) return jsonResponse(pageResponse([]))
-      if (url.pathname.endsWith('/inventory')) return jsonResponse(pageResponse([]))
       if (url.pathname.endsWith('/orders')) return jsonResponse(pageResponse([]))
       throw new Error(`Unexpected request: ${url.pathname}${url.search}`)
     })
@@ -257,7 +221,6 @@ describe('dashboard (Owner Dashboard)', () => {
     renderDashboard()
 
     expect(await screen.findByText(/Belum ada sesi kas yang terbuka/)).toBeVisible()
-    expect(screen.getByText(/Tidak ada item dengan stok rendah/)).toBeVisible()
     expect(screen.getByText(/Belum ada transaksi tercatat/)).toBeVisible()
   })
 

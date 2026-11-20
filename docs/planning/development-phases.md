@@ -12,13 +12,13 @@
 | 3 | Catalog |
 | 4 | POS + Payment |
 | 5 | Cash Session |
-| 6 | Basic Inventory |
+| 6 | Dihapus oleh D-36; nomor tidak dipakai |
 | 7 | Reporting |
 | 8 | QR Ordering |
 | 9 | Realtime |
 | 10 | Billing |
 | 11 | Stabilization dan release readiness |
-| 12 | Advanced F&B Operations |
+| 12 | Ditunda (D-36); tidak ada target aktif |
 
 Urutan dapat disesuaikan berdasarkan dependency dan validasi, tanpa menghilangkan kebutuhan atau acceptance criteria fase.
 

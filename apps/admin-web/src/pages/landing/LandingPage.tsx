@@ -2,7 +2,6 @@ import {
   BookOpen,
   ChartColumn,
   CheckCircle2,
-  Package,
   QrCode,
   ShoppingBasket,
   Store,
@@ -35,11 +34,6 @@ const features = [
     body: 'Kelola menu dan harga untuk setiap outlet dalam satu Business.',
   },
   {
-    icon: Package,
-    title: 'Inventory dasar',
-    body: 'Pantau stok bahan bila dibutuhkan. Tidak wajib diaktifkan untuk mulai berjualan.',
-  },
-  {
     icon: QrCode,
     title: 'QR Ordering',
     body: 'Channel pemesanan mandiri yang opsional, memakai aturan bisnis yang sama dengan POS.',
@@ -66,7 +60,7 @@ const segments = [
   },
   {
     title: 'Usaha kecil bertumbuh',
-    body: 'Punya beberapa karyawan dan 1 sampai 3 outlet. Atur hak akses, inventory, dan QR Ordering saat benar-benar dibutuhkan.',
+    body: 'Punya beberapa karyawan dan 1 sampai 3 outlet. Atur hak akses dan QR Ordering saat benar-benar dibutuhkan.',
   },
   {
     title: 'Jaringan multi-outlet',

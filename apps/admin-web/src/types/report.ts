@@ -1,4 +1,4 @@
-// Kontrak Phase 7: GET /api/v1/reports/* (docs/architecture/api-design.md §13).
+// Kontrak Phase 7: GET /api/v1/reports/* (docs/architecture/api-design.md §12).
 // Semua agregat dihitung backend; frontend hanya menampilkan.
 
 export type ReportRangeParams = {
@@ -10,7 +10,6 @@ export type ReportRangeParams = {
 export type ReportListParams = ReportRangeParams & {
   page?: number
   per_page?: number
-  low_stock?: boolean
 }
 
 export type ReportDay = {
@@ -67,18 +66,4 @@ export type ReportCashRow = {
   variance_note: string | null
   opened_at: string | null
   closed_at: string | null
-}
-
-export type ReportInventoryRow = {
-  id: number
-  business_id: number
-  outlet_id: number
-  name: string
-  unit: string
-  low_stock_threshold: number | null
-  current_stock: number
-  is_low_stock: boolean
-  is_active: boolean
-  movements_count: number
-  movements_net: number
 }

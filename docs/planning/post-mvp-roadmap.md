@@ -13,17 +13,7 @@
 - transaction search
 - receipt customization
 
-#### Phase B — F&B Operations
-
-- recipe/BOM
-- advanced inventory
-- COGS
-- waste
-- stock opname
-- modifier
-- variant
-
-#### Phase C — Ordering & Kitchen
+#### Phase B — Ordering & Kitchen
 
 - QR Ordering enhancement
 - table management
@@ -32,15 +22,14 @@
 - split bill
 - multiple payment
 
-#### Phase D — Multi-Outlet
+#### Phase C — Multi-Outlet
 
-- stock transfer
 - centralized catalog
 - outlet-specific pricing
 - centralized reporting
 - central kitchen
 
-#### Phase E — Growth
+#### Phase D — Growth
 
 - loyalty
 - promotion
@@ -48,7 +37,7 @@
 - advanced CRM
 - accounting integration
 
-#### Phase F — Platform
+#### Phase E — Platform
 
 - advanced billing
 - automated billing payment

@@ -4,7 +4,7 @@
 
 - **Satu User = satu Business** untuk MVP. Business dapat memiliki banyak Outlet; employee juga terikat ke Business yang sama. Enforce dengan unique constraint dan test, bukan hanya validasi UI.
 - **Role MVP hanya `OWNER`, `MANAGER`, `CASHIER`.** Tidak ada custom role atau role `INVENTORY`/`KITCHEN`/`STAFF` sampai requirement produk direvisi.
-- **Delete permission:** `delete` berarti menghapus record, bukan soft-delete. Katalog MVP memakai `outlets.delete`, `members.delete`, `categories.delete`, dan `products.delete`; tidak ada `business.delete`. Untuk master data yang masih punya referensi historis, gunakan perubahan status/deaktivasi melalui permission `update` dan method `PATCH`. Jangan sediakan delete permanen untuk order/payment/cash movement/stock movement/audit log.
+- **Delete permission:** `delete` berarti menghapus record, bukan soft-delete. Katalog MVP memakai `outlets.delete`, `members.delete`, `categories.delete`, dan `products.delete`; tidak ada `business.delete`. Untuk master data yang masih punya referensi historis, gunakan perubahan status/deaktivasi melalui permission `update` dan method `PATCH`. Jangan sediakan delete permanen untuk order/payment/cash movement/audit log.
 - **Mobile stack:** Flutter + Dart. Baseline library: Riverpod, go_router, Dio, flutter_secure_storage, Drift/SQLite, connectivity_plus, flutter_test/integration_test; gunakan plugin tambahan hanya bila dibutuhkan dan kompatibel dengan SDK yang dipatok.
 
 ## Konfirmasi teknis frontend (2026-11-01)
@@ -79,7 +79,7 @@
 
 ### D-03 — Permission catalog MVP
 
-**Status:** disetujui Product Owner (2026-11-16). Katalog berikut adalah baseline final MVP, termasuk tambahan `inventory.create` dan `inventory.update` dari D-32 serta `products.update_availability` dari D-35 (revisi 2026-11-19). Perubahan kategori/kata kunci permission di masa depan wajib lewat revisi keputusan, bukan langsung di kode. Catatan: `members.invite` tetap menjadi permission untuk endpoint pembuatan employee (alur direct-create, lihat konfirmasi teknis Phase 2).
+**Status:** disetujui Product Owner (2026-11-16). Katalog berikut adalah baseline final MVP, termasuk `products.update_availability` dari D-35 (revisi 2026-11-19) dan penyesuaian D-36 (penghapusan permission `inventory.*`, 2026-11-20). Perubahan kategori/kata kunci permission di masa depan wajib lewat revisi keputusan, bukan langsung di kode. Catatan: `members.invite` tetap menjadi permission untuk endpoint pembuatan employee (alur direct-create, lihat konfirmasi teknis Phase 2).
 
 **Keputusan:** gunakan permission eksplisit berbentuk `resource.action`. Katalog awal:
 
@@ -91,7 +91,6 @@
 - `orders.read`, `orders.create`, `orders.update`, `orders.cancel`
 - `payments.read`, `payments.create`, `payments.refund`
 - `cash.read`, `cash.open`, `cash.cash_in`, `cash.cash_out`, `cash.close`, `cash.reconcile`
-- `inventory.read`, `inventory.create`, `inventory.update`, `inventory.adjust`, `inventory.stock_opname`
 - `reports.read`, `reports.export`
 - `qr.read`, `qr.manage`
 - `kitchen.read`, `kitchen.update_status`
@@ -133,7 +132,7 @@ Permission dapat ditambah ketika requirement yang sah muncul. Jangan menggunakan
 
 **Alasan:** ini memenuhi outlet scoping tanpa membangun kombinasi role-permission-outlet yang kompleks. Per-outlet permission matrix dapat ditambahkan setelah kebutuhan nyata terbukti.
 
-**Verifikasi:** cashier yang hanya diberi Outlet A tidak dapat membaca atau mengubah order, cash session, inventory, table, maupun report Outlet B meskipun ia mempunyai permission resource yang sesuai.
+**Verifikasi:** cashier yang hanya diberi Outlet A tidak dapat membaca atau mengubah order, cash session, table, maupun report Outlet B meskipun ia mempunyai permission resource yang sesuai.
 
 ## 2. Cash Session
 
@@ -155,7 +154,9 @@ Permission dapat ditambah ketika requirement yang sah muncul. Jangan menggunakan
 
 **Verifikasi:** operator kedua tidak dapat melanjutkan session operator pertama dengan sekadar mengubah ID; closing/hand-over tersimpan dalam audit; formula expected cash konsisten.
 
-## 3. Inventory dan COGS
+## 3. Inventory dan COGS (arsip historis)
+
+> **Status (2026-11-20):** seluruh keputusan di bagian ini (D-09–D-11) sudah tidak berlaku setelah D-36 menghapus modul inventory. Teks di bawah dipertahankan hanya sebagai catatan historis, bukan acuan implementasi.
 
 ### D-09 — Unit conversion
 
@@ -263,11 +264,11 @@ Referensi implementasi mengikuti dokumentasi resmi Flutter, Drift, dan flutter_s
 
 **Keputusan MVP:** dukung offline POS terbatas, bukan klaim seluruh platform berfungsi offline. Katalog di-cache setelah sinkronisasi online; transaksi offline hanya bisa dibuat dari katalog lokal yang tersedia dan menggunakan metode cash/manual yang tidak memerlukan provider eksternal. QR Ordering, verifikasi payment gateway, billing, laporan terpusat terbaru, dan perubahan konfigurasi memerlukan koneksi.
 
-Setiap order lokal memiliki UUID/client-generated idempotency key yang unik, waktu perangkat, snapshot item/harga, operator, outlet, dan status `pending_sync`. Saat tersambung, server memvalidasi membership/outlet, menerima atau menandai konflik secara eksplisit, lalu menyimpan referensi idempotency. Jangan mengubah snapshot harga transaksi secara diam-diam. Jika stok server tidak mencukupi karena terjadi penjualan offline, sinkronisasi menandai selisih untuk review; kebijakan tidak boleh membuat order duplikat atau menghapus transaksi lokal. Data server yang sudah committed tetap source of truth untuk laporan cloud.
+Setiap order lokal memiliki UUID/client-generated idempotency key yang unik, waktu perangkat, snapshot item/harga, operator, outlet, dan status `pending_sync`. Saat tersambung, server memvalidasi membership/outlet, menerima atau menandai konflik secara eksplisit, lalu menyimpan referensi idempotency. Jangan mengubah snapshot harga transaksi secara diam-diam. Kebijakan tidak boleh membuat order duplikat atau menghapus transaksi lokal. Data server yang sudah committed tetap source of truth untuk laporan cloud.
 
 **Batasan penting:** sebelum mengaktifkan offline selling untuk merchant nyata, uji keamanan perangkat, masa berlaku akses offline, multi-device, duplikasi sync, perubahan/arsip produk ketika offline, dan pemulihan setelah aplikasi force-close. Konflik kompleks tetap di luar MVP.
 
-**Verifikasi:** transaksi offline bertahan setelah app ditutup; sync ulang menghasilkan tepat satu order; kegagalan jaringan tidak menghapus outbox; harga snapshot tidak berubah diam-diam; mismatch stok muncul sebagai exception yang dapat ditelusuri.
+**Verifikasi:** transaksi offline bertahan setelah app ditutup; sync ulang menghasilkan tepat satu order; kegagalan jaringan tidak menghapus outbox; harga snapshot tidak berubah diam-diam.
 
 ## 7. Batas MVP dan Roadmap
 
@@ -277,9 +278,11 @@ Setiap order lokal memiliki UUID/client-generated idempotency key yang unik, wak
 
 **Verifikasi:** checkout menolak kombinasi beberapa metode pembayaran dalam satu order pada MVP; order dapat dibayar dengan satu metode.
 
-### D-24 — Dampak modifier pada inventory
+### D-24 — Dampak modifier pada inventory — status: disupersede oleh D-36
 
-**Keputusan:** implementasikan bersama Recipe/BOM, bukan sebelum basic inventory stabil. Modifier yang menambah/mengurangi bahan harus mempunyai aturan konsumsi eksplisit yang tervalidasi. Jika tidak ada recipe/mapping, modifier tidak mengubah stok secara implisit.
+> **Status (2026-11-20):** tidak berlaku; modul inventory dihapus oleh D-36. Catatan historis ini bukan acuan implementasi.
+
+**Keputusan (historis):** implementasikan bersama Recipe/BOM, bukan sebelum basic inventory stabil. Modifier yang menambah/mengurangi bahan harus mempunyai aturan konsumsi eksplisit yang tervalidasi. Jika tidak ada recipe/mapping, modifier tidak mengubah stok secara implisit.
 
 **Verifikasi:** modifier dengan mapping mengonsumsi bahan yang benar; modifier tanpa mapping tidak mengubah stok; setiap konsumsi tercatat sebagai stock movement dan tidak digandakan saat retry.
 
@@ -307,7 +310,7 @@ Setiap order lokal memiliki UUID/client-generated idempotency key yang unik, wak
 
 **Keputusan baseline:** log audit kritis searchable minimal 24 bulan, kemudian boleh diarsipkan agar tetap dapat dipulihkan sesuai kebutuhan. Record audit bersifat append-only bagi aplikasi operasional. Penghapusan final hanya berjalan berdasarkan kebijakan retensi yang telah ditinjau; masa 24 bulan ini adalah target produk awal, bukan klaim masa simpan minimum yang diwajibkan hukum.
 
-**Verifikasi:** perubahan permission, refund, cancel order, adjustment inventory, cash close/adjustment, dan billing memiliki actor, waktu, entity reference, serta nilai relevan; user operasional tidak dapat menghapus audit log.
+**Verifikasi:** perubahan permission, refund, cancel order, cash close/adjustment, dan billing memiliki actor, waktu, entity reference, serta nilai relevan; user operasional tidak dapat menghapus audit log.
 
 ### D-29 — Backup/disaster recovery
 
@@ -357,9 +360,9 @@ Setiap order lokal memiliki UUID/client-generated idempotency key yang unik, wak
 
 **Verifikasi:** unit formula (`CashSessionFormulaTest`) dan feature open/close/movement/permission/isolasi (`CashSessionTest`) lulus; kontrak endpoint terdokumentasi di `docs/architecture/api-design.md` bagian Phase 5.
 
-### D-32 — Baseline teknis Phase 6 (Basic Inventory) — status: disetujui
+### D-32 — Baseline teknis Phase 6 (Basic Inventory) — status: disupersede oleh D-36
 
-**Status:** disetujui Product Owner (2026-11-11). Keputusan berikut menjadi baseline Phase 6; perubahan di masa depan harus melalui revisi keputusan dan migration/test terkait.
+**Status:** disetujui Product Owner (2026-11-11); **ditandai tidak berlaku 2026-11-20 oleh D-36**. Isi di bawah adalah catatan historis Phase 6, bukan baseline aktif.
 
 **Baseline yang diimplementasikan:**
 
@@ -390,15 +393,15 @@ Setiap order lokal memiliki UUID/client-generated idempotency key yang unik, wak
 
 ### D-33 — Baseline teknis Phase 7 (Reporting) — status: menunggu persetujuan Product Owner
 
-**Status:** usulan baseline hasil implementasi Phase 7. Definisi agregasi laporan berikut mengikuti requirement reporting (`docs/requirements/inventory-and-reporting.md`) dan acceptance criteria Phase 7; jika Product Owner memutuskan berbeda, endpoint dan test terkait harus direvisi bersama kontrak di `api-design.md` §13.
+**Status:** usulan baseline hasil implementasi Phase 7. Definisi agregasi laporan berikut mengikuti requirement reporting (`docs/requirements/reporting.md`) dan acceptance criteria Phase 7; jika Product Owner memutuskan berbeda, endpoint dan test terkait harus direvisi bersama kontrak di `api-design.md` §12.
 
 **Baseline yang diimplementasikan:**
 
 1. **Definisi penjualan**: order `PAID` dengan nilai snapshot `total_amount`, tanggal transaksi = konfirmasi pembayaran `PAID` pertama (`MIN(payments.paid_at)`). `PENDING`/`FAILED`/`CANCELLED` tidak dihitung; tidak ada penghitungan ulang dengan harga catalog terkini.
 2. **Laporan payment** memisahkan `by_method` (hanya `PAID`) dari `by_status` (semua bucket), sehingga pending/failed tidak pernah digabung ke angka paid.
-3. **Operator report** = agregasi order `PAID` per membership; **cash reconciliation** menampilkan opening cash, arus ledger per tipe, expected cash (formula Phase 5/D-31), actual cash, dan variance; **basic inventory report** menampilkan saldo dari ledger plus ringkasan movement dalam rentang dan low stock.
+3. **Operator report** = agregasi order `PAID` per membership; **cash reconciliation** menampilkan opening cash, arus ledger per tipe, expected cash (formula Phase 5/D-31), actual cash, dan variance.
 4. **Periode laporan mengikuti jam aplikasi** dengan rentang maksimal 92 hari. Zona waktu aplikasi adalah **Asia/Jakarta** (disetujui Product Owner 2026-11-11), sehingga batas hari laporan mengikuti jam operasional outlet Indonesia.
-5. **Endpoint read-only** `GET /api/v1/reports/{sales,payments,operators,cash,inventory}` dengan permission `reports.read`, scope Business dari membership, dan batasan outlet akses D-05.
+5. **Endpoint read-only** `GET /api/v1/reports/{sales,payments,operators,cash}` dengan permission `reports.read`, scope Business dari membership, dan batasan outlet akses D-05.
 
 **Gate/keputusan yang belum final:**
 
@@ -407,7 +410,7 @@ Setiap order lokal memiliki UUID/client-generated idempotency key yang unik, wak
 3. **Akses report CASHIER**: katalog D-03 tidak memberi `reports.read` ke CASHIER; teks verifikasi D-05 menyebut report dengan batasan outlet. Jika owner ingin cashier melihat report outlet-nya, katalog harus direvisi.
 4. **`reports.export`** belum diimplementasikan (tidak ada endpoint export pada Phase 7).
 
-**Verifikasi:** `ReportTest` membandingkan setiap laporan dengan fixture dihitung manual (sales harian + ringkasan, payment by method/status, operator, cash reconciliation, inventory ledger + low stock), periode kosong, batas rentang, permission, serta isolasi business/outlet; seluruh suite backend (126 test) lulus.
+**Verifikasi:** `ReportTest` membandingkan setiap laporan dengan fixture dihitung manual (sales harian + ringkasan, payment by method/status, operator, cash reconciliation), periode kosong, batas rentang, permission, serta isolasi business/outlet; seluruh suite backend lulus (angka terbaru pada D-36).
 
 ### D-34 — Baseline teknis Phase 3 (Catalog) — status: disetujui
 
@@ -420,7 +423,7 @@ Setiap order lokal memiliki UUID/client-generated idempotency key yang unik, wak
 3. Hapus master data bersifat terbatas: kategori hanya boleh dihapus bila kosong (`422` bila masih berisi menu); produk hanya boleh dihapus bila belum punya `order_items` (`422` bila sudah ada histori). UI admin-web hanya menyediakan deaktivasi (`PATCH is_active=false`), bukan hapus permanen.
 4. Guard penjualan tunggal `Product::sellable()`; checkout mengambil ulang menu dari database, menghitung total di backend, dan order item menyimpan snapshot `product_id`/`product_name`/`product_price` sehingga perubahan catalog tidak mengubah histori.
 5. Nama kategori/menu boleh duplikat dalam satu Business (tanpa unique constraint).
-6. Baca katalog cukup memerlukan permission `categories.read`/`products.read` level Business; outlet access tetap berlaku untuk resource yang memang terikat outlet (order, cash, inventory, report).
+6. Baca katalog cukup memerlukan permission `categories.read`/`products.read` level Business; outlet access tetap berlaku untuk resource yang memang terikat outlet (order, cash, report, dan availability products).
 
 **Pengecualian yang disetujui:** seluruh suite admin-web (13 file) belum dijalankan ulang dalam satu run karena batasan environment audit (vitest tidak mendukung cwd UNC; run dilewatkan drive mapping dan worker-timeout pada suite penuh). File yang terpengaruh perubahan ini sudah diuji ulang: catalog 5/5 dan POS 14/14 (19/19), type-check dan oxlint lulus.
 
@@ -444,6 +447,22 @@ Setiap order lokal memiliki UUID/client-generated idempotency key yang unik, wak
 **Gate yang belum ditutup:** perubahan ketersediaan belum masuk audit log (dependency D-28); tidak ada test konkurensi khusus selain unique constraint upsert; availability per outlet tidak berlaku untuk kategori (kategori tetap level Business).
 
 **Verifikasi:** `CatalogTest` mencakup override per outlet, isolasi outlet (cashier), master switch global, dan checkout yang hanya tertolak di outlet terkait; `PermissionCatalogTest` mencerminkan permission baru.
+
+### D-36 — Penghapusan modul inventory bahan baku — status: disetujui
+
+**Status:** disetujui Product Owner (2026-11-20). Keputusan ini membatalkan bagian inventory pada D-03, D-22, D-24, D-28, D-32, dan D-33, serta seluruh keputusan historis di bagian 3.
+
+**Alasan:** stok numerik bahan baku tidak masuk scope produk saat ini. Ketersediaan menu untuk pembeli sudah dicakup oleh `products.is_available` dan `product_outlet_availabilities` (D-35), sehingga modul inventory tidak perlu dipertahankan sebagai fitur opsional.
+
+**Keputusan:**
+
+1. Hapus seluruh modul inventory dari kode dan kontrak aktif: endpoint `/api/v1/inventory`, endpoint `/api/v1/reports/inventory`, kelima permission `inventory.*`, controller/request/resource/action/model/factory/test backend, halaman/dialog/route/nav/types/API client/validasi/label permission admin-web, widget low-stock dashboard, serta seksi inventory laporan.
+2. Hapus data inventory secara permanen lewat migration `2026_11_20_000000_drop_inventory_tables.php`: hapus override `inventory.%` pada `membership_permission_overrides`, lalu drop `stock_movements` dan `inventory_items`. Migration pembuat tabel lama tetap dipertahankan sebagai arsip skema; `down()` sengaja tidak memulihkan data.
+3. Katalog permission D-03 kembali tanpa `inventory.*`. Guard penghapusan outlet dan member tidak lagi memeriksa tabel inventory.
+4. Checkout, payment, kas, order, dan reporting tidak berubah secara fungsional selain hilangnya laporan inventory. Ketersediaan menu memakai D-35; stok numerik per menu tidak ditambahkan pada keputusan ini.
+5. Recipe/BOM, COGS, waste, stock opname, konversi satuan, dan advanced inventory dikeluarkan dari perencanaan aktif MVP maupun roadmap Phase 12. Jika dibutuhkan kelak, semuanya memerlukan keputusan produk baru.
+
+**Verifikasi:** suite backend 143 passed / 946 assertions; `pint --test` PASS 158 files. Admin-web: `tsc -b` sukses, `oxlint` 0 error (3 warning lama), `vitest run` 70/70 passed. Perubahan penghapusan ini belum di-commit dan belum di-push.
 
 ## 9. Daftar Gate yang Tetap Harus Ditutup Sebelum Produksi
 

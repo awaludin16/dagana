@@ -66,35 +66,6 @@ const cashRows = [
   },
 ]
 
-const inventoryRows = [
-  {
-    id: 9,
-    business_id: 12,
-    outlet_id: outletA.id,
-    name: 'Susu UHT',
-    unit: 'ml',
-    low_stock_threshold: 2000,
-    current_stock: 1500,
-    is_low_stock: true,
-    is_active: true,
-    movements_count: 4,
-    movements_net: -900,
-  },
-  {
-    id: 10,
-    business_id: 12,
-    outlet_id: outletA.id,
-    name: 'Gula Pasir',
-    unit: 'g',
-    low_stock_threshold: 500,
-    current_stock: 9000,
-    is_low_stock: false,
-    is_active: true,
-    movements_count: 1,
-    movements_net: 1000,
-  },
-]
-
 const emptySalesReport = {
   ...salesReport,
   summary: { sales_total: 0, transactions: 0 },
@@ -147,8 +118,6 @@ function reportHandler(options: { sales?: typeof salesReport; salesStatus?: numb
       if (url.pathname.endsWith('/reports/operators'))
         return jsonResponse(pageResponse(operatorsRows))
       if (url.pathname.endsWith('/reports/cash')) return jsonResponse(pageResponse(cashRows))
-      if (url.pathname.endsWith('/reports/inventory'))
-        return jsonResponse(pageResponse(inventoryRows))
     }
     return null
   }
@@ -211,11 +180,6 @@ describe('reports (Phase 7)', () => {
     expect(within(operatorTable).getByText(/Rp.?150\.000/)).toBeVisible()
     expect(await screen.findByText(/Session #401/)).toBeVisible()
     expect(screen.getAllByText(/-Rp.?10\.000/).length).toBeGreaterThan(0)
-
-    // Inventory report menandai stok rendah dari ambang API.
-    const inventoryTable = screen.getByRole('table', { name: /inventory/ })
-    expect(within(inventoryTable).getByText('Susu UHT')).toBeVisible()
-    expect(within(inventoryTable).getByText('Stok rendah')).toBeVisible()
   })
 
   it('memisahkan pembayaran lunas per metode dari pembayaran menunggu/gagal per status', async () => {
@@ -257,7 +221,6 @@ describe('reports (Phase 7)', () => {
         '/reports/payments',
         '/reports/operators',
         '/reports/cash',
-        '/reports/inventory',
       ]) {
         expect(lastQuery[path]).toContain(`outlet_id=${outletB.id}`)
       }

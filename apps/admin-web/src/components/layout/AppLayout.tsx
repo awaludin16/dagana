@@ -1,5 +1,4 @@
 import {
-  Boxes,
   ChartColumn,
   CircleUserRound,
   LayoutDashboard,
@@ -29,7 +28,7 @@ import { cn } from '@/lib/utils'
 type NavItem = {
   to: string
   label: string
-  icon: typeof Boxes
+  icon: typeof LayoutDashboard
   permission?: string[]
 }
 
@@ -50,7 +49,6 @@ const navGroups: { label: string | null; items: NavItem[] }[] = [
       },
       { to: '/orders', label: 'Transaksi', icon: Receipt, permission: ['orders.read'] },
       { to: '/cash', label: 'Kas', icon: Wallet, permission: ['cash.read'] },
-      { to: '/inventory', label: 'Inventory', icon: Boxes, permission: ['inventory.read'] },
     ],
   },
   {

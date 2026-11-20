@@ -17,8 +17,6 @@ BEGIN
 Create Order
 Create Order Items
 Create Payment
-Update Inventory
-Create Stock Movement
 Update Cash Session
 Create Audit Event
 COMMIT
@@ -68,8 +66,6 @@ Data operasional harus memiliki outlet context jika relevan:
 - transaction
 - payment
 - cash session
-- inventory
-- stock movement
 - table
 - QR
 - kitchen
@@ -105,7 +101,6 @@ WebSocket dapat digunakan untuk:
 - kitchen updates
 - order status
 - payment status
-- stock updates
 
 WebSocket hanya event delivery layer.
 
@@ -148,7 +143,6 @@ Minimal:
 
 - product changes
 - price changes
-- inventory adjustment
 - transaction cancellation
 - refund
 - cash adjustment

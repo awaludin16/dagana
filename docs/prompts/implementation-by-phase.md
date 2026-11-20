@@ -16,14 +16,14 @@ Dokumen ini berisi **dua prompt untuk setiap fase (Phase 0–12)**: satu untuk c
 - Ikuti `AGENTS.md` dan standar engineering di repository. Gunakan Bahasa Indonesia untuk komunikasi dan laporan.
 - Gunakan `PRD-Dagana.md` untuk arah dan batas produk, dokumen relevan di `docs/requirements/` untuk behavior fitur, dan `docs/planning/phase-targets.md` untuk target serta acceptance criteria. Jangan diam-diam menambah, mengurangi, atau mengubah flow bisnis.
 - Baca `docs/planning/decision-log.md`. Bedakan keputusan yang telah disetujui, rekomendasi baseline, dan gate yang masih menunggu Product Owner.
-- Jangan mengarang formula, tarif, payment gateway, aturan stok, atau kebijakan yang belum diputuskan. Laporkan blocker secara spesifik.
+- Jangan mengarang formula, tarif, payment gateway, atau kebijakan yang belum diputuskan. Laporkan blocker secara spesifik.
 - Model MVP: satu User hanya terhubung ke satu Business; satu Business dapat memiliki banyak Outlet. Role hanya `OWNER`, `MANAGER`, dan `CASHIER`.
 - Authorization tenant dan outlet harus ditegakkan backend untuk request, query, export, job, event, dan realtime channel. Frontend permission gating hanya untuk UX, bukan security boundary.
 - Gunakan Laravel modular monolith untuk backend. Business logic berada pada Service/Action sesuai `AGENTS.md`; controller tetap tipis. Frontend memakai TypeScript untuk Web dan Dart untuk Flutter, mengikuti standar platform masing-masing.
 - Semua implementasi UI mengikuti `docs/design-system/`; Web menggunakan semantic CSS tokens + Tailwind/shadcn, sedangkan Flutter menggunakan Material 3 Dagana theme. Plus Jakarta Sans adalah font bersama.
 - Setiap implementasi pakai skill `ponytail` untuk membuat code seminimal mungkin; Gunakan juga skill `ui-ux-pro-max` untuk implementasi UI. gunakan juga skill `find-skills` untuk mencari skill yang diperlukan.
 - Gunakan migration untuk perubahan schema. Jangan mengubah migration yang mungkin sudah dijalankan pada environment bersama; buat migration baru.
-- Soft delete/archive/deactivation untuk master data yang memiliki histori. Jangan hard-delete completed orders, payments, cash movements, stock movements, atau audit logs.
+- Soft delete/archive/deactivation untuk master data yang memiliki histori. Jangan hard-delete completed orders, payments, cash movements, atau audit logs.
 - Uji happy path dan failure path. Jangan menyatakan test, build, atau acceptance criteria lulus bila belum benar-benar diverifikasi.
 - Jangan melakukan commit, push, merge, reset, clean, atau operasi Git destruktif tanpa instruksi eksplisit.
 
@@ -303,7 +303,7 @@ Sebelum mengubah kode:
 
 Buat halaman daftar kategori dan menu, form create/edit, pengaturan harga, status aktif/nonaktif, pencarian/filter, pagination, konfirmasi nonaktifkan/hapus logis, serta feedback sukses/gagal. Pada POS, tampilkan hanya menu yang aktif dan tersedia untuk konteks outlet yang sedang digunakan. Sesuaikan penempatan fitur dengan app yang tersedia (`admin-web` dan/atau `pos-mobile`).
 
-**Pemeriksaan wajib:** data berasal dari API, bukan hardcode. Tangani loading, empty, error, validation, dan permission state. Jangan membuat UI recipe, supplier, SKU kompleks, modifier, atau variant sebagai bagian fase ini. Pastikan dialog konfirmasi menjelaskan bahwa penghapusan master data dapat berupa arsip/nonaktif, bukan penghapusan histori.
+**Pemeriksaan wajib:** data berasal dari API, bukan hardcode. Tangani loading, empty, error, validation, dan permission state. Jangan membuat UI SKU kompleks, modifier, atau variant sebagai bagian fase ini. Pastikan dialog konfirmasi menjelaskan bahwa penghapusan master data dapat berupa arsip/nonaktif, bukan penghapusan histori.
 
 **Instruksi implementasi:**
 - Pecah pekerjaan menjadi langkah kecil yang dapat direview. Implementasikan hanya scope Phase 3; jangan mengerjakan fase berikutnya kecuali ada dependency minimum yang wajib.
@@ -473,80 +473,6 @@ Mulai dengan audit dan rencana singkat, lalu implementasikan task terkecil yang 
 
 ---
 
-## Phase 6 — Basic Inventory
-
-### Prompt Backend
-
-```text
-Kita akan mengerjakan **Dagana Phase 6 — Basic Inventory** dari sisi Backend.
-
-Sebelum mengubah kode:
-1. Baca `AGENTS.md` dan `docs/README.md`. Lalu baca `PRD-Dagana.md`, requirement spesifik fase di `docs/requirements/`, `docs/planning/phase-targets.md`, `docs/engineering/engineering-standards.md`, serta bagian relevan `docs/planning/decision-log.md` dan `docs/architecture/` sesuai dampak task.
-2. Periksa struktur repository, branch, status Git, implementasi, test, dan kontrak API yang sudah ada. Jangan berasumsi repository masih kosong.
-3. Cocokkan task dengan target serta acceptance criteria Phase 6. Identifikasi dependency, file yang akan terdampak, dan risiko kompatibilitas.
-4. Jika ada konflik requirement, keputusan yang belum disetujui, atau dependency yang belum tersedia, jelaskan terlebih dahulu. Jangan memilih kebijakan bisnis sendiri.
-
-**Tujuan:** membangun inventory dasar yang opsional.
-
-Implementasikan item inventory, saldo stok, stock adjustment, stock movement ledger, ambang low-stock, dan integrasi pengurangan stok dari penjualan hanya ketika konfigurasi/perilakunya telah didefinisikan. Saldo harus dapat dijelaskan dari movement. Gunakan transaksi/locking/idempotency untuk mencegah saldo rusak atau movement ganda ketika ada request/event berulang. Pastikan penjualan biasa tetap berjalan tanpa inventory diaktifkan. Terapkan authorization Business/Outlet.
-
-**Batasan:** unit conversion dan inventory costing belum final. Jangan mengarang konversi satuan, costing, atau kebijakan stok negatif. Test adjustment, rekonsiliasi ledger, low stock, penjualan tanpa inventory, retry, concurrency, dan akses tidak sah.
-
-**Instruksi implementasi:**
-- Pecah pekerjaan menjadi langkah kecil yang dapat direview. Implementasikan hanya scope Phase 6; jangan mengerjakan fase berikutnya kecuali ada dependency minimum yang wajib.
-- Pertahankan pola arsitektur, penamaan, response/API contract, design system, dan convention yang sudah dipakai repository. Hindari duplikasi logic dan abstraksi berlebihan.
-- Tambahkan/perbarui automated test untuk behavior yang berubah. Untuk Frontend, tambahkan test komponen/alur penting dan verifikasi aksesibilitas dasar; untuk Backend, tambahkan unit/feature test sesuai lapisan.
-- Jalankan test, formatter, linter, type-check, build, migration/health check yang relevan. Catat command dan hasil aktual; tandai yang terhalang environment sebagai belum terverifikasi.
-- Perbarui dokumentasi API, development, atau ADR bila kontrak/keputusan berubah. Jangan menyimpan secret atau data nyata di repository/log.
-
-**Format laporan akhir wajib:**
-1. Ringkasan perubahan dan alasan.
-2. File/module utama yang dibuat atau diubah.
-3. Acceptance criteria Phase 6: status `Lulus`, `Gagal`, `Belum diuji`, atau `Terhalang`, disertai bukti singkat.
-4. Daftar command test/check yang dijalankan dan hasil aktual.
-5. Keputusan/gate yang masih menunggu persetujuan, risiko, dan pekerjaan lanjutan.
-6. Konfirmasi bahwa `git diff` dan `git status` sudah diperiksa. Jangan commit/push tanpa instruksi.
-
-Mulai dengan audit dan rencana singkat, lalu implementasikan task terkecil yang paling tepat untuk fase ini. Berkomunikasilah dalam Bahasa Indonesia.
-```
-
-### Prompt Frontend
-
-```text
-Kita akan mengerjakan **Dagana Phase 6 — Basic Inventory** dari sisi Frontend.
-
-Sebelum mengubah kode:
-1. Baca `AGENTS.md` dan `docs/README.md`. Lalu baca `PRD-Dagana.md`, requirement spesifik fase di `docs/requirements/`, `docs/planning/phase-targets.md`, `docs/engineering/engineering-standards.md`, serta bagian relevan `docs/planning/decision-log.md` dan `docs/architecture/` sesuai dampak task.
-2. Periksa struktur repository, branch, status Git, implementasi, test, dan kontrak API yang sudah ada. Jangan berasumsi repository masih kosong.
-3. Cocokkan task dengan target serta acceptance criteria Phase 6. Identifikasi dependency, file yang akan terdampak, dan risiko kompatibilitas.
-4. Jika ada konflik requirement, keputusan yang belum disetujui, atau dependency yang belum tersedia, jelaskan terlebih dahulu. Jangan memilih kebijakan bisnis sendiri.
-
-**Tujuan:** menyediakan antarmuka inventory dasar yang opsional.
-
-Pada `admin-web`, buat daftar item inventory, tambah/edit/nonaktifkan item, tampilan saldo, form stock adjustment dengan alasan, histori stock movement, dan indikator low-stock berdasarkan ambang dari API. Pada `pos-mobile`, tampilkan informasi stok hanya bila dibutuhkan pada workflow dan didukung API; penjualan sederhana tidak boleh mensyaratkan konfigurasi inventory.
-
-**Pemeriksaan wajib:** jangan mengubah saldo secara lokal tanpa API movement. Tampilkan histori movement dan status sinkronisasi secara jelas. Tangani stok nol/kurang, request konflik, item nonaktif, permission, pagination, dan filter outlet. Jangan menambahkan UI costing, recipe/BOM, supplier, purchase order, atau unit conversion kompleks pada fase ini.
-
-**Instruksi implementasi:**
-- Pecah pekerjaan menjadi langkah kecil yang dapat direview. Implementasikan hanya scope Phase 6; jangan mengerjakan fase berikutnya kecuali ada dependency minimum yang wajib.
-- Pertahankan pola arsitektur, penamaan, response/API contract, design system, dan convention yang sudah dipakai repository. Hindari duplikasi logic dan abstraksi berlebihan.
-- Tambahkan/perbarui automated test untuk behavior yang berubah. Untuk Frontend, tambahkan test komponen/alur penting dan verifikasi aksesibilitas dasar; untuk Backend, tambahkan unit/feature test sesuai lapisan.
-- Jalankan test, formatter, linter, type-check, build, migration/health check yang relevan. Catat command dan hasil aktual; tandai yang terhalang environment sebagai belum terverifikasi.
-- Perbarui dokumentasi API, development, atau ADR bila kontrak/keputusan berubah. Jangan menyimpan secret atau data nyata di repository/log.
-
-**Format laporan akhir wajib:**
-1. Ringkasan perubahan dan alasan.
-2. File/module utama yang dibuat atau diubah.
-3. Acceptance criteria Phase 6: status `Lulus`, `Gagal`, `Belum diuji`, atau `Terhalang`, disertai bukti singkat.
-4. Daftar command test/check yang dijalankan dan hasil aktual.
-5. Keputusan/gate yang masih menunggu persetujuan, risiko, dan pekerjaan lanjutan.
-6. Konfirmasi bahwa `git diff` dan `git status` sudah diperiksa. Jangan commit/push tanpa instruksi.
-
-Mulai dengan audit dan rencana singkat, lalu implementasikan task terkecil yang paling tepat untuk fase ini. Berkomunikasilah dalam Bahasa Indonesia.
-```
-
----
-
 ## Phase 7 — Reporting
 
 ### Prompt Backend
@@ -562,7 +488,7 @@ Sebelum mengubah kode:
 
 **Tujuan:** membangun API reporting MVP berdasarkan sumber transaksi yang sudah tersedia.
 
-Sediakan daily sales, transaction count, payment report, operator report, cash reconciliation, dan basic inventory report jika inventory aktif. Definisikan agregasi berdasarkan data transaksi/payment/cash session yang benar, rentang tanggal, timezone aplikasi, refund/cancel, dan status payment. Terapkan filter Business/Outlet di backend, pagination/batas hasil, dan query yang efisien. Hasil laporan harus dapat dibandingkan dengan fixture yang dihitung manual.
+Sediakan daily sales, transaction count, payment report, operator report, dan cash reconciliation. Definisikan agregasi berdasarkan data transaksi/payment/cash session yang benar, rentang tanggal, timezone aplikasi, refund/cancel, dan status payment. Terapkan filter Business/Outlet di backend, pagination/batas hasil, dan query yang efisien. Hasil laporan harus dapat dibandingkan dengan fixture yang dihitung manual.
 
 **Batasan:** jangan membangun accounting penuh atau AI analytics. Jangan menyamakan pending/failed dengan paid dan jangan menghitung ulang histori menggunakan harga catalog terkini.
 
@@ -597,7 +523,7 @@ Sebelum mengubah kode:
 
 **Tujuan:** membangun dashboard dan halaman laporan MVP di web.
 
-Buat ringkasan penjualan, jumlah transaksi, payment breakdown, performa operator, cash reconciliation, serta basic inventory report jika modulnya aktif. Sediakan filter tanggal dan outlet sesuai kontrak API, kartu ringkasan, tabel/grafik yang membantu pembacaan tren, serta empty state untuk periode tanpa transaksi. Angka harus berasal dari endpoint reporting; jangan menghitung ulang agregasi bisnis yang seharusnya menjadi tanggung jawab backend.
+Buat ringkasan penjualan, jumlah transaksi, payment breakdown, performa operator, dan cash reconciliation. Sediakan filter tanggal dan outlet sesuai kontrak API, kartu ringkasan, tabel/grafik yang membantu pembacaan tren, serta empty state untuk periode tanpa transaksi. Angka harus berasal dari endpoint reporting; jangan menghitung ulang agregasi bisnis yang seharusnya menjadi tanggung jawab backend.
 
 **Pemeriksaan wajib:** tampilkan rentang tanggal aktif, loading/error/empty state, format IDR, status transaksi/payment yang jelas, dan hasil filter yang konsisten. Hindari chart dekoratif yang tidak menjawab kebutuhan. Jangan menyebut laporan sebagai accounting penuh atau menambahkan AI analytics.
 
@@ -710,7 +636,7 @@ Sebelum mengubah kode:
 
 **Tujuan:** menambahkan event delivery untuk perubahan operasional.
 
-Implementasikan event yang diperlukan untuk QR order notification, kitchen/order updates, payment status, dan stock updates bila modul terkait tersedia. Tentukan nama event, payload minimum, trigger, recipient, dan authorization channel. Database tetap source of truth. Untuk event setelah commit, gunakan mekanisme yang aman (misalnya after-commit/outbox bila diperlukan) agar event tidak mengumumkan perubahan yang gagal. Terapkan authorization Business/Outlet pada channel, serta idempotency/deduplication untuk handler yang punya side effect.
+Implementasikan event yang diperlukan untuk QR order notification, kitchen/order updates, dan payment status. Tentukan nama event, payload minimum, trigger, recipient, dan authorization channel. Database tetap source of truth. Untuk event setelah commit, gunakan mekanisme yang aman (misalnya after-commit/outbox bila diperlukan) agar event tidak mengumumkan perubahan yang gagal. Terapkan authorization Business/Outlet pada channel, serta idempotency/deduplication untuk handler yang punya side effect.
 
 Periksa keputusan provider pada `docs/planning/decision-log.md` (Laravel Reverb sebagai rekomendasi baseline) dan tandai status persetujuannya. Tambahkan test isolasi channel, commit timing, delivery retry, dan resync melalui API.
 
@@ -745,7 +671,7 @@ Sebelum mengubah kode:
 
 **Tujuan:** mengintegrasikan UI web/mobile dengan event realtime yang disediakan backend.
 
-Tampilkan update order baru/status order, payment status, dan stock update yang relevan pada layar yang berhak menerimanya. Gunakan channel/subscription yang ditentukan kontrak backend; jangan menebak nama event atau channel. Ketika koneksi terputus/terlewat event, lakukan reconnect dan ambil ulang state terbaru melalui API. Event hanya mempercepat pembaruan UI; state API tetap sumber kebenaran.
+Tampilkan update order baru/status order dan payment status pada layar yang berhak menerimanya. Gunakan channel/subscription yang ditentukan kontrak backend; jangan menebak nama event atau channel. Ketika koneksi terputus/terlewat event, lakukan reconnect dan ambil ulang state terbaru melalui API. Event hanya mempercepat pembaruan UI; state API tetap sumber kebenaran.
 
 **Pemeriksaan wajib:** tangani connected/disconnected/reconnecting, duplicate event, event terlambat, dan resync. Jangan mengandalkan event untuk menyimpan data transaksi. Jangan menampilkan notifikasi data dari Business/Outlet lain. Jangan memasang provider/client library yang belum diputuskan tanpa mencatat keputusan dan kompatibilitasnya.
 
@@ -917,85 +843,13 @@ Mulai dengan audit dan rencana singkat, lalu implementasikan task terkecil yang 
 
 ---
 
-## Phase 12 — Advanced F&B Operations
-
-### Prompt Backend
-
-```text
-Kita akan mengerjakan **Dagana Phase 12 — Advanced F&B Operations** dari sisi Backend.
-
-Sebelum mengubah kode:
-1. Baca `AGENTS.md` dan `docs/README.md`. Lalu baca `PRD-Dagana.md`, requirement spesifik fase di `docs/requirements/`, `docs/planning/phase-targets.md`, `docs/engineering/engineering-standards.md`, serta bagian relevan `docs/planning/decision-log.md` dan `docs/architecture/` sesuai dampak task.
-2. Periksa struktur repository, branch, status Git, implementasi, test, dan kontrak API yang sudah ada. Jangan berasumsi repository masih kosong.
-3. Cocokkan task dengan target serta acceptance criteria Phase 12. Identifikasi dependency, file yang akan terdampak, dan risiko kompatibilitas.
-4. Jika ada konflik requirement, keputusan yang belum disetujui, atau dependency yang belum tersedia, jelaskan terlebih dahulu. Jangan memilih kebijakan bisnis sendiri.
-
-**Tujuan:** mengembangkan domain F&B lanjutan hanya berdasarkan satu subfase yang dipilih: 12A Recipe & BOM, 12B Advanced Inventory/Stock Opname/Waste, 12C COGS & Inventory Costing, atau 12D Modifier & Variant.
-
-Sebelum coding, minta/identifikasi subfase spesifik yang menjadi target task. Jangan implementasikan seluruh Phase 12 dalam satu perubahan. Turunkan requirement, model, migration, API, authorization, transaction rules, audit trail, dan test dari PRD serta keputusan yang sudah disetujui. Pertahankan satu source of truth pada domain catalog/order/inventory. Histori dan movement ledger harus tetap terlacak.
-
-**Gate:** recipe harus mengikuti versi/masa berlaku; kebijakan stok negatif harus disetujui; costing method harus diputuskan sebelum COGS disebut final; modifier/variant harus divalidasi server-side dan tersimpan sebagai snapshot order. Jangan mengarang aturan yang belum diputuskan. Setiap subfase harus punya test normal, edge case, concurrency, reversal/correction, dan tenant/outlet authorization.
-
-**Instruksi implementasi:**
-- Pecah pekerjaan menjadi langkah kecil yang dapat direview. Implementasikan hanya scope Phase 12; jangan mengerjakan fase berikutnya kecuali ada dependency minimum yang wajib.
-- Pertahankan pola arsitektur, penamaan, response/API contract, design system, dan convention yang sudah dipakai repository. Hindari duplikasi logic dan abstraksi berlebihan.
-- Tambahkan/perbarui automated test untuk behavior yang berubah. Untuk Frontend, tambahkan test komponen/alur penting dan verifikasi aksesibilitas dasar; untuk Backend, tambahkan unit/feature test sesuai lapisan.
-- Jalankan test, formatter, linter, type-check, build, migration/health check yang relevan. Catat command dan hasil aktual; tandai yang terhalang environment sebagai belum terverifikasi.
-- Perbarui dokumentasi API, development, atau ADR bila kontrak/keputusan berubah. Jangan menyimpan secret atau data nyata di repository/log.
-
-**Format laporan akhir wajib:**
-1. Ringkasan perubahan dan alasan.
-2. File/module utama yang dibuat atau diubah.
-3. Acceptance criteria Phase 12: status `Lulus`, `Gagal`, `Belum diuji`, atau `Terhalang`, disertai bukti singkat.
-4. Daftar command test/check yang dijalankan dan hasil aktual.
-5. Keputusan/gate yang masih menunggu persetujuan, risiko, dan pekerjaan lanjutan.
-6. Konfirmasi bahwa `git diff` dan `git status` sudah diperiksa. Jangan commit/push tanpa instruksi.
-
-Mulai dengan audit dan rencana singkat, lalu implementasikan task terkecil yang paling tepat untuk fase ini. Berkomunikasilah dalam Bahasa Indonesia.
-```
-
-### Prompt Frontend
-
-```text
-Kita akan mengerjakan **Dagana Phase 12 — Advanced F&B Operations** dari sisi Frontend.
-
-Sebelum mengubah kode:
-1. Baca `AGENTS.md` dan `docs/README.md`. Lalu baca `PRD-Dagana.md`, requirement spesifik fase di `docs/requirements/`, `docs/planning/phase-targets.md`, `docs/engineering/engineering-standards.md`, serta bagian relevan `docs/planning/decision-log.md` dan `docs/architecture/` sesuai dampak task.
-2. Periksa struktur repository, branch, status Git, implementasi, test, dan kontrak API yang sudah ada. Jangan berasumsi repository masih kosong.
-3. Cocokkan task dengan target serta acceptance criteria Phase 12. Identifikasi dependency, file yang akan terdampak, dan risiko kompatibilitas.
-4. Jika ada konflik requirement, keputusan yang belum disetujui, atau dependency yang belum tersedia, jelaskan terlebih dahulu. Jangan memilih kebijakan bisnis sendiri.
-
-**Tujuan:** membangun UI untuk satu subfase lanjutan yang dipilih dari Phase 12: 12A Recipe & BOM, 12B Advanced Inventory/Stock Opname/Waste, 12C COGS & Inventory Costing, atau 12D Modifier & Variant.
-
-Jangan membuat seluruh fitur Phase 12 sekaligus. Pastikan subfase dan API contract backend sudah jelas. Bangun hanya layar, form, tabel, simulasi, dan ringkasan yang dibutuhkan subfase tersebut. Untuk recipe/BOM, tampilkan komposisi bahan dan versi resep. Untuk stock opname/waste, tampilkan perbandingan stok sistem/fisik, alasan, konfirmasi, dan movement. Untuk COGS, tampilkan dasar dan periode perhitungan dari API. Untuk modifier/variant, tampilkan pilihan valid dan harga hasil backend.
-
-**Pemeriksaan wajib:** jangan mengarang formula, unit conversion, kebijakan stok negatif, costing method, atau pengaruh modifier terhadap inventory. Tampilkan informasi yang belum final secara eksplisit. Semua perubahan menggunakan API dan memiliki loading/error/success state, permission gating, serta test UI yang relevan.
-
-**Instruksi implementasi:**
-- Pecah pekerjaan menjadi langkah kecil yang dapat direview. Implementasikan hanya scope Phase 12; jangan mengerjakan fase berikutnya kecuali ada dependency minimum yang wajib.
-- Pertahankan pola arsitektur, penamaan, response/API contract, design system, dan convention yang sudah dipakai repository. Hindari duplikasi logic dan abstraksi berlebihan.
-- Tambahkan/perbarui automated test untuk behavior yang berubah. Untuk Frontend, tambahkan test komponen/alur penting dan verifikasi aksesibilitas dasar; untuk Backend, tambahkan unit/feature test sesuai lapisan.
-- Jalankan test, formatter, linter, type-check, build, migration/health check yang relevan. Catat command dan hasil aktual; tandai yang terhalang environment sebagai belum terverifikasi.
-- Perbarui dokumentasi API, development, atau ADR bila kontrak/keputusan berubah. Jangan menyimpan secret atau data nyata di repository/log.
-
-**Format laporan akhir wajib:**
-1. Ringkasan perubahan dan alasan.
-2. File/module utama yang dibuat atau diubah.
-3. Acceptance criteria Phase 12: status `Lulus`, `Gagal`, `Belum diuji`, atau `Terhalang`, disertai bukti singkat.
-4. Daftar command test/check yang dijalankan dan hasil aktual.
-5. Keputusan/gate yang masih menunggu persetujuan, risiko, dan pekerjaan lanjutan.
-6. Konfirmasi bahwa `git diff` dan `git status` sudah diperiksa. Jangan commit/push tanpa instruksi.
-
-Mulai dengan audit dan rencana singkat, lalu implementasikan task terkecil yang paling tepat untuk fase ini. Berkomunikasilah dalam Bahasa Indonesia.
-```
-
 ## Catatan khusus urutan Backend dan Frontend
 
-- **Backend menjadi sumber kebenaran** untuk harga, total, status order/payment, saldo kas, saldo stok, permission, billing, dan laporan. Frontend tidak boleh membuat keputusan bisnis final.
+- **Backend menjadi sumber kebenaran** untuk harga, total, status order/payment, saldo kas, permission, billing, dan laporan. Frontend tidak boleh membuat keputusan bisnis final.
 - Jika Backend belum menyediakan endpoint yang diperlukan, Frontend agent harus membuat daftar kebutuhan API/kontrak terlebih dahulu. Jangan membuat mock permanen atau endpoint palsu untuk menyelesaikan UI.
 - Jika Frontend menemukan kebutuhan perubahan API, ajukan kontrak request/response yang jelas kepada Backend agent dan sinkronkan sebelum mengimplementasikan integrasi.
 - Phase 8 (QR Ordering) adalah channel tambahan; jangan membuat order engine kedua. Phase 9 (Realtime) adalah lapisan notifikasi; API/database tetap source of truth.
-- Phase 10 (Billing) memiliki gate Product Owner. Phase 12 harus dikerjakan per subfase, bukan sebagai satu proyek besar.
+- Phase 10 (Billing) memiliki gate Product Owner.
 
 ## Checklist sebelum menyatakan satu fase selesai
 

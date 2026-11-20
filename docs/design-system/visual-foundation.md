@@ -47,7 +47,7 @@ Design principles:
 | Status | Foreground | Container/background | Meaning |
 |---|---|---|---|
 | Success | `#18794E` | `#E1F3E8` | Paid, completed, active, successful sync |
-| Warning | `#A15C00` | `#FFF1D6` | Pending, low stock, attention required |
+| Warning | `#A15C00` | `#FFF1D6` | Pending, attention required |
 | Danger | `#B42318` | `#FCE8E6` | Failed, cancelled, destructive action, discrepancy requiring action |
 | Info | `#245E9B` | `#E7F0FA` | Informational state, neutral process update |
 

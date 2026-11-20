@@ -30,7 +30,6 @@ class ReportDateRangeRequest extends FormRequest
             'from' => ['required', 'date'],
             'to' => ['required', 'date', 'after_or_equal:from'],
             'outlet_id' => ['sometimes', 'integer'],
-            'low_stock' => ['sometimes', 'in:true,false,1,0'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
         ];
     }

@@ -20,7 +20,6 @@ Dokumen ini menjadi rujukan utama untuk fitur yang masuk/keluar MVP. Detail beha
 | Sales / POS | Order dan selling workflow |
 | Payment | Payment dan settlement |
 | Cash | Cash Session dan rekonsiliasi |
-| Inventory / Recipe | Stock, movement, recipe/BOM |
 | Ordering / Tables | POS dan QR order, table/session |
 | Kitchen | Preparation workflow |
 | Reporting | Sales dan business reports |
@@ -113,19 +112,7 @@ Included:
 - variance
 - note
 
-### 8 Basic Inventory
-
-Included:
-
-- ingredient/item
-- stock
-- stock adjustment
-- stock movement
-- low stock
-
-Inventory tidak wajib diaktifkan untuk mulai berjualan.
-
-### 9 Reporting
+### 8 Reporting
 
 Included:
 
@@ -134,9 +121,8 @@ Included:
 - payment report
 - operator report
 - cash reconciliation
-- basic inventory report
 
-### 10 QR Ordering
+### 9 QR Ordering
 
 Optional MVP module:
 
@@ -149,7 +135,7 @@ Optional MVP module:
 
 POS tetap berfungsi jika QR disabled.
 
-### 11 Billing
+### 10 Billing
 
 Infrastructure:
 
@@ -175,9 +161,6 @@ Untuk menjaga scope:
 - advanced CRM
 - loyalty
 - promotion engine
-- advanced recipe
-- supplier management
-- purchase order
 - central kitchen
 - advanced KDS
 - advanced table management
@@ -216,7 +199,7 @@ PAYMENT
    ↓
 TRANSACTION COMPLETE
    ↓
-CASH / INVENTORY UPDATE
+CASH UPDATE
    ↓
 DAILY REPORT
    ↓

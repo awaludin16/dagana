@@ -14,7 +14,7 @@ class DeleteMemberAction
      * Hard-delete an employee membership while keeping the user record for
      * historical attribution. The owner and the actor cannot be deleted.
      * Members with transactional history must be deactivated instead: their
-     * records are referenced by order/payment/cash/stock FKs (restrict).
+     * records are referenced by order/payment/cash FKs (restrict).
      */
     public function execute(BusinessMembership $actor, BusinessMembership $target): void
     {
@@ -39,12 +39,11 @@ class DeleteMemberAction
                     ->where('operator_membership_id', $membershipId)
                     ->orWhere('closed_by_membership_id', $membershipId))
                 ->exists()
-            || DB::table('cash_movements')->where('membership_id', $membershipId)->exists()
-            || DB::table('stock_movements')->where('membership_id', $membershipId)->exists();
+            || DB::table('cash_movements')->where('membership_id', $membershipId)->exists();
 
         if ($hasHistory) {
             throw ValidationException::withMessages([
-                'member' => 'Anggota ini memiliki data historis (transaksi, kas, atau stok) sehingga tidak dapat dihapus permanen. Gunakan Nonaktifkan untuk mencabut aksesnya.',
+                'member' => 'Anggota ini memiliki data historis (transaksi atau kas) sehingga tidak dapat dihapus permanen. Gunakan Nonaktifkan untuk mencabut aksesnya.',
             ]);
         }
 

@@ -3,12 +3,11 @@
 namespace App\Domain\Report;
 
 use App\Models\CashSession;
-use App\Models\InventoryItem;
 use App\Models\Order;
 use App\Models\Payment;
 use Carbon\CarbonImmutable;
-use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -167,44 +166,10 @@ class ReportService
     }
 
     /**
-     * Laporan inventory dasar: saldo item (Σ ledger penuh) plus ringkasan
-     * movement dalam rentang. Kosong bila modul inventory tidak aktif.
-     *
-     * @param  list<int>|null  $outletIds
-     * @return LengthAwarePaginator<InventoryItem>
-     */
-    public function inventory(int $businessId, ?int $outletId, ?array $outletIds, CarbonImmutable $from, CarbonImmutable $to, bool $lowStockOnly, int $perPage): LengthAwarePaginator
-    {
-        $stock = DB::table('stock_movements')
-            ->selectRaw('inventory_item_id, COALESCE(SUM(quantity_change), 0) as stock')
-            ->groupBy('inventory_item_id');
-
-        $ranged = DB::table('stock_movements')
-            ->selectRaw('inventory_item_id, COUNT(*) as movements_count, COALESCE(SUM(quantity_change), 0) as movements_net')
-            ->where('created_at', '>=', $from->startOfDay())
-            ->where('created_at', '<=', $to->endOfDay())
-            ->groupBy('inventory_item_id');
-
-        return InventoryItem::query()
-            ->where('inventory_items.business_id', $businessId)
-            ->when($outletId !== null, fn ($q) => $q->where('inventory_items.outlet_id', $outletId))
-            ->when($outletIds !== null, fn ($q) => $q->whereIn('inventory_items.outlet_id', $outletIds))
-            ->when($lowStockOnly, function (Builder $q) {
-                $q->whereColumn('stock.stock', '<=', 'inventory_items.low_stock_threshold')
-                    ->whereNotNull('inventory_items.low_stock_threshold');
-            })
-            ->leftJoinSub($stock, 'stock', 'stock.inventory_item_id', '=', 'inventory_items.id')
-            ->leftJoinSub($ranged, 'ranged', 'ranged.inventory_item_id', '=', 'inventory_items.id')
-            ->selectRaw('inventory_items.*, COALESCE(stock.stock, 0) as current_stock, COALESCE(ranged.movements_count, 0) as movements_count, COALESCE(ranged.movements_net, 0) as movements_net')
-            ->orderBy('inventory_items.id')
-            ->paginate($perPage);
-    }
-
-    /**
      * Satu order dihitung tepat satu kali: tanggal penjualan adalah tanggal
      * konfirmasi pembayaran PAID pertama, walau order punya beberapa payment.
      */
-    private function paidPerOrder(): \Illuminate\Database\Query\Builder
+    private function paidPerOrder(): Builder
     {
         return DB::table('payments')
             ->selectRaw('order_id, MIN(paid_at) as paid_date')

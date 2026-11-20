@@ -16,9 +16,9 @@ Organize code around domains/use cases. Prefer the existing repository conventio
 
 For new business logic, use the following responsibilities:
 
-- **Controller:** HTTP concerns only—receive the request, invoke authorization/validation, call a use case, and return a response. Do not place checkout, stock, cash, or billing rules in controllers.
+- **Controller:** HTTP concerns only—receive the request, invoke authorization/validation, call a use case, and return a response. Do not place checkout, cash, or billing rules in controllers.
 - **Form Request:** input validation and request-specific authorization where appropriate.
-- **Service/Action:** application use case and business-rule orchestration. Examples include `CheckoutService`, `OpenCashSessionAction`, and `AdjustInventoryService`.
+- **Service/Action:** application use case and business-rule orchestration. Examples include `CheckoutService` and `OpenCashSessionAction`.
 - **Model:** persistence mapping, relationships, casts, and small query scopes. Avoid hiding multi-step workflows in model callbacks or fat model methods.
 - **Policy/Gate:** authorization decisions. Reuse explicit permission checks; do not rely on frontend visibility or a role label alone.
 - **API Resource:** stable response serialization. Avoid returning raw models with accidental fields/relationships.
@@ -42,16 +42,15 @@ A possible domain-oriented layout is `app/Domain/<Domain>/{Actions,DTOs,Events,E
 
 ---
 
-## 5. Transaction, payment, cash, and inventory integrity
+## 5. Transaction, payment, and cash integrity
 
-- Checkout must be atomic for database changes that must succeed together: order and item snapshots, payment record/status, inventory movement where enabled, cash-session impact where applicable, and audit event.
-- Use `DB::transaction()` for multi-record operations. Use row locking (for example, `lockForUpdate`) only where concurrent requests can cause lost updates, overselling, or cash/session inconsistencies.
-- Add idempotency handling to retryable transaction/payment endpoints. A retry must not create a duplicate sale, payment, stock deduction, or platform fee.
+- Checkout must be atomic for database changes that must succeed together: order and item snapshots, payment record/status, cash-session impact where applicable, and audit event.
+- Use `DB::transaction()` for multi-record operations. Use row locking (for example, `lockForUpdate`) only where concurrent requests can cause lost updates or cash/session inconsistencies.
+- Add idempotency handling to retryable transaction/payment endpoints. A retry must not create a duplicate sale, payment, or platform fee.
 - Do not trust a payment success redirect as proof of payment. Verify provider webhooks/signatures and handle duplicate/out-of-order notifications safely if a gateway is integrated.
 - Keep external network calls out of a long-running database transaction wherever possible. Persist the internal state safely, then use an explicit retryable workflow for the external operation.
-- Do not delete completed financial/stock history to correct mistakes. Use the domain's cancellation, refund, reversal, or adjustment flow and retain an audit trail.
+- Do not delete completed financial history to correct mistakes. Use the domain's cancellation, refund, reversal, or adjustment flow and retain an audit trail.
 - Represent IDR amounts as integer whole-rupiah values in the initial Indonesia-focused product; never calculate money using PHP/JavaScript floating-point values. Revisit the model explicitly before adding other currencies or fractional minor units.
-- Stock changes should be explainable through stock-movement records, not an unexplained update to a current-stock number.
 
 ---
 
@@ -80,7 +79,7 @@ A possible domain-oriented layout is `app/Domain/<Domain>/{Actions,DTOs,Events,E
 ## 8. Testing and quality gates
 
 - Add or update tests whenever behavior changes. Do not weaken/remove a test only to make a change pass; explain and replace it when the expected behavior truly changed.
-- Minimum critical coverage: validation, permissions, tenant isolation, checkout atomicity/rollback, idempotency, payment state transitions, cash reconciliation arithmetic, and inventory movement whenever those areas change.
+- Minimum critical coverage: validation, permissions, tenant isolation, checkout atomicity/rollback, idempotency, payment state transitions, and cash reconciliation arithmetic whenever those areas change.
 - Prefer feature tests for HTTP/API behavior and unit tests for isolated calculations/rules. Test failure paths as well as happy paths.
 - Run the narrowest relevant tests while iterating, then run the broader available test/lint/static-analysis commands before declaring completion.
 - Do not claim a test passed unless it was actually executed. If environment/dependencies prevent running it, state exactly what was not run and why.
@@ -97,7 +96,7 @@ A possible domain-oriented layout is `app/Domain/<Domain>/{Actions,DTOs,Events,E
 - Keep reusable UI components generic only when reuse is real; do not create an abstraction for a single trivial screen without a clear benefit.
 - React Web forms use React Hook Form with Zod schemas in `src/lib/validation.ts`. Map API validation errors to fields through `src/lib/form-errors.ts`, disable inputs while pending, and keep a top-level alert only for errors without a field mapping. Do not hand-roll a second validation rule set in the component.
 - Name component, page, layout, provider, and context files in `PascalCase.tsx`; name hooks `useCamelCase.ts`; keep non-component modules and test scenario files in `kebab-case`. Ensure every form control has a unique DOM `id`, including fields inside dialogs.
-- Flutter POS is a client of the same API/domain. Do not create a separate set of business rules for checkout, payments, cash, or inventory in the mobile app. Keep HTTP/API access in a dedicated data layer, use Riverpod for app state/dependency injection where appropriate, and verify plugin compatibility with the pinned Flutter/Dart SDK before adding native dependencies.
+- Flutter POS is a client of the same API/domain. Do not create a separate set of business rules for checkout, payments, or cash in the mobile app. Keep HTTP/API access in a dedicated data layer, use Riverpod for app state/dependency injection where appropriate, and verify plugin compatibility with the pinned Flutter/Dart SDK before adding native dependencies.
 
 ## Flutter implementation notes
 

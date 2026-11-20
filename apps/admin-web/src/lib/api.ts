@@ -11,11 +11,7 @@ import type {
   CashSessionListParams,
   CloseCashSessionInput,
   CreateBusinessInput,
-  CreateInventoryItemInput,
   CreateMemberInput,
-  InventoryItem,
-  InventoryItemInput,
-  InventoryListParams,
   Me,
   Member,
   OpenCashSessionInput,
@@ -30,13 +26,10 @@ import type {
   Product,
   ProductInput,
   ReportCashRow,
-  ReportInventoryRow,
   ReportListParams,
   ReportRangeParams,
   RoleCatalog,
   SalesReport,
-  StockAdjustmentInput,
-  StockMovement,
   UpdateMemberInput,
 } from '@/types'
 
@@ -322,32 +315,6 @@ export const api = {
     )
   },
 
-  async inventoryItems(params: InventoryListParams = {}) {
-    return page<InventoryItem>(await request(`/inventory${queryString(params)}`))
-  },
-
-  async inventoryItem(id: number) {
-    return data<InventoryItem>(await request(`/inventory/${id}`))
-  },
-
-  async createInventoryItem(input: CreateInventoryItemInput) {
-    return data<InventoryItem>(await request('/inventory', { method: 'POST', body: input }))
-  },
-
-  async updateInventoryItem(id: number, input: Partial<InventoryItemInput>) {
-    return data<InventoryItem>(await request(`/inventory/${id}`, { method: 'PATCH', body: input }))
-  },
-
-  async inventoryMovements(id: number, params: InventoryListParams = {}) {
-    return page<StockMovement>(await request(`/inventory/${id}/movements${queryString(params)}`))
-  },
-
-  async adjustInventoryStock(id: number, input: StockAdjustmentInput) {
-    return data<StockMovement>(
-      await request(`/inventory/${id}/adjustments`, { method: 'POST', body: input }),
-    )
-  },
-
   async reportSales(params: ReportRangeParams) {
     return data<SalesReport>(await request(`/reports/sales${queryString(params)}`))
   },
@@ -362,9 +329,5 @@ export const api = {
 
   async reportCash(params: ReportListParams) {
     return page<ReportCashRow>(await request(`/reports/cash${queryString(params)}`))
-  },
-
-  async reportInventory(params: ReportListParams) {
-    return page<ReportInventoryRow>(await request(`/reports/inventory${queryString(params)}`))
   },
 }

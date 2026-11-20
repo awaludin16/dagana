@@ -38,11 +38,11 @@ BUSINESS
 
 ## 3. Operational data ownership
 
-Data operasional yang relevan harus membawa `business_id` dan/atau `outlet_id` agar scope dan histori jelas. Contohnya order, payment, Cash Session, inventory, stock movement, table, QR, kitchen activity, dan laporan. Bentuk FK, unique constraints, indexes, deletion/deactivation policy, dan snapshot columns harus ditetapkan pada desain ERD sebelum migration dibuat.
+Data operasional yang relevan harus membawa `business_id` dan/atau `outlet_id` agar scope dan histori jelas. Contohnya order, payment, Cash Session, table, QR, kitchen activity, dan laporan. Bentuk FK, unique constraints, indexes, deletion/deactivation policy, dan snapshot columns harus ditetapkan pada desain ERD sebelum migration dibuat.
 
 ## 4. Transactional history
 
-Order item perlu menyimpan snapshot nilai penting yang menjaga histori transaksi. Payment, cash movement, stock movement, dan audit event adalah catatan historis; koreksi dilakukan dengan cancel/refund/reversal/adjustment yang tercatat, bukan hard delete.
+Order item perlu menyimpan snapshot nilai penting yang menjaga histori transaksi. Payment, cash movement, dan audit event adalah catatan historis; koreksi dilakukan dengan cancel/refund/reversal/adjustment yang tercatat, bukan hard delete.
 
 ## 5. Data architecture
 

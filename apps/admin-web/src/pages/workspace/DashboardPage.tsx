@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { tableFeatures, useTable } from '@tanstack/react-table'
 import type { ColumnDef } from '@tanstack/react-table'
-import { Banknote, Clock, Coins, PackageOpen, Receipt, TrendingUp, Wallet } from 'lucide-react'
+import { Banknote, Clock, Coins, Receipt, TrendingUp, Wallet } from 'lucide-react'
 import { useMemo } from 'react'
 import { Link, Navigate } from 'react-router'
 import {
@@ -37,9 +37,9 @@ import {
   orderStatusClass,
   orderStatusLabel,
 } from '@/lib/order-format'
-import type { CashSession, InventoryItem, Order, ReportDay } from '@/types'
+import type { CashSession, Order, ReportDay } from '@/types'
 
-// Owner Dashboard (PRD): Today's Sales, Transactions, Cash Status, Low Stock,
+// Owner Dashboard (PRD): Today's Sales, Transactions, Cash Status,
 // Recent Orders, primary action "Mulai Jualan". Semua angka dari endpoint
 // reporting/list yang sudah ada; frontend tidak menghitung ulang agregasi.
 const TREND_DAYS = 7
@@ -118,8 +118,8 @@ export function DashboardPage() {
           </p>
           <h1 className="text-page-title tracking-tight">{access.membership.business.name}</h1>
           <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-            Ringkasan operasional: penjualan hari ini, tren 7 hari terakhir, status kas, stok
-            rendah, dan transaksi terbaru. Semua angka dihitung server; bukan accounting penuh.
+            Ringkasan operasional: penjualan hari ini, tren 7 hari terakhir, status kas, dan
+            transaksi terbaru. Semua angka dihitung server; bukan accounting penuh.
           </p>
         </div>
         {access.can('orders.create') && (
@@ -131,7 +131,6 @@ export function DashboardPage() {
 
       {access.can('reports.read') && <SummarySection />}
       {access.can('cash.read') && <CashStatusSection outlets={outlets} />}
-      {access.can('inventory.read') && <LowStockSection />}
       {access.can('orders.read') && <RecentOrdersSection outlets={outlets} />}
     </section>
   )
@@ -299,67 +298,6 @@ function CashStatusSection({ outlets }: { outlets: { id: number; name: string }[
             </li>
           ))}
         </ul>
-      )}
-    </div>
-  )
-}
-
-function LowStockSection() {
-  const inventory = useQuery({
-    queryKey: ['dashboard', 'low-stock'],
-    queryFn: () => api.inventoryItems({ low_stock: true, per_page: WIDGET_PER_PAGE }),
-  })
-
-  if (inventory.isPending) return <LoadingState label="Memuat stok rendah..." />
-
-  if (inventory.isError || !inventory.data) {
-    return (
-      <ErrorState
-        message={apiErrorMessage(
-          inventory.error,
-          'Stok rendah belum dapat dimuat. Periksa koneksi lalu coba lagi.',
-        )}
-        onRetry={() => void inventory.refetch()}
-      />
-    )
-  }
-
-  const rows: InventoryItem[] = inventory.data.data
-
-  return (
-    <div className="space-y-3" aria-label="Stok rendah">
-      <SectionTitle icon={PackageOpen}>Stok rendah</SectionTitle>
-      {rows.length === 0 ? (
-        <div className="rounded-xl border bg-card p-6 text-sm text-muted-foreground" role="status">
-          Tidak ada item dengan stok rendah. Semua stok aman.
-        </div>
-      ) : (
-        <>
-          <ul className="grid gap-3 sm:grid-cols-2">
-            {rows.map((item) => (
-              <li
-                key={item.id}
-                className="flex items-center justify-between gap-3 rounded-xl border bg-card p-4"
-              >
-                <div className="min-w-0 space-y-0.5">
-                  <h3 className="truncate text-sm font-semibold">{item.name}</h3>
-                  <p className="text-xs text-muted-foreground">
-                    Sisa {formatNumber(item.current_stock)} {item.unit}
-                  </p>
-                </div>
-                <Badge className="border-dagana-warning/20 bg-dagana-warning-container text-dagana-warning">
-                  Stok rendah
-                </Badge>
-              </li>
-            ))}
-          </ul>
-          {inventory.data.meta.total > rows.length && (
-            <p className="text-xs text-muted-foreground">
-              Menampilkan {formatNumber(rows.length)} dari {formatNumber(inventory.data.meta.total)}{' '}
-              item stok rendah. Lihat halaman Inventory untuk daftar lengkap.
-            </p>
-          )}
-        </>
       )}
     </div>
   )

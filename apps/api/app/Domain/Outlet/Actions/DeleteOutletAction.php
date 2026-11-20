@@ -31,15 +31,13 @@ class DeleteOutletAction
                 'payments',
                 'cash_sessions',
                 'cash_movements',
-                'inventory_items',
-                'stock_movements',
             ])->contains(fn (string $table): bool => DB::table($table)
                 ->where('outlet_id', $outlet->id)
                 ->exists());
 
             if ($hasHistory) {
                 throw ValidationException::withMessages([
-                    'outlet' => 'Outlet memiliki data historis (order, pembayaran, kas, atau inventory) dan tidak dapat dihapus.',
+                    'outlet' => 'Outlet memiliki data historis (order, pembayaran, atau kas) dan tidak dapat dihapus.',
                 ]);
             }
 

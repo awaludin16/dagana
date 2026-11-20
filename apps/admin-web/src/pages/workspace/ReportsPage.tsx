@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import {
   Banknote,
-  Boxes,
   CreditCard,
   Receipt,
   TrendingUp,
@@ -38,12 +37,11 @@ import type {
   OperatorReportRow,
   ReportCashRow,
   ReportDay,
-  ReportInventoryRow,
   ReportRangeParams,
   SalesReport,
 } from '@/types'
 
-// Backend membatasi rentang 92 hari dan per_page maks 100 (api-design §13).
+// Backend membatasi rentang 92 hari dan per_page maks 100 (api-design §12).
 const MAX_REPORT_DAYS = 92
 const REPORT_PER_PAGE = 50
 
@@ -111,8 +109,8 @@ export function ReportsPage() {
         <p className="text-sm font-medium text-primary">Laporan</p>
         <h1 className="text-page-title tracking-tight">Laporan</h1>
         <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-          Ringkasan penjualan, pembayaran, performa operator, rekonsiliasi kas, dan inventory. Semua
-          angka dihitung server dari data transaksi; laporan ini bukan accounting penuh.
+          Ringkasan penjualan, pembayaran, performa operator, dan rekonsiliasi kas. Semua angka
+          dihitung server dari data transaksi; laporan ini bukan accounting penuh.
         </p>
       </header>
 
@@ -172,7 +170,6 @@ export function ReportsPage() {
           <PaymentsSection params={params} />
           <OperatorsSection params={params} />
           <CashSection params={params} outlets={outlets} />
-          <InventorySection params={params} />
         </>
       )}
     </section>
@@ -539,98 +536,5 @@ function CashSessionRow({ session, outletName }: { session: ReportCashRow; outle
         </p>
       )}
     </li>
-  )
-}
-
-function InventorySection({ params }: { params: ReportRangeParams }) {
-  const [lowStockOnly, setLowStockOnly] = useState(false)
-  const inventory = useQuery({
-    queryKey: ['reports', 'inventory', params, lowStockOnly],
-    queryFn: () =>
-      api.reportInventory({
-        ...params,
-        per_page: REPORT_PER_PAGE,
-        low_stock: lowStockOnly || undefined,
-      }),
-  })
-
-  if (inventory.isPending) return <LoadingState label="Memuat laporan inventory..." />
-
-  if (inventory.isError || !inventory.data) {
-    return (
-      <ErrorState
-        message={apiErrorMessage(
-          inventory.error,
-          'Laporan inventory belum dapat dimuat. Periksa koneksi lalu coba lagi.',
-        )}
-        onRetry={() => void inventory.refetch()}
-      />
-    )
-  }
-
-  const rows: ReportInventoryRow[] = inventory.data.data
-
-  return (
-    <div className="space-y-3">
-      <SectionTitle icon={Boxes}>Inventory</SectionTitle>
-      <label className="flex min-h-11 items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={lowStockOnly}
-          onChange={(event) => setLowStockOnly(event.target.checked)}
-          className="size-4 rounded border-input accent-dagana-primary"
-        />
-        Hanya item dengan stok rendah
-      </label>
-
-      {rows.length === 0 ? (
-        <div className="rounded-xl border bg-card p-6 text-sm text-muted-foreground" role="status">
-          {lowStockOnly
-            ? 'Tidak ada item dengan stok rendah pada filter ini.'
-            : 'Belum ada item inventory pada periode ini. Modul inventory mungkin belum digunakan.'}
-        </div>
-      ) : (
-        <>
-          <div className="overflow-x-auto rounded-xl border bg-card">
-            <Table aria-label="Laporan inventory">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead>Saldo stok</TableHead>
-                  <TableHead>Movement rentang</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell className="font-medium">{row.name}</TableCell>
-                    <TableCell className="tabular-nums">
-                      {formatNumber(row.current_stock)} {row.unit}
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {row.movements_net > 0 ? '+' : ''}
-                      {formatNumber(row.movements_net)} ({formatNumber(row.movements_count)}x)
-                    </TableCell>
-                    <TableCell>
-                      {row.is_low_stock && (
-                        <Badge className="border-dagana-warning/20 bg-dagana-warning-container text-dagana-warning">
-                          Stok rendah
-                        </Badge>
-                      )}
-                      {!row.is_active && <Badge>Nonaktif</Badge>}
-                      {!row.is_low_stock && row.is_active ? (
-                        <span className="text-muted-foreground">—</span>
-                      ) : null}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-          <MetaNote shown={rows.length} total={inventory.data.meta.total} />
-        </>
-      )}
-    </div>
   )
 }
