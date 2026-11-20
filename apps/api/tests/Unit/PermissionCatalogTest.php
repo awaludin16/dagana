@@ -49,6 +49,8 @@ class PermissionCatalogTest extends TestCase
         $this->assertContains('cash.open', $cashier);
         $this->assertNotContains('members.read', $cashier);
         $this->assertNotContains('products.create', $cashier);
+        $this->assertContains('products.update_availability', $cashier);
+        $this->assertNotContains('products.update', $cashier);
         $this->assertNotContains('reports.read', $cashier);
         $this->assertNotContains('settings.read', $cashier);
     }

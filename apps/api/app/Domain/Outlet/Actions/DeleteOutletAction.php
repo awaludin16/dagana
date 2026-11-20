@@ -43,6 +43,10 @@ class DeleteOutletAction
                 ]);
             }
 
+            // Override ketersediaan menu bukan histori; hapus bersama outletnya
+            // agar FK restrictOnDelete tidak berubah menjadi error 500.
+            DB::table('product_outlet_availabilities')->where('outlet_id', $outlet->id)->delete();
+
             $outlet->delete();
         });
     }

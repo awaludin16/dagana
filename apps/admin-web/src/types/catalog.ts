@@ -14,6 +14,8 @@ export type Product = {
   price: number
   is_active: boolean
   is_available: boolean
+  /** Only present when the request supplies an outlet_id (D-35). */
+  is_available_at_outlet?: boolean
 }
 
 export type CatalogPage<T> = {
@@ -33,6 +35,7 @@ export type CatalogListParams = {
   is_active?: boolean
   is_available?: boolean
   category_id?: number
+  outlet_id?: number
 }
 
 export type CategoryInput = Pick<Category, 'name' | 'is_active'>

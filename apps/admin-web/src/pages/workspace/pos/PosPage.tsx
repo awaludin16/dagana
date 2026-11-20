@@ -192,7 +192,7 @@ function PosWorkspace({ access }: { access: ReturnType<typeof useAccess> }) {
   const canReadOrders = access.can('orders.read')
   const canReadCategories = access.can('categories.read')
   const products = useQuery({
-    queryKey: ['pos', 'products', catalogPage, search, categoryId],
+    queryKey: ['pos', 'products', catalogPage, search, categoryId, outletId],
     queryFn: () =>
       api.products({
         page: catalogPage,
@@ -201,9 +201,15 @@ function PosWorkspace({ access }: { access: ReturnType<typeof useAccess> }) {
         ...(categoryId ? { category_id: categoryId } : {}),
         is_active: true,
         is_available: true,
+        outlet_id: outletId,
       }),
     enabled:
-      canReadProducts && receiptId === null && paymentId === null && !paymentStage && !attempt,
+      outletId > 0 &&
+      canReadProducts &&
+      receiptId === null &&
+      paymentId === null &&
+      !paymentStage &&
+      !attempt,
   })
   const categories = useQuery({
     queryKey: ['pos', 'categories'],

@@ -72,6 +72,10 @@ Rp15.000
 
 sudah cukup untuk mulai menjual.
 
+### Ketersediaan menu
+
+Menu dapat dinonaktifkan secara global, ditandai habis untuk seluruh Business, atau ditandai habis hanya pada outlet tertentu (mis. bahan habis di satu cabang). Penandaan habis per outlet tidak mengubah harga dan tidak memengaruhi outlet lain (D-35). Operator dengan akses outlet dapat menandai menu habis saat berjualan.
+
 ---
 
 ---

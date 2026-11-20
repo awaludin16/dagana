@@ -229,6 +229,8 @@ Baseline akses role:
 
 Akses aktual tetap ditentukan oleh permission preset dan outlet scope yang diperiksa backend. Manager tidak dapat mengubah Owner atau memberikan hak yang lebih tinggi daripada hak yang dimilikinya.
 
+**Revisi (2026-11-19, disetujui): ketersediaan per outlet.** Cashier menerima `products.update_availability` sehingga dapat menandai menu habis/tersedia pada outlet yang ia akses tanpa memperoleh `products.update` (master catalog tetap milik Owner/Manager).
+
 Tidak ada role `INVENTORY`, `KITCHEN`, `STAFF`, atau custom role pada MVP. Kebutuhan akses khusus ditangani melalui permission yang tersedia dan outlet access, bukan dengan menambah role baru.
 
 Role adalah preset awal; authorization tetap berdasarkan permission preset dan scope Business/Outlet. Owner dapat langsung berjualan tanpa membuat akun Cashier.
@@ -261,6 +263,7 @@ categories.delete
 products.read
 products.create
 products.update
+products.update_availability
 products.delete
 
 orders.read

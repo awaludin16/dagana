@@ -14,9 +14,11 @@
 
 ## Konfirmasi teknis backend Phase 3 (2026-11-04)
 
+> **Status (2026-11-19):** disetujui dan diperluas oleh D-34/D-35 di bagian akhir dokumen. Butir di bawah tetap berlaku kecuali availability: `is_available` global menjadi master switch, dan ketersediaan per outlet ditambahkan lewat D-35.
+
 - **Skema catalog:** tabel `categories` (`business_id`, `name`, `is_active`) dan `products` (`business_id`, `category_id` nullable, `name`, `price` integer rupiah, `is_active`, `is_available`) dibuat pada migration `2026_11_04_000000`/`000001`. Catalog adalah master data level Business dengan harga yang sama di semua Outlet sesuai D-25; tidak ada override per-outlet.
 - **Nama resource:** endpoint memakai path `/api/v1/products` (bukan baseline `/menus` di `docs/architecture/api-design.md`) agar konsisten dengan permission D-03 `categories.*`/`products.*`. Baseline grouping `api-design.md` telah dikoreksi.
-- **Availability:** `is_available` adalah boolean global pada menu (aktif di catalog tetapi bisa ditandai sold out). Availability per-outlet belum diputuskan dan menunggu Product Owner; implementasi saat ini tidak mengunci desain per-outlet.
+- **Availability:** `is_available` adalah boolean global pada menu dan berperan sebagai master switch Business. Ketersediaan per outlet ditambahkan lewat D-35 (`product_outlet_availabilities`) dan hanya dapat mempersempit master switch; tidak ada override harga per outlet.
 - **Delete vs deaktivasi:** `DELETE /api/v1/categories/{id}` hanya boleh saat kategori kosong; kategori berisi menu memakai deaktivasi `PATCH` `is_active` (permission `categories.update`). `DELETE /api/v1/products/{id}` masih bebas karena belum ada tabel transaksi; guard "tolak hapus bila sudah ada transaksi" wajib ditambahkan pada Phase 4 bersama order items (catatan `Domain/Catalog/Actions/DeleteProductAction.php`).
 - **Kontrak snapshot Phase 4:** terdokumentasi di `docs/architecture/api-design.md` bagian "Phase 3 contract — catalog": order item menyimpan snapshot `product_id`/`name`/`price`, checkout wajib mengambil ulang menu via `Product::sellable()`, dan perubahan catalog tidak boleh mengubah snapshot histori.
 - **Verifikasi penuh AC "menu nonaktif tidak bisa masuk transaksi":** menunggu jalur checkout Phase 4; saat ini sudah ada guard domain `Product::sellable()` beserta test scope-nya.
@@ -77,7 +79,7 @@
 
 ### D-03 — Permission catalog MVP
 
-**Status:** disetujui Product Owner (2026-11-16). Katalog berikut adalah baseline final MVP, termasuk tambahan `inventory.create` dan `inventory.update` dari D-32. Perubahan kategori/kata kunci permission di masa depan wajib lewat revisi keputusan, bukan langsung di kode. Catatan: `members.invite` tetap menjadi permission untuk endpoint pembuatan employee (alur direct-create, lihat konfirmasi teknis Phase 2).
+**Status:** disetujui Product Owner (2026-11-16). Katalog berikut adalah baseline final MVP, termasuk tambahan `inventory.create` dan `inventory.update` dari D-32 serta `products.update_availability` dari D-35 (revisi 2026-11-19). Perubahan kategori/kata kunci permission di masa depan wajib lewat revisi keputusan, bukan langsung di kode. Catatan: `members.invite` tetap menjadi permission untuk endpoint pembuatan employee (alur direct-create, lihat konfirmasi teknis Phase 2).
 
 **Keputusan:** gunakan permission eksplisit berbentuk `resource.action`. Katalog awal:
 
@@ -85,7 +87,7 @@
 - `outlets.read`, `outlets.create`, `outlets.update`, `outlets.delete`
 - `members.read`, `members.invite`, `members.update`, `members.delete`
 - `categories.read`, `categories.create`, `categories.update`, `categories.delete`
-- `products.read`, `products.create`, `products.update`, `products.delete`
+- `products.read`, `products.create`, `products.update`, `products.update_availability`, `products.delete`
 - `orders.read`, `orders.create`, `orders.update`, `orders.cancel`
 - `payments.read`, `payments.create`, `payments.refund`
 - `cash.read`, `cash.open`, `cash.cash_in`, `cash.cash_out`, `cash.close`, `cash.reconcile`
@@ -406,6 +408,42 @@ Setiap order lokal memiliki UUID/client-generated idempotency key yang unik, wak
 4. **`reports.export`** belum diimplementasikan (tidak ada endpoint export pada Phase 7).
 
 **Verifikasi:** `ReportTest` membandingkan setiap laporan dengan fixture dihitung manual (sales harian + ringkasan, payment by method/status, operator, cash reconciliation, inventory ledger + low stock), periode kosong, batas rentang, permission, serta isolasi business/outlet; seluruh suite backend (126 test) lulus.
+
+### D-34 — Baseline teknis Phase 3 (Catalog) — status: disetujui
+
+**Status:** disetujui Product Owner (2026-11-19). Baseline berikut menjadi acuan Phase 3; perubahan di masa depan harus melalui revisi keputusan dan test terkait.
+
+**Baseline yang diimplementasikan:**
+
+1. Tabel `categories` (`business_id`, `name`, `is_active`) dan `products` (`business_id`, `category_id` nullable, `name`, `price` integer rupiah utuh, `is_active`, `is_available`). Catalog adalah master data level Business; tidak ada harga per outlet (D-25).
+2. Endpoint `/api/v1/categories` dan `/api/v1/products` (CRUD) dengan permission `categories.*`/`products.*`; list paginated (default 20, maksimum 100) dengan filter `q`, `is_active`, `is_available`, `category_id`; resource di luar Business mengembalikan `404` tanpa membocorkan data.
+3. Hapus master data bersifat terbatas: kategori hanya boleh dihapus bila kosong (`422` bila masih berisi menu); produk hanya boleh dihapus bila belum punya `order_items` (`422` bila sudah ada histori). UI admin-web hanya menyediakan deaktivasi (`PATCH is_active=false`), bukan hapus permanen.
+4. Guard penjualan tunggal `Product::sellable()`; checkout mengambil ulang menu dari database, menghitung total di backend, dan order item menyimpan snapshot `product_id`/`product_name`/`product_price` sehingga perubahan catalog tidak mengubah histori.
+5. Nama kategori/menu boleh duplikat dalam satu Business (tanpa unique constraint).
+6. Baca katalog cukup memerlukan permission `categories.read`/`products.read` level Business; outlet access tetap berlaku untuk resource yang memang terikat outlet (order, cash, inventory, report).
+
+**Pengecualian yang disetujui:** seluruh suite admin-web (13 file) belum dijalankan ulang dalam satu run karena batasan environment audit (vitest tidak mendukung cwd UNC; run dilewatkan drive mapping dan worker-timeout pada suite penuh). File yang terpengaruh perubahan ini sudah diuji ulang: catalog 5/5 dan POS 14/14 (19/19), type-check dan oxlint lulus.
+
+**Verifikasi:** `CatalogTest` (16 test, 200 assertions) mencakup CRUD, validasi, filter/pagination, status aktif/tersedia, isolasi tenant, permission, dan guard hapus berhistori; snapshot order dibuktikan `test_order_menyimpan_snapshot_harga_dan_nama_setelah_catalog_ubah`; suite backend penuh 158 passed (1103 assertions).
+
+### D-35 — Ketersediaan menu per outlet — status: disetujui
+
+**Status:** disetujui Product Owner (2026-11-19). Melengkapi D-34 butir 1 dan revisi `is_available`.
+
+**Keputusan:**
+
+1. `products.is_available` tetap menjadi **master switch** Business ("habis di semua outlet"). Override per outlet hanya dapat mempersempit ketersediaan, tidak dapat menghidupkan menu yang dimatikan secara global.
+2. Tabel `product_outlet_availabilities` (`product_id`, `outlet_id`, `is_available`, unique `(product_id, outlet_id)`, FK `restrictOnDelete`) menyimpan override. Tidak adanya baris berarti menu mengikuti master switch.
+3. Ketersediaan efektif = `products.is_active && products.is_available && (tidak ada override OR override.is_available = true)`.
+4. Permission baru `products.update_availability` (revisi D-03) dipakai untuk mengubah override, dan tetap memerlukan akses outlet (D-05). Permission ini diberikan ke preset CASHIER agar operator dapat menandai menu habis saat berjualan; permission `products.update` tetap tidak diberikan ke CASHIER.
+5. Endpoint `PATCH /api/v1/products/{product}/availability` menerima `{outlet_id, is_available}`. Outlet di luar akses atau di luar Business ditolak `404`/`422` tanpa membocorkan data.
+6. `GET /api/v1/products?outlet_id=X` bersifat opsional: bila dikirim, response menyertakan `is_available_at_outlet` dan filter `is_available` dihitung secara efektif untuk outlet tersebut. Tanpa `outlet_id`, perilaku lama tidak berubah.
+7. Checkout memakai `Product::sellable($outletId)` sehingga menu yang habis di outlet terkait ditolak `422` pada outlet itu saja.
+8. UI admin-web menambahkan filter outlet dan aksi "Tandai habis"/"Tandai tersedia" untuk outlet terpilih; POS selalu mengirim `outlet_id` outlet aktif.
+
+**Gate yang belum ditutup:** perubahan ketersediaan belum masuk audit log (dependency D-28); tidak ada test konkurensi khusus selain unique constraint upsert; availability per outlet tidak berlaku untuk kategori (kategori tetap level Business).
+
+**Verifikasi:** `CatalogTest` mencakup override per outlet, isolasi outlet (cashier), master switch global, dan checkout yang hanya tertolak di outlet terkait; `PermissionCatalogTest` mencerminkan permission baru.
 
 ## 9. Daftar Gate yang Tetap Harus Ditutup Sebelum Produksi
 

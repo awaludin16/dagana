@@ -286,6 +286,12 @@ export const api = {
     return data<Product>(await request(`/products/${id}`, { method: 'PATCH', body: input }))
   },
 
+  async updateProductAvailability(id: number, input: { outlet_id: number; is_available: boolean }) {
+    return data<Product>(
+      await request(`/products/${id}/availability`, { method: 'PATCH', body: input }),
+    )
+  },
+
   async cashSessions(params: CashSessionListParams = {}) {
     return page<CashSession>(await request(`/cash-sessions${queryString(params)}`))
   },

@@ -33,6 +33,7 @@ type ProductDialogProps = {
   kind: 'product'
   item?: Product
   categories: Category[]
+  outletId?: number
   isSaving: boolean
   onClose: () => void
   onSubmit: (input: ProductInput) => Promise<void>
@@ -104,7 +105,19 @@ function CategoryFormDialog({ item, isSaving, onClose, onSubmit }: CategoryDialo
   )
 }
 
-function ProductFormDialog({ item, categories, isSaving, onClose, onSubmit }: ProductDialogProps) {
+function ProductFormDialog({
+  item,
+  categories,
+  outletId,
+  isSaving,
+  onClose,
+  onSubmit,
+}: ProductDialogProps) {
+  // Saat edit dengan outlet terpilih, checkbox mewakili ketersediaan efektif outlet itu (D-35).
+  const outletScoped = Boolean(outletId && item)
+  const available = outletScoped
+    ? (item?.is_available_at_outlet ?? item?.is_available ?? true)
+    : (item?.is_available ?? true)
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
     defaultValues: {
@@ -112,7 +125,7 @@ function ProductFormDialog({ item, categories, isSaving, onClose, onSubmit }: Pr
       price: item?.price ?? 0,
       category_id: item?.category_id ?? null,
       is_active: item?.is_active ?? true,
-      is_available: item?.is_available ?? true,
+      is_available: available,
     },
   })
 
@@ -171,9 +184,14 @@ function ProductFormDialog({ item, categories, isSaving, onClose, onSubmit }: Pr
             <select
               id="product-category"
               className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40"
-              {...form.register('category_id', {
-                setValueAs: (value) => (value === '' ? null : Number(value)),
-              })}
+              value={form.watch('category_id') ?? ''}
+              onChange={(event) =>
+                form.setValue(
+                  'category_id',
+                  event.target.value === '' ? null : Number(event.target.value),
+                  { shouldValidate: true, shouldDirty: true },
+                )
+              }
               aria-invalid={Boolean(form.formState.errors.category_id)}
               aria-describedby={
                 form.formState.errors.category_id ? 'product-category-error' : undefined
@@ -213,7 +231,11 @@ function ProductFormDialog({ item, categories, isSaving, onClose, onSubmit }: Pr
                 className="size-4 accent-primary focus-visible:ring-2 focus-visible:ring-ring"
                 {...form.register('is_available')}
               />
-              Tersedia untuk dijual
+              {outletScoped
+                ? 'Tersedia di outlet ini'
+                : item
+                  ? 'Tersedia untuk semua outlet'
+                  : 'Tersedia untuk dijual'}
             </label>
           </div>
           <DialogFooter>

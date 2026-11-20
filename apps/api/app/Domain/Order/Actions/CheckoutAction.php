@@ -68,7 +68,7 @@ class CheckoutAction
                 $products = Product::query()
                     ->where('business_id', $businessId)
                     ->whereIn('id', $productIds)
-                    ->sellable()
+                    ->sellable($outletId)
                     ->lockForUpdate()
                     ->get()
                     ->keyBy('id');
