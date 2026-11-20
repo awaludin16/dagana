@@ -5,7 +5,9 @@ namespace Tests\Feature\Api\V1;
 use App\Models\Business;
 use App\Models\BusinessMembership;
 use App\Models\Category;
+use App\Models\OrderItem;
 use App\Models\Outlet;
+use App\Models\OutletAccess;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -145,6 +147,126 @@ class CatalogTest extends TestCase
             'is_active' => false,
             'is_available' => false,
         ]);
+
+        // Regression: PATCH response must keep the same shape as POST.
+        $withCategory = Product::factory()->for($business)->create(['category_id' => $category->id]);
+        $this->patchJson("/api/v1/products/{$withCategory->id}", ['price' => 12000])
+            ->assertOk()
+            ->assertJsonPath('data.category.name', 'Minuman');
+    }
+
+    public function test_availability_can_be_overridden_per_outlet_without_touching_global_flag(): void
+    {
+        [$owner, $business, $outletA] = $this->merchant();
+        $outletB = Outlet::factory()->for($business)->create();
+        $product = Product::factory()->for($business)->create(['price' => 15000]);
+
+        Sanctum::actingAs($owner);
+
+        $this->patchJson("/api/v1/products/{$product->id}/availability", [
+            'outlet_id' => $outletA->id,
+            'is_available' => false,
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.is_available', true)
+            ->assertJsonPath('data.is_available_at_outlet', false);
+
+        $this->assertDatabaseHas('product_outlet_availabilities', [
+            'product_id' => $product->id,
+            'outlet_id' => $outletA->id,
+            'is_available' => false,
+        ]);
+
+        // Bisnis tetap penuh; hanya outlet A yang kehabisan.
+        $this->getJson("/api/v1/products?outlet_id={$outletA->id}&is_available=true")
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+        $this->getJson("/api/v1/products?outlet_id={$outletB->id}&is_available=true")
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.is_available_at_outlet', true);
+        $this->getJson('/api/v1/products')
+            ->assertOk()
+            ->assertJsonPath('data.0.is_available', true)
+            ->assertJsonMissingPath('data.0.is_available_at_outlet');
+
+        // Checkout menolak di outlet A, tetap jalan di outlet B.
+        $this->postJson('/api/v1/orders', $this->checkoutPayload($outletA, $product))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('items');
+        $this->postJson('/api/v1/orders', $this->checkoutPayload($outletB, $product))
+            ->assertCreated();
+        $this->assertDatabaseCount('orders', 1);
+
+        // Mengembalikan ketersediaan di outlet A memulihkan penjualan.
+        $this->patchJson("/api/v1/products/{$product->id}/availability", [
+            'outlet_id' => $outletA->id,
+            'is_available' => true,
+        ])->assertOk()->assertJsonPath('data.is_available_at_outlet', true);
+
+        $this->postJson('/api/v1/orders', $this->checkoutPayload($outletA, $product))
+            ->assertCreated();
+
+        // Master switch Business tetap menang: global habis berarti semua outlet habis.
+        $this->patchJson("/api/v1/products/{$product->id}", ['is_available' => false])->assertOk();
+        $this->getJson("/api/v1/products?outlet_id={$outletB->id}&is_available=true")
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+    }
+
+    public function test_outlet_availability_requires_outlet_access(): void
+    {
+        [$owner, $business, $outletA] = $this->merchant();
+        $outletB = Outlet::factory()->for($business)->create();
+        $product = Product::factory()->for($business)->create();
+
+        $cashier = User::factory()->create();
+        $membership = BusinessMembership::factory()->for($cashier)->create([
+            'business_id' => $business->id,
+            'role' => BusinessMembership::ROLE_CASHIER,
+        ]);
+        OutletAccess::create(['membership_id' => $membership->id, 'outlet_id' => $outletA->id]);
+
+        Sanctum::actingAs($cashier);
+
+        // Cashier boleh menandai habis di outlet yang ia akses (D-35 + D-03 revisi)...
+        $this->patchJson("/api/v1/products/{$product->id}/availability", [
+            'outlet_id' => $outletA->id,
+            'is_available' => false,
+        ])->assertOk();
+
+        // ...tetapi tidak pada outlet di luar aksesnya, dan tidak bocor keberadaannya.
+        $this->patchJson("/api/v1/products/{$product->id}/availability", [
+            'outlet_id' => $outletB->id,
+            'is_available' => false,
+        ])->assertNotFound();
+        $this->getJson("/api/v1/products?outlet_id={$outletB->id}")->assertNotFound();
+        $this->assertDatabaseMissing('product_outlet_availabilities', ['outlet_id' => $outletB->id]);
+
+        // Permission ketersediaan tidak memberi hak mengubah master produk.
+        $this->patchJson("/api/v1/products/{$product->id}", ['price' => 100])
+            ->assertForbidden();
+
+        // Outlet asing juga ditolak oleh validasi request (422) maupun 404.
+        Sanctum::actingAs($owner);
+        $this->patchJson("/api/v1/products/{$product->id}/availability", [
+            'outlet_id' => 999999,
+            'is_available' => false,
+        ])->assertUnprocessable()->assertJsonValidationErrors('outlet_id');
+    }
+
+    public function test_product_with_order_history_cannot_be_deleted(): void
+    {
+        [$owner, $business] = $this->merchant();
+        $product = Product::factory()->for($business)->create();
+        OrderItem::factory()->create(['product_id' => $product->id]);
+
+        Sanctum::actingAs($owner);
+
+        $this->deleteJson("/api/v1/products/{$product->id}")
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('product');
+        $this->assertDatabaseHas('products', ['id' => $product->id]);
     }
 
     public function test_product_validation_rejects_invalid_input(): void
@@ -304,6 +426,20 @@ class CatalogTest extends TestCase
         $product = Product::factory()->for($business)->create();
         $this->patchJson("/api/v1/products/{$product->id}", ['price' => 2000])->assertForbidden();
         $this->deleteJson("/api/v1/products/{$product->id}")->assertForbidden();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function checkoutPayload(Outlet $outlet, Product $product): array
+    {
+        return [
+            'outlet_id' => $outlet->id,
+            'idempotency_key' => fake()->uuid(),
+            'payment_method' => 'cash',
+            'amount_tendered' => 100000,
+            'items' => [['product_id' => $product->id, 'quantity' => 1]],
+        ];
     }
 
     /**

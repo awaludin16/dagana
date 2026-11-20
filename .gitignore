@@ -7,3 +7,5 @@
 
 # Dependency/cache directories at any level
 node_modules/
+
+.vscode/

@@ -141,20 +141,25 @@ Gunakan keputusan D-03 sampai D-05 pada `docs/planning/decision-log.md` sebagai 
 
 # Phase 3 — Catalog
 
+> **Status (2026-11-19): Selesai dengan pengecualian yang disetujui.**
+> Gate ditetapkan setelah audit implementasi dan persetujuan Product Owner: D-34 (baseline teknis Phase 3) dan D-35 (ketersediaan menu per outlet, termasuk permission `products.update_availability`). Verifikasi: `CatalogTest` 16 passed (200 assertions), suite backend penuh 158 passed (1103 assertions), `pint --test` 168 files PASS, type-check admin-web lulus, test web catalog 5/5 dan POS 14/14 lulus (19/19).
+> Pengecualian yang disetujui: perubahan ketersediaan/nama/harga catalog belum masuk audit log — dependency D-28; seluruh suite admin-web (13 file) belum dijalankan ulang dalam satu run karena batasan environment, status terakhir 65/65 sebelum commit UI 2026-11-18 (file yang terpengaruh perubahan ini, catalog dan POS, sudah diuji ulang).
+
 ## Target pekerjaan
 
 Memungkinkan merchant mengelola kategori, menu/produk, harga, status aktif/nonaktif, dan ketersediaan dasar. Catalog harus tetap sederhana; setup bahan, recipe, supplier, SKU kompleks, atau modifier kompleks tidak boleh menjadi syarat awal untuk menjual menu biasa.
 
 ## Acceptance criteria
 
-- [ ] User dengan permission yang sesuai dapat membuat, membaca, memperbarui, dan menonaktifkan kategori/menu sesuai operasi yang disetujui.
-- [ ] Harga dan field wajib divalidasi di backend; input tidak valid tidak mengubah data.
-- [ ] Menu aktif dan tersedia dapat ditemukan oleh proses POS sesuai Business/Outlet context yang berlaku.
-- [ ] Menu nonaktif atau tidak tersedia tidak dapat ditambahkan ke transaksi baru melalui API hanya dengan memanipulasi request.
-- [ ] Data catalog milik satu Business tidak dapat dilihat/diubah oleh Business lain.
-- [ ] Perubahan nama/harga menu tidak mengubah snapshot transaksi historis yang sudah tersimpan (uji penuh dilakukan setelah Phase 4 tersedia; pada Phase 3, kontrak snapshot didokumentasikan).
-- [ ] List endpoint memakai pagination atau batas hasil yang terdokumentasi saat jumlah data dapat bertambah.
-- [ ] Feature test mencakup CRUD dasar, validasi, status aktif/nonaktif, availability, dan cross-tenant access.
+- [x] User dengan permission yang sesuai dapat membuat, membaca, memperbarui, dan menonaktifkan kategori/menu sesuai operasi yang disetujui. — Lulus; `CatalogTest` CRUD kategori/menu, deaktivasi via `PATCH is_active`, permission per role.
+- [x] Harga dan field wajib divalidasi di backend; input tidak valid tidak mengubah data. — Lulus; `test_product_validation_rejects_invalid_input`, `test_category_requires_a_name`.
+- [x] Menu aktif dan tersedia dapat ditemukan oleh proses POS sesuai Business/Outlet context yang berlaku. — Lulus; filter `is_active`/`is_available` (efektif bila `outlet_id` dikirim) dan POS mengirim outlet aktif (D-35).
+- [x] Menu nonaktif atau tidak tersedia tidak dapat ditambahkan ke transaksi baru melalui API hanya dengan memanipulasi request. — Lulus; `Product::sellable($outletId)` + `test_checkout_tolak_menu_tidak_aktif_dan_tidak_tersedia` (Phase 4).
+- [x] Ketersediaan menu dapat dibedakan per outlet tanpa mengubah harga Business; master switch global tetap menang. — Lulus; `test_availability_can_be_overridden_per_outlet_without_touching_global_flag`, `test_outlet_availability_requires_outlet_access` (D-35).
+- [x] Data catalog milik satu Business tidak dapat dilihat/diubah oleh Business lain. — Lulus; `test_catalog_is_scoped_to_the_authenticated_business`, validasi `category_id` lintas Business.
+- [x] Perubahan nama/harga menu tidak mengubah snapshot transaksi historis yang sudah tersimpan. — Lulus; `test_order_menyimpan_snapshot_harga_dan_nama_setelah_catalog_ubah`; kontrak `api-design.md` §9.
+- [x] List endpoint memakai pagination atau batas hasil yang terdokumentasi saat jumlah data dapat bertambah. — Lulus; default 20/maksimum 100, diuji `per_page=200` → 100.
+- [x] Feature test mencakup CRUD dasar, validasi, status aktif/nonaktif, availability, dan cross-tenant access. — Lulus; 16 test catalog (termasuk guard hapus produk berhistori dan permission ketersediaan).
 
 ## Cara verifikasi / bukti
 

@@ -1,5 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Archive, ChevronLeft, ChevronRight, CirclePlus, Pencil, Search, Tags } from 'lucide-react'
+import {
+  Archive,
+  ChevronLeft,
+  ChevronRight,
+  CirclePlus,
+  EllipsisVertical,
+  PackageCheck,
+  PackageX,
+  Pencil,
+  RotateCcw,
+  Search,
+  Tags,
+  Trash2,
+} from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 
 import { useAccess } from '@/auth/useAccess'
@@ -15,6 +28,13 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   Table,
   TableBody,
@@ -58,6 +78,7 @@ export function CatalogPage() {
   const [productActive, setProductActive] = useState('all')
   const [productAvailable, setProductAvailable] = useState('all')
   const [productCategory, setProductCategory] = useState('all')
+  const [productOutlet, setProductOutlet] = useState<string | null>(null)
   const [categoryActive, setCategoryActive] = useState('all')
   const [dialog, setDialog] = useState<DialogState>(null)
   const [archiveTarget, setArchiveTarget] = useState<ArchiveTarget>(null)
@@ -65,6 +86,18 @@ export function CatalogPage() {
 
   const canReadCategories = access.can('categories.read')
   const canReadProducts = access.can('products.read')
+  const canToggleAvailability = access.can('products.update_availability')
+  const outlets = access.membership?.outlets ?? []
+  // Default ke outlet pertama agar status & aksi ketersediaan per outlet selalu terjangkau (D-35).
+  // "Semua outlet" tidak ditawarkan bila Business hanya punya satu outlet.
+  const outletValue =
+    productOutlet && (productOutlet !== 'all' || outlets.length > 1)
+      ? productOutlet
+      : outlets[0]
+        ? String(outlets[0].id)
+        : 'all'
+  const selectedOutletId = outletValue === 'all' ? undefined : Number(outletValue)
+  const selectedOutletName = outlets.find((outlet) => outlet.id === selectedOutletId)?.name
   const activeSection: CatalogSection =
     canReadProducts || !canReadCategories ? section : 'categories'
 
@@ -95,6 +128,7 @@ export function CatalogPage() {
       productActive,
       productAvailable,
       productCategory,
+      outletValue,
     ],
     queryFn: () =>
       api.products({
@@ -104,6 +138,7 @@ export function CatalogPage() {
         is_active: activeFilter(productActive),
         is_available: activeFilter(productAvailable),
         category_id: productCategory === 'all' ? undefined : Number(productCategory),
+        outlet_id: selectedOutletId,
       }),
     enabled: canReadProducts && activeSection === 'products',
   })
@@ -130,6 +165,22 @@ export function CatalogPage() {
     },
   })
 
+  const setAvailability = useMutation({
+    mutationFn: ({ item, isAvailable }: { item: Product; isAvailable: boolean }) =>
+      api.updateProductAvailability(item.id, {
+        outlet_id: selectedOutletId ?? 0,
+        is_available: isAvailable,
+      }),
+    onSuccess: async (product) => {
+      await queryClient.invalidateQueries({ queryKey: ['products'] })
+      setNotice(
+        product.is_available_at_outlet
+          ? `Menu tersedia kembali di ${selectedOutletName ?? 'outlet terpilih'}.`
+          : `Menu ditandai habis di ${selectedOutletName ?? 'outlet terpilih'}. Outlet lain tidak berubah.`,
+      )
+    },
+  })
+
   const deactivate = useMutation({
     mutationFn: (target: Exclude<ArchiveTarget, null>) =>
       target.kind === 'category'
@@ -145,6 +196,23 @@ export function CatalogPage() {
           : 'Menu berhasil dinonaktifkan. Histori transaksi tidak dihapus.',
       )
       setArchiveTarget(null)
+    },
+  })
+
+  const activate = useMutation({
+    mutationFn: (target: Exclude<ArchiveTarget, null>) =>
+      target.kind === 'category'
+        ? api.updateCategory(target.item.id, { is_active: true })
+        : api.updateProduct(target.item.id, { is_active: true }),
+    onSuccess: async (_, target) => {
+      await queryClient.invalidateQueries({
+        queryKey: [target.kind === 'category' ? 'categories' : 'products'],
+      })
+      setNotice(
+        target.kind === 'category'
+          ? 'Kategori berhasil diaktifkan kembali.'
+          : 'Menu berhasil diaktifkan kembali.',
+      )
     },
   })
 
@@ -192,6 +260,7 @@ export function CatalogPage() {
     setProductActive('all')
     setProductAvailable('all')
     setProductCategory('all')
+    setProductOutlet(null)
   }
 
   function resetCategoryFilters() {
@@ -208,8 +277,8 @@ export function CatalogPage() {
           <p className="text-sm font-medium text-primary">Business</p>
           <h1 className="text-page-title tracking-tight">Katalog</h1>
           <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-            Kelola kategori, menu, harga, dan ketersediaan. Harga dan status tersedia berlaku sama
-            untuk semua outlet dalam Business ini.
+            Kelola kategori, menu, dan harga. Harga berlaku sama untuk semua outlet; ketersediaan
+            menu dapat diatur per outlet lewat pengaturan outlet di bawah.
           </p>
         </div>
         {activeSection === 'products' && access.can('products.create') ? (
@@ -288,7 +357,7 @@ export function CatalogPage() {
         </form>
 
         {activeSection === 'products' ? (
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <label className="space-y-1.5 text-sm font-medium">
               Status menu
               <select
@@ -319,6 +388,26 @@ export function CatalogPage() {
                 <option value="inactive">Habis</option>
               </select>
             </label>
+            {outlets.length ? (
+              <label className="space-y-1.5 text-sm font-medium">
+                Outlet
+                <select
+                  className="h-11 w-full rounded-lg border border-input bg-background px-3 font-normal outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40"
+                  value={outletValue}
+                  onChange={(event) => {
+                    setProductPage(1)
+                    setProductOutlet(event.target.value)
+                  }}
+                >
+                  {outlets.length > 1 ? <option value="all">Semua outlet</option> : null}
+                  {outlets.map((outlet) => (
+                    <option key={outlet.id} value={outlet.id}>
+                      {outlet.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
             {canReadCategories ? (
               <label className="space-y-1.5 text-sm font-medium">
                 Kategori
@@ -384,13 +473,27 @@ export function CatalogPage() {
             <ProductList
               items={productData.data}
               canUpdate={access.can('products.update')}
+              canDelete={access.can('products.delete')}
+              outletId={selectedOutletId}
+              canToggleAvailability={canToggleAvailability}
+              onToggleAvailability={(item) =>
+                setAvailability.mutate({
+                  item,
+                  isAvailable: !(item.is_available_at_outlet ?? item.is_available),
+                })
+              }
               onEdit={(item) => setDialog({ kind: 'product', item })}
               onDeactivate={(item) => setArchiveTarget({ kind: 'product', item })}
+              onActivate={(item) => activate.mutate({ kind: 'product', item })}
             />
           ) : (
             <EmptyState
               label={
-                productQuery || productActive !== 'all' || productAvailable !== 'all'
+                productQuery ||
+                productActive !== 'all' ||
+                productAvailable !== 'all' ||
+                productCategory !== 'all' ||
+                productOutlet !== null
                   ? 'Tidak ada menu yang cocok dengan pencarian atau filter.'
                   : 'Belum ada menu. Tambahkan menu pertama untuk memulai katalog.'
               }
@@ -399,7 +502,8 @@ export function CatalogPage() {
                 productQuery ||
                 productActive !== 'all' ||
                 productAvailable !== 'all' ||
-                productCategory !== 'all',
+                productCategory !== 'all' ||
+                productOutlet !== null,
               )}
             />
           )
@@ -407,8 +511,10 @@ export function CatalogPage() {
           <CategoryList
             items={categoryData.data}
             canUpdate={access.can('categories.update')}
+            canDelete={access.can('categories.delete')}
             onEdit={(item) => setDialog({ kind: 'category', item })}
             onDeactivate={(item) => setArchiveTarget({ kind: 'category', item })}
+            onActivate={(item) => activate.mutate({ kind: 'category', item })}
           />
         ) : (
           <EmptyState
@@ -440,10 +546,30 @@ export function CatalogPage() {
           kind="product"
           item={dialog.item}
           categories={categoryOptions.data?.data ?? []}
+          outletId={selectedOutletId}
           isSaving={saveProduct.isPending}
           onClose={() => setDialog(null)}
           onSubmit={async (input) => {
-            await saveProduct.mutateAsync({ item: dialog.item, input })
+            const item = dialog.item
+            if (!item || selectedOutletId === undefined) {
+              await saveProduct.mutateAsync({ item, input })
+              return
+            }
+
+            // Edit dengan outlet terpilih: checkbox mengatur override outlet ini (D-35).
+            const previous = item.is_available_at_outlet ?? item.is_available
+            const enableGlobal = input.is_available && !item.is_available
+            const { is_available, ...productInput } = input
+            if (is_available !== previous || enableGlobal) {
+              await api.updateProductAvailability(item.id, {
+                outlet_id: selectedOutletId,
+                is_available,
+              })
+            }
+            await saveProduct.mutateAsync({
+              item,
+              input: enableGlobal ? input : { ...productInput, is_available: item.is_available },
+            })
           }}
         />
       ) : null}
@@ -574,50 +700,86 @@ function Pagination({
 function ProductList({
   items,
   canUpdate,
+  canDelete,
+  outletId,
+  canToggleAvailability,
+  onToggleAvailability,
   onEdit,
   onDeactivate,
+  onActivate,
 }: {
   items: Product[]
   canUpdate: boolean
+  canDelete: boolean
+  outletId?: number
+  canToggleAvailability: boolean
+  onToggleAvailability: (item: Product) => void
   onEdit: (item: Product) => void
   onDeactivate: (item: Product) => void
+  onActivate: (item: Product) => void
 }) {
+  const toggle = (item: Product) =>
+    outletId && canToggleAvailability ? (
+      <Button
+        type="button"
+        variant="original"
+        size="icon"
+        className="text-muted-foreground hover:text-foreground"
+        aria-label={item.is_available_at_outlet ? 'Tandai habis' : 'Tandai tersedia'}
+        onClick={() => onToggleAvailability(item)}
+      >
+        {item.is_available_at_outlet ? (
+          <PackageX aria-hidden="true" />
+        ) : (
+          <PackageCheck aria-hidden="true" />
+        )}
+      </Button>
+    ) : null
+
   return (
-    <div className="hidden md:block">
-      <Table>
-        <TableHeader>
-          <TableRow className="bg-muted/50">
-            <TableHead className="p-4">Menu</TableHead>
-            <TableHead className="p-4">Kategori</TableHead>
-            <TableHead className="p-4">Harga</TableHead>
-            <TableHead className="p-4">Status</TableHead>
-            <TableHead className="p-4">Tindakan</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {items.map((item) => (
-            <TableRow key={item.id}>
-              <TableCell className="p-4 font-medium">{item.name}</TableCell>
-              <TableCell className="p-4 text-muted-foreground">
-                {item.category?.name ?? 'Tanpa kategori'}
-              </TableCell>
-              <TableCell className="p-4 tabular-nums">{formatRupiah(item.price)}</TableCell>
-              <TableCell className="p-4">
-                <ProductStatus item={item} />
-              </TableCell>
-              <TableCell className="p-4">
-                <ItemActions
-                  itemName={item.name}
-                  canUpdate={canUpdate}
-                  canDeactivate={item.is_active}
-                  onEdit={() => onEdit(item)}
-                  onDeactivate={() => onDeactivate(item)}
-                />
-              </TableCell>
+    <>
+      <div className="hidden md:block">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/50">
+              <TableHead className="p-4">Menu</TableHead>
+              <TableHead className="p-4">Kategori</TableHead>
+              <TableHead className="p-4">Harga</TableHead>
+              <TableHead className="p-4">Status</TableHead>
+              <TableHead className="p-4">Tindakan</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {items.map((item) => (
+              <TableRow key={item.id}>
+                <TableCell className="p-4 font-medium">{item.name}</TableCell>
+                <TableCell className="p-4 text-muted-foreground">
+                  {item.category?.name ?? 'Tanpa kategori'}
+                </TableCell>
+                <TableCell className="p-4 tabular-nums">{formatRupiah(item.price)}</TableCell>
+                <TableCell className="p-4">
+                  <ProductStatus item={item} outletSelected={outletId !== undefined} />
+                </TableCell>
+                <TableCell className="p-4">
+                  <div className="flex flex-wrap max-w-48 justify-between items-center gap-2">
+                    {toggle(item)}
+                    <ItemActions
+                      itemName={item.name}
+                      canUpdate={canUpdate}
+                      canDelete={canDelete}
+                      canDeactivate={item.is_active}
+                      canActivate={!item.is_active}
+                      onEdit={() => onEdit(item)}
+                      onDeactivate={() => onDeactivate(item)}
+                      onActivate={() => onActivate(item)}
+                    />
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
       <ul className="space-y-3 md:hidden">
         {items.map((item) => (
           <li key={item.id} className="rounded-lg border p-4">
@@ -628,33 +790,47 @@ function ProductList({
                   {item.category?.name ?? 'Tanpa kategori'}
                 </p>
               </div>
-              <ProductStatus item={item} />
+              <ProductStatus item={item} outletSelected={outletId !== undefined} />
             </div>
-            <div className="mt-4 flex items-center justify-between gap-3">
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
               <span className="font-semibold tabular-nums">{formatRupiah(item.price)}</span>
-              <ItemActions
-                itemName={item.name}
-                canUpdate={canUpdate}
-                canDeactivate={item.is_active}
-                onEdit={() => onEdit(item)}
-                onDeactivate={() => onDeactivate(item)}
-              />
+              <div className="flex flex-wrap items-center gap-2">
+                {toggle(item)}
+                <ItemActions
+                  itemName={item.name}
+                  canUpdate={canUpdate}
+                  canDelete={canDelete}
+                  canDeactivate={item.is_active}
+                  canActivate={!item.is_active}
+                  onEdit={() => onEdit(item)}
+                  onDeactivate={() => onDeactivate(item)}
+                  onActivate={() => onActivate(item)}
+                />
+              </div>
             </div>
           </li>
         ))}
       </ul>
-    </div>
+    </>
   )
 }
 
-function ProductStatus({ item }: { item: Product }) {
+function ProductStatus({ item, outletSelected }: { item: Product; outletSelected: boolean }) {
+  const available = outletSelected
+    ? (item.is_available_at_outlet ?? item.is_available)
+    : item.is_available
+
   return (
     <div className="flex flex-wrap gap-1.5">
-      <Badge variant={item.is_active ? 'default' : 'outline'}>
+      <Badge
+        variant={item.is_active ? 'default' : 'outline'}
+        className={!item.is_active ? 'bg-destructive/10 border-destructive text-destructive' : ''}
+      >
         {item.is_active ? 'Aktif' : 'Nonaktif'}
       </Badge>
-      <Badge variant={item.is_available ? 'secondary' : 'destructive'}>
-        {item.is_available ? 'Tersedia' : 'Habis'}
+      <Badge variant={available ? 'secondary' : 'destructive'}>
+        {available ? 'Tersedia' : 'Habis'}
+        {outletSelected ? ' di outlet ini' : ''}
       </Badge>
     </div>
   )
@@ -663,46 +839,55 @@ function ProductStatus({ item }: { item: Product }) {
 function CategoryList({
   items,
   canUpdate,
+  canDelete,
   onEdit,
   onDeactivate,
+  onActivate,
 }: {
   items: Category[]
   canUpdate: boolean
+  canDelete: boolean
   onEdit: (item: Category) => void
   onDeactivate: (item: Category) => void
+  onActivate: (item: Category) => void
 }) {
   return (
     <>
-      <Table className="hidden md:block min-w-[32rem]">
-        <TableHeader>
-          <TableRow className="bg-muted/50">
-            <TableHead>Kategori</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Tindakan</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {items.map((item) => (
-            <TableRow key={item.id}>
-              <TableCell className="font-medium">{item.name}</TableCell>
-              <TableCell>
-                <Badge variant={item.is_active ? 'default' : 'outline'}>
-                  {item.is_active ? 'Aktif' : 'Nonaktif'}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                <ItemActions
-                  itemName={item.name}
-                  canUpdate={canUpdate}
-                  canDeactivate={item.is_active}
-                  onEdit={() => onEdit(item)}
-                  onDeactivate={() => onDeactivate(item)}
-                />
-              </TableCell>
+      <div className="hidden md:block">
+        <Table className="min-w-[32rem]">
+          <TableHeader>
+            <TableRow className="bg-muted/50">
+              <TableHead>Kategori</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Tindakan</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {items.map((item) => (
+              <TableRow key={item.id}>
+                <TableCell className="font-medium">{item.name}</TableCell>
+                <TableCell>
+                  <Badge variant={item.is_active ? 'default' : 'outline'}>
+                    {item.is_active ? 'Aktif' : 'Nonaktif'}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <ItemActions
+                    itemName={item.name}
+                    canUpdate={canUpdate}
+                    canDelete={canDelete}
+                    canDeactivate={item.is_active}
+                    canActivate={!item.is_active}
+                    onEdit={() => onEdit(item)}
+                    onDeactivate={() => onDeactivate(item)}
+                    onActivate={() => onActivate(item)}
+                  />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
       <ul className="space-y-3 md:hidden">
         {items.map((item) => (
           <li
@@ -718,9 +903,12 @@ function CategoryList({
             <ItemActions
               itemName={item.name}
               canUpdate={canUpdate}
+              canDelete={canDelete}
               canDeactivate={item.is_active}
+              canActivate={!item.is_active}
               onEdit={() => onEdit(item)}
               onDeactivate={() => onDeactivate(item)}
+              onActivate={() => onActivate(item)}
             />
           </li>
         ))}
@@ -733,41 +921,69 @@ function ItemActions({
   itemName,
   canUpdate,
   canDeactivate,
+  canActivate = false,
+  canDelete = false,
   onEdit,
   onDeactivate,
+  onActivate,
 }: {
   itemName: string
   canUpdate: boolean
   canDeactivate: boolean
+  canActivate?: boolean
+  canDelete?: boolean
   onEdit: () => void
   onDeactivate: () => void
+  onActivate?: () => void
 }) {
   if (!canUpdate) return null
 
   return (
     <div className="flex justify-start gap-2">
-      <Button
-        type="button"
-        variant="outline"
-        size="icon"
-        className="size-11"
-        aria-label={`Ubah ${itemName}`}
-        onClick={onEdit}
-      >
-        <Pencil aria-hidden="true" className="size-4" />
-      </Button>
-      {canDeactivate ? (
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          className="size-11"
-          aria-label={`Nonaktifkan ${itemName}`}
-          onClick={onDeactivate}
-        >
-          <Archive aria-hidden="true" className="size-4" />
-        </Button>
-      ) : null}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="original"
+            size="icon"
+            className="text-muted-foreground hover:text-foreground"
+            aria-label={`Aksi lain untuk ${itemName}`}
+          >
+            <EllipsisVertical aria-hidden="true" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onSelect={onEdit}>
+            <Pencil aria-hidden="true" />
+            Edit
+          </DropdownMenuItem>
+          {canDeactivate ? (
+            <DropdownMenuItem onSelect={onDeactivate}>
+              <Archive aria-hidden="true" />
+              Nonaktifkan
+            </DropdownMenuItem>
+          ) : null}
+          {canActivate ? (
+            <DropdownMenuItem onSelect={onActivate}>
+              <RotateCcw aria-hidden="true" />
+              Aktifkan kembali
+            </DropdownMenuItem>
+          ) : null}
+          {canDelete ? (
+            <>
+              <DropdownMenuSeparator />
+              {/* visual only: kebijakan katalog masih deaktivasi, belum hapus permanen */}
+              <DropdownMenuItem
+                disabled
+                className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+              >
+                <Trash2 aria-hidden="true" />
+                Hapus permanen
+              </DropdownMenuItem>
+            </>
+          ) : null}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   )
 }

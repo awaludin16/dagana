@@ -143,6 +143,9 @@ Route::prefix('v1')->group(function () {
         Route::patch('/products/{product}', [ProductController::class, 'update'])
             ->middleware('permission:products.update')
             ->name('api.v1.products.update');
+        Route::patch('/products/{product}/availability', [ProductController::class, 'updateAvailability'])
+            ->middleware('permission:products.update_availability')
+            ->name('api.v1.products.availability');
         Route::delete('/products/{product}', [ProductController::class, 'destroy'])
             ->middleware('permission:products.delete')
             ->name('api.v1.products.destroy');

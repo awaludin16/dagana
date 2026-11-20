@@ -207,11 +207,14 @@ Skema kolom: `products.price` adalah integer rupiah utuh; `is_active` dan `is_av
 | `GET` | `/api/v1/categories/{id}` | `categories.read` | `404` bila di luar Business. |
 | `PATCH` | `/api/v1/categories/{id}` | `categories.update` | Update `name` dan/atau `is_active` (jalur deaktivasi). |
 | `DELETE` | `/api/v1/categories/{id}` | `categories.delete` | Hard delete hanya bila masih kosong; `422` bila masih memiliki menu (gunakan `PATCH is_active`). |
-| `GET` | `/api/v1/products` | `products.read` | Paginated; filter `category_id`, `is_active`, `is_available`, `q` (nama). |
+| `GET` | `/api/v1/products` | `products.read` | Paginated; filter `category_id`, `is_active`, `is_available`, `q` (nama), dan `outlet_id` opsional (D-35). Jika `outlet_id` dikirim, `is_available` dihitung efektif untuk outlet tersebut dan response menyertakan `is_available_at_outlet`. |
 | `POST` | `/api/v1/products` | `products.create` | Body: `name` (wajib), `price` (wajib, integer ≥ 0), `category_id` (nullable, wajib milik Business sendiri), `is_active`, `is_available`. |
-| `GET` | `/api/v1/products/{id}` | `products.read` | `404` bila di luar Business. |
-| `PATCH` | `/api/v1/products/{id}` | `products.update` | Update `name`, `price`, `category_id`, `is_active`, `is_available`. |
-| `DELETE` | `/api/v1/products/{id}` | `products.delete` | Hard delete; setelah tabel order tersedia (Phase 4) endpoint ini wajib menolak menu yang sudah memiliki transaksi. |
+| `GET` | `/api/v1/products/{id}` | `products.read` | `404` bila di luar Business. Menerima `outlet_id` opsional seperti list. |
+| `PATCH` | `/api/v1/products/{id}` | `products.update` | Update `name`, `price`, `category_id`, `is_active`, `is_available` (master switch Business). Response selalu menyertakan `category`. |
+| `PATCH` | `/api/v1/products/{id}/availability` | `products.update_availability` | Body: `outlet_id` (wajib, milik Business + dalam akses outlet) dan `is_available` (wajib). Upsert override ketersediaan outlet; `404` untuk outlet di luar akses, `422` untuk outlet di luar Business. |
+| `DELETE` | `/api/v1/products/{id}` | `products.delete` | Hard delete hanya bila produk belum punya `order_items`; `422` bila sudah ada histori (gunakan `PATCH is_active=false`). |
+
+**Ketersediaan per outlet (D-35):** `products.is_available` adalah master switch Business; baris `product_outlet_availabilities` hanya dapat mempersempit. Ketersediaan efektif = `is_active && is_available && (tidak ada override OR override true)`. Checkout memakai `Product::sellable($outletId)`, sehingga menu yang habis di outlet A tetap dapat dijual di outlet B dan sebaliknya. Permission `products.update_availability` diberikan ke CASHIER agar operator dapat menandai habis; mengubah master produk tetap memerlukan `products.update`.
 
 Pagination memakai parameter `per_page` (default `20`, maksimum `100`) dan `page`, dengan envelope standar Laravel (`data` + `meta`/`links`). List endpoint selalu ter-scope ke Business membership yang aktif; `403` untuk permission/membership tidak sah, `404` untuk resource di luar Business, `422` untuk validasi.
 

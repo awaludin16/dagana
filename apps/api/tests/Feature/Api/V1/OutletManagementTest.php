@@ -7,6 +7,8 @@ use App\Models\BusinessMembership;
 use App\Models\InventoryItem;
 use App\Models\Order;
 use App\Models\Outlet;
+use App\Models\Product;
+use App\Models\ProductOutletAvailability;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -60,6 +62,28 @@ class OutletManagementTest extends TestCase
 
         $this->assertDatabaseMissing('outlets', ['id' => $second->id]);
         $this->assertDatabaseCount('outlets', 1);
+    }
+
+    public function test_outlet_with_product_availability_override_can_be_deleted(): void
+    {
+        [$owner, $business] = $this->merchant();
+        $second = Outlet::factory()->for($business)->create();
+        $product = Product::factory()->for($business)->create();
+
+        $this->assertDatabaseHas('outlets', ['id' => $second->id]);
+
+        ProductOutletAvailability::create([
+            'product_id' => $product->id,
+            'outlet_id' => $second->id,
+            'is_available' => false,
+        ]);
+
+        Sanctum::actingAs($owner);
+
+        $this->deleteJson("/api/v1/outlets/{$second->id}")->assertNoContent();
+
+        $this->assertDatabaseMissing('outlets', ['id' => $second->id]);
+        $this->assertDatabaseMissing('product_outlet_availabilities', ['outlet_id' => $second->id]);
     }
 
     public function test_outlet_store_requires_phone_and_full_address(): void
