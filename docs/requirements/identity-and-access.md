@@ -223,7 +223,6 @@ Baseline akses role:
 | POS, order, pembayaran, Cash Session | Ya | Ya | Ya |
 | Kelola catalog/menu | Ya | Ya | Tidak |
 | Lihat laporan | Ya | Ya | Tidak |
-| Kelola inventory dasar | Ya | Ya | Tidak |
 | Kelola employee dan outlet access | Ya | Ya, kecuali Owner/permission | Tidak |
 | Ubah pengaturan bisnis/billing | Ya | Terbatas | Tidak |
 
@@ -282,10 +281,6 @@ cash.cash_out
 cash.close
 cash.reconcile
 
-inventory.read
-inventory.adjust
-inventory.stock_opname
-
 reports.read
 reports.export
 
@@ -307,8 +302,8 @@ settings.update
 
 - Backend memeriksa permission dan Business/Outlet scope pada setiap operasi; menyembunyikan tombol di frontend bukan pengamanan.
 - `delete` berarti menghapus record, bukan soft-delete. Gunakan `delete` hanya untuk resource yang aman dihapus; untuk master data yang masih punya referensi historis, gunakan perubahan status/deaktivasi melalui permission `update` dan method `PATCH`.
-- User/member yang tidak lagi boleh mengakses Business dinonaktifkan melalui `PATCH /api/v1/members/{membership}` dengan field `status` dan permission `members.update`. Deaktivasi mencabut token tetapi mempertahankan record membership dan outlet access; reaktivasi memakai role dan outlet yang sama. `DELETE /api/v1/members/{membership}` dengan permission `members.delete` melakukan hard delete membership employee; hanya Owner yang boleh, tidak dapat menghapus Owner atau dirinya sendiri, token dicabut, dan user dipertahankan untuk atribusi historis. Member yang masih direferensikan data historis (order, pembayaran, kas, stok) ditolak `422` dan harus dinonaktifkan alih-alih dihapus.
-- Order selesai, payment, cash movement, stock movement, dan audit log **tidak boleh dihapus permanen**. Koreksi dilakukan melalui cancel, refund, reversal, atau adjustment yang tercatat.
+- User/member yang tidak lagi boleh mengakses Business dinonaktifkan melalui `PATCH /api/v1/members/{membership}` dengan field `status` dan permission `members.update`. Deaktivasi mencabut token tetapi mempertahankan record membership dan outlet access; reaktivasi memakai role dan outlet yang sama. `DELETE /api/v1/members/{membership}` dengan permission `members.delete` melakukan hard delete membership employee; hanya Owner yang boleh, tidak dapat menghapus Owner atau dirinya sendiri, token dicabut, dan user dipertahankan untuk atribusi historis. Member yang masih direferensikan data historis (order, pembayaran, kas) ditolak `422` dan harus dinonaktifkan alih-alih dihapus.
+- Order selesai, payment, cash movement, dan audit log **tidak boleh dihapus permanen**. Koreksi dilakukan melalui cancel, refund, reversal, atau adjustment yang tercatat.
 - Business tidak memiliki permission `business.delete` pada MVP; perubahan pengaturan Business memakai `business.update`. Penghapusan Business belum diimplementasikan.
 - Perubahan role hanya dapat dilakukan Owner; Manager tidak dapat mengubah role Owner atau menaikkan hak aksesnya sendiri.
 - Permission efektif dan outlet access harus dites di backend; role name saja tidak cukup untuk memberi akses.

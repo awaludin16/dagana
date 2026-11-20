@@ -33,12 +33,12 @@ React Customer ───┘                            │
 - Menjadi pemilik aturan bisnis, validasi otoritatif, authorization, dan lifecycle transaksi.
 - Menyediakan endpoint ter-version di `/api/v1`.
 - Menjalankan background work melalui queue saat diperlukan.
-- Menjaga konsistensi order, payment, cash, inventory, billing, dan audit.
+- Menjaga konsistensi order, payment, cash, billing, dan audit.
 
 ### Flutter POS
 
 - Menyediakan workflow operasional mobile untuk owner/operator/cashier.
-- Menjadi client dari API; tidak menggandakan aturan checkout, harga final, payment confirmation, atau stock deduction.
+- Menjadi client dari API; tidak menggandakan aturan checkout, harga final, atau payment confirmation.
 - Dapat menyimpan data lokal yang dibutuhkan untuk cache/draft/offline queue sesuai fase yang diaktifkan.
 
 ### React Admin Web
@@ -53,7 +53,7 @@ React Customer ───┘                            │
 
 ## 4. Backend domain boundaries
 
-Domain dibangun bertahap sesuai kebutuhan fase. Kandidat tanggung jawab meliputi Identity, Organization, Outlet, Authorization, Catalog, Sales/Orders, Payments, Cash, Inventory, Ordering, Kitchen, Reporting, Billing, Audit, dan Notifications. Batas modul merupakan batas kode dan ownership business logic, bukan service deployment terpisah.
+Domain dibangun bertahap sesuai kebutuhan fase. Kandidat tanggung jawab meliputi Identity, Organization, Outlet, Authorization, Catalog, Sales/Orders, Payments, Cash, Ordering, Kitchen, Reporting, Billing, Audit, dan Notifications. Batas modul merupakan batas kode dan ownership business logic, bukan service deployment terpisah.
 
 ## 5. Tenant and outlet boundaries
 

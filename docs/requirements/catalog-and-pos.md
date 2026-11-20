@@ -30,7 +30,6 @@ Digunakan ketika merchant ingin mengelola:
 
 ```text
 Products
-Inventory
 Employees
 Reports
 Settings
@@ -57,10 +56,6 @@ Price
 
 Tidak diwajibkan langsung membuat:
 
-- ingredient
-- recipe
-- supplier
-- SKU kompleks
 - modifier kompleks
 
 Contoh:
@@ -168,8 +163,6 @@ Order Engine
  ↓
 Payment
  ↓
-Inventory
- ↓
 Reporting
 ```
 
@@ -181,8 +174,6 @@ QR
 Order Engine
  ↓
 Payment
- ↓
-Inventory
  ↓
 Reporting
 ```

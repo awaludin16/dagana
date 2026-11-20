@@ -113,8 +113,8 @@ Membangun relasi membership antara user dan business, role sebagai permission pr
 - [x] Role preset awal yang dibutuhkan tersedia sesuai scope yang disetujui, hanya Owner, Manager, dan Cashier. Tidak ada custom role atau permission override pada MVP. — Lulus; `PermissionCatalog::ROLES`, `GET /api/v1/roles`, D-04 disetujui.
 - [x] Permission dicek pada backend untuk endpoint/aksi terlindungi; menyembunyikan tombol di frontend saja tidak dianggap authorization. — Lulus; middleware `permission:<resource.action>` pada seluruh route terlindungi.
 - [x] User dengan permission yang sesuai dapat melakukan aksi; user tanpa permission menerima penolakan yang sesuai. — Lulus; test positif/negatif pada `MembershipAccessTest` dan `MemberManagementTest`.
-- [x] Akses outlet yang diizinkan berfungsi; akses ke outlet di luar cakupan ditolak walaupun user terdaftar di Business yang sama. — Lulus; `canAccessOutlet()` dipakai konsisten di Order/Payment/Cash/Inventory/Report/Checkout; akses di luar cakupan → 404 tanpa bocoran data (D-05 disetujui).
-- [x] Owner mendapatkan permission default yang cukup untuk onboarding, POS, payment, cash, products, reports, inventory, settings dan billing sesuai hak akses dan scope fitur yang sudah tersedia. — Lulus; Owner = seluruh katalog D-03 (47 permission, termasuk `inventory.create`/`inventory.update` dari D-32); endpoint settings/billing memang scope fase lain.
+- [x] Akses outlet yang diizinkan berfungsi; akses ke outlet di luar cakupan ditolak walaupun user terdaftar di Business yang sama. — Lulus; `canAccessOutlet()` dipakai konsisten di Order/Payment/Cash/Report/Checkout; akses di luar cakupan → 404 tanpa bocoran data (D-05 disetujui).
+- [x] Owner mendapatkan permission default yang cukup untuk onboarding, POS, payment, cash, products, reports, settings dan billing sesuai hak akses dan scope fitur yang sudah tersedia. — Lulus; Owner = seluruh katalog D-03 (43 permission setelah D-36); endpoint settings/billing memang scope fase lain.
 - [x] Pembuatan employee/invitation dan assignment membership, role/permission, serta outlet access dapat divalidasi sesuai alur yang diimplementasikan. — Lulus; direct-create tanpa email invitation difinalisasi (keputusan 2026-11-16); token dicabut saat deaktivasi/hard delete; Manager hanya dapat grant outlet miliknya sendiri.
 - [x] Owner dapat tetap menggunakan POS setelah employee dibuat; employee setup bukan prasyarat untuk memulai penjualan. — Lulus; `test_owner_can_operate_without_creating_any_employee`.
 - [x] Test otomatis mencakup izin diberikan, izin ditolak, membership nonaktif, dan akses outlet yang tidak diizinkan. — Lulus; 17 test Phase 2 passed (114 assertions), suite penuh 133 passed (969 assertions) pada 2026-11-16.
@@ -147,7 +147,7 @@ Gunakan keputusan D-03 sampai D-05 pada `docs/planning/decision-log.md` sebagai 
 
 ## Target pekerjaan
 
-Memungkinkan merchant mengelola kategori, menu/produk, harga, status aktif/nonaktif, dan ketersediaan dasar. Catalog harus tetap sederhana; setup bahan, recipe, supplier, SKU kompleks, atau modifier kompleks tidak boleh menjadi syarat awal untuk menjual menu biasa.
+Memungkinkan merchant mengelola kategori, menu/produk, harga, status aktif/nonaktif, dan ketersediaan dasar. Catalog harus tetap sederhana; SKU kompleks atau modifier kompleks tidak boleh menjadi syarat awal untuk menjual menu biasa.
 
 ## Acceptance criteria
 
@@ -225,31 +225,9 @@ Decision log mencatat rekomendasi baseline tentang apakah satu Cash Session hany
 
 ---
 
-# Phase 6 — Basic Inventory
+# Phase 6 — Dihapus
 
-## Target pekerjaan
-
-Menyediakan inventory dasar yang opsional bagi merchant: item/bahan, stok, stock adjustment, stock movement, low-stock information, serta integrasi pengurangan stok dari penjualan ketika inventory diaktifkan dan perilakunya sudah didefinisikan. Penjualan sederhana harus tetap berjalan tanpa setup inventory.
-
-## Acceptance criteria
-
-- [ ] Item inventory dan saldo stok dapat dibuat/dibaca/dikelola oleh pengguna yang memiliki akses.
-- [ ] Adjustment stok menghasilkan stock movement dengan jumlah, alasan/jenis yang sesuai, actor dan waktu yang dapat ditelusuri.
-- [ ] Saldo stok dapat direkonsiliasi dengan movement ledger menurut aturan yang dipilih.
-- [ ] Transaksi yang memang dikonfigurasi memengaruhi stok sesuai aturan; inventory yang tidak diaktifkan tidak menghalangi penjualan biasa.
-- [ ] Retry atau pemrosesan ulang event penjualan tidak menggandakan pengurangan stok.
-- [ ] Operasi stok serentak dilindungi agar saldo tidak rusak oleh race condition sesuai model stok.
-- [ ] Item dan movement terisolasi sesuai Business/Outlet scope; akses lintas tenant ditolak.
-- [ ] Low-stock dapat dipicu berdasarkan ambang yang telah disimpan pada konfigurasi item.
-- [ ] Test mencakup adjustment, saldo/movement, low-stock, penjualan tanpa inventory, pengurangan stok yang relevan, retry, dan akses tidak sah.
-
-## Cara verifikasi / bukti
-
-Jalankan skenario stok awal + movement masuk/keluar/adjustment dan bandingkan saldo akhir dengan penjumlahan ledger. Ulangi proses yang sama untuk memastikan event/retry tidak menggandakan movement.
-
-## Keputusan yang harus ditandai
-
-Unit conversion dan inventory costing method masih terbuka. Jangan menambahkan costing kompleks atau asumsi konversi satuan sendiri sebagai requirement final fase basic inventory.
+Fase ini dihapus oleh D-36 (2026-11-20). Tidak ada target, acceptance criteria, atau bukti verifikasi yang aktif untuk nomor fase ini. Ketersediaan menu diatur pada Phase 3 melalui D-35.
 
 ---
 
@@ -257,7 +235,7 @@ Unit conversion dan inventory costing method masih terbuka. Jangan menambahkan c
 
 ## Target pekerjaan
 
-Menyediakan reporting MVP: daily sales, transaction count, payment report, operator report, cash reconciliation, dan basic inventory report. Dashboard owner memberi ringkasan yang mendukung tindakan operasional dan tombol utama tetap mendukung workflow mulai berjualan.
+Menyediakan reporting MVP: daily sales, transaction count, payment report, operator report, dan cash reconciliation. Dashboard owner memberi ringkasan yang mendukung tindakan operasional dan tombol utama tetap mendukung workflow mulai berjualan.
 
 ## Acceptance criteria
 
@@ -266,7 +244,6 @@ Menyediakan reporting MVP: daily sales, transaction count, payment report, opera
 - [ ] Laporan payment memisahkan metode/status sesuai definisi yang disetujui dan tidak menyamakan pending/failed dengan paid.
 - [ ] Laporan operator mengagregasi transaksi dari operator dan cakupan yang benar.
 - [ ] Cash reconciliation menampilkan opening cash, arus kas yang relevan, expected cash, actual cash, dan variance sesuai perhitungan Cash Session.
-- [ ] Basic inventory report menampilkan saldo/movement yang konsisten dengan sumber inventory jika modul inventory aktif.
 - [ ] Filter Business dan Outlet diotorisasi di backend; tidak ada agregat data tenant lain yang bocor ke laporan.
 - [ ] Hasil tetap benar untuk periode tanpa transaksi, transaksi yang dibatalkan/refund, dan batas awal/akhir periode sesuai aturan waktu aplikasi.
 - [ ] Endpoint list/detail laporan memiliki batas hasil atau pagination yang sesuai untuk mencegah response tidak terbatas.
@@ -313,7 +290,7 @@ QR Ordering adalah optional MVP module. Customer login, advanced table managemen
 
 ## Target pekerjaan
 
-Menyampaikan event operasional seperti QR order notification, kitchen updates, order status, payment status, dan stock updates jika modul terkait tersedia. WebSocket/notification hanya lapisan penyampaian event; database tetap menjadi source of truth.
+Menyampaikan event operasional seperti QR order notification, kitchen updates, order status, dan payment status jika modul terkait tersedia. WebSocket/notification hanya lapisan penyampaian event; database tetap menjadi source of truth.
 
 ## Acceptance criteria
 
@@ -374,7 +351,7 @@ Menstabilkan alur yang sudah dibangun sebelum rilis atau membuka fase lanjutan. 
 ## Acceptance criteria
 
 - [ ] Alur MVP utama lulus pengujian: register → business → outlet → add menu → open cash → sell → payment → transaction complete → reporting → close cash → reconciliation.
-- [ ] QR Ordering, inventory, employee, atau billing hanya masuk release gate jika diaktifkan dalam target rilis; fitur opsional yang belum aktif tidak dianggap syarat universal MVP.
+- [ ] QR Ordering, employee, atau billing hanya masuk release gate jika diaktifkan dalam target rilis; fitur opsional yang belum aktif tidak dianggap syarat universal MVP.
 - [ ] Test regresi penting mencakup tenant/outlet isolation, permission, invalid transition, checkout rollback, duplicate idempotency key, dan duplicate payment callback bila callback sudah diimplementasikan.
 - [ ] Bug severity tinggi/kritis pada alur rilis sudah diperbaiki atau secara eksplisit diterima dengan mitigasi dan persetujuan yang tercatat.
 - [ ] Pemeriksaan formatter/linter/type-check/static analysis/test/build yang telah ditetapkan untuk komponen rilis dapat dijalankan dan hasilnya dicatat.
@@ -394,60 +371,6 @@ Tidak ada target untuk menambahkan full accounting, payroll, HR, AI analytics, a
 
 ---
 
-# Phase 12 — Advanced F&B Operations
-
-## Target pekerjaan
-
-Mengembangkan kemampuan operasional F&B lanjutan secara bertahap berdasarkan roadmap post-MVP: recipe/BOM, advanced inventory, COGS, waste, stock opname, modifier, dan variant. Phase ini harus dipecah menjadi subfase/PR kecil karena setiap fitur memiliki keputusan domain yang belum seluruhnya final.
-
-## Acceptance criteria umum
-
-- [ ] Setiap fitur lanjutan memiliki requirement dan acceptance criteria tersendiri sebelum implementasi dimulai.
-- [ ] Perubahan tetap menggunakan domain inventory/sales/catalog yang sudah ada; tidak membuat second source of truth untuk order atau stok.
-- [ ] Data historis dan movement ledger tetap dapat ditelusuri; koreksi dilakukan melalui operasi yang eksplisit, bukan overwrite tanpa jejak.
-- [ ] Test mencakup kasus normal, nilai batas, pembatalan/reversal jika relevan, concurrency, dan authorization business/outlet.
-- [ ] Fitur tidak menghambat penjualan sederhana ketika merchant tidak mengaktifkan recipe/inventory lanjutan.
-
-## 12A. Recipe & BOM
-
-- [ ] Menu dapat dihubungkan ke bahan, kuantitas, satuan, dan versi/berlaku-resep sesuai model yang disetujui.
-- [ ] Simulasi penjualan dengan recipe yang aktif menghitung kebutuhan bahan sesuai recipe yang berlaku.
-- [ ] Bahan yang tidak cukup mengikuti kebijakan stok yang telah disetujui; agent tidak menentukan sendiri apakah transaksi harus ditolak atau boleh menghasilkan stok negatif.
-- [ ] Perubahan recipe tidak mengubah histori transaksi/pemakaian bahan yang sudah tercatat.
-- [ ] Test menghitung kebutuhan bahan untuk satu dan beberapa porsi serta satuan yang didukung.
-
-## 12B. Advanced Inventory, Stock Opname, dan Waste
-
-- [ ] Stock opname mencatat stok sistem, jumlah fisik, selisih, actor, waktu, serta alasan sesuai desain yang disetujui.
-- [ ] Konfirmasi opname menghasilkan adjustment/movement yang dapat diaudit; histori lama tidak dihapus.
-- [ ] Waste dicatat sebagai movement bertipe khusus dan dapat dibedakan dari penjualan atau adjustment lain.
-- [ ] Saldo akhir dapat direkonsiliasi dari ledger dengan hasil opname dan waste.
-- [ ] Test mencakup stok lebih/kurang, konfirmasi, penolakan/tidak jadi, serta pembatasan permission.
-
-## 12C. COGS dan Inventory Costing
-
-- [ ] Inventory costing method diputuskan dan dicatat sebelum nilai COGS dianggap final.
-- [ ] Rumus COGS diuji dengan fixture biaya bahan dan kuantitas yang telah dihitung secara independen.
-- [ ] Laporan menunjukkan dasar dan periode perhitungan yang jelas; perubahan biaya tidak mengubah laporan historis tanpa mekanisme recalculation yang disengaja dan diaudit.
-- [ ] Jika costing method atau COGS formula belum diputuskan, agent tidak membuat klaim bahwa nilai COGS sudah final.
-
-## 12D. Modifier dan Variant
-
-- [ ] Pilihan modifier/variant yang tersedia dapat dipilih dan divalidasi server-side.
-- [ ] Harga akhir order dihitung di backend dengan aturan harga yang telah disepakati.
-- [ ] Order item menyimpan snapshot pilihan, nama/harga, dan informasi yang diperlukan untuk mempertahankan histori transaksi.
-- [ ] Jika modifier memengaruhi inventory, aturan dampaknya harus diputuskan dan diuji; jika belum diputuskan, modifier hanya boleh dirilis dalam scope yang tidak mengklaim pengaruh stok.
-- [ ] Test mencakup pilihan valid/tidak valid, perubahan harga, serta snapshot transaksi historis.
-
-## Cara verifikasi / bukti
-
-Setiap subfitur punya fixture/test khusus dan reconciliation check dengan perhitungan manual. Jangan menandai seluruh Phase 12 selesai hanya karena salah satu subfitur telah dirilis.
-
-## Batas scope
-
-Fitur seperti supplier management, purchase order, central kitchen kompleks, advanced KDS, dan fitur enterprise lain tidak otomatis termasuk Phase 12; PRD menetapkannya sebagai non-goals atau roadmap lanjutan yang memerlukan perencanaan terpisah.
-
----
 
 # Template target untuk diberikan ke coding agent
 
@@ -498,4 +421,4 @@ Sebuah fase dinyatakan selesai jika kriteria wajibnya lulus dan tidak ada blocke
 - Mobile POS menggunakan Flutter + Dart. Gunakan `docs/architecture/technical-stack.md` dan aturan `AGENTS.md`.
 - Satu User hanya boleh terhubung ke satu Business; satu Business dapat memiliki banyak Outlet.
 - Role MVP hanya `OWNER`, `MANAGER`, `CASHIER`.
-- Delete permission hanya ditambahkan untuk resource master yang sesuai. Data transaksi, pembayaran, pergerakan kas/stok, dan audit tidak boleh dihapus permanen.
+- Delete permission hanya ditambahkan untuk resource master yang sesuai. Data transaksi, pembayaran, pergerakan kas, dan audit tidak boleh dihapus permanen.

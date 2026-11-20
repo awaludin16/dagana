@@ -5,12 +5,10 @@ namespace Tests\Feature\Api\V1;
 use App\Models\BusinessMembership;
 use App\Models\CashMovement;
 use App\Models\CashSession;
-use App\Models\InventoryItem;
 use App\Models\Order;
 use App\Models\Outlet;
 use App\Models\OutletAccess;
 use App\Models\Payment;
-use App\Models\StockMovement;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -180,44 +178,6 @@ class ReportTest extends TestCase
         $this->assertSame(10_000, $open['expected_cash']);
     }
 
-    public function test_inventory_report_reconciles_with_ledger_and_flags_low_stock(): void
-    {
-        [$owner, $business, $outlet] = $this->merchant();
-        $membershipId = $this->membershipId($owner);
-
-        $milk = InventoryItem::create(['business_id' => $business->id, 'outlet_id' => $outlet->id, 'name' => 'Milk', 'unit' => 'ml', 'low_stock_threshold' => 50]);
-        $syrup = InventoryItem::create(['business_id' => $business->id, 'outlet_id' => $outlet->id, 'name' => 'Syrup', 'unit' => 'ml', 'low_stock_threshold' => 5]);
-
-        // Manual: Milk saldo penuh = +100 -30 -2 = 68; dalam rentang hari1-2 = +70.
-        // Syrup saldo = +2 → low stock.
-        $this->stockMovement($business->id, $outlet->id, $milk, $membershipId, 100, self::DAY1);
-        $this->stockMovement($business->id, $outlet->id, $milk, $membershipId, -30, self::DAY2);
-        $this->stockMovement($business->id, $outlet->id, $milk, $membershipId, -2, self::DAY3);
-        $this->stockMovement($business->id, $outlet->id, $syrup, $membershipId, 2, self::DAY1);
-
-        Sanctum::actingAs($owner);
-
-        $response = $this->getJson('/api/v1/reports/inventory?from='.self::DAY1.'&to='.self::DAY2);
-
-        $response->assertOk()->assertJsonPath('meta.total', 2);
-        $data = collect($response->json('data'));
-        $milkRow = $data->firstWhere('name', 'Milk');
-        $syrupRow = $data->firstWhere('name', 'Syrup');
-
-        $this->assertSame(68, $milkRow['current_stock']);
-        $this->assertFalse($milkRow['is_low_stock']);
-        $this->assertSame(2, $milkRow['movements_count']);
-        $this->assertSame(70, $milkRow['movements_net']);
-        $this->assertSame(2, $syrupRow['current_stock']);
-        $this->assertTrue($syrupRow['is_low_stock']);
-
-        // Filter low_stock=true hanya mengembalikan item di bawah ambang.
-        $this->getJson('/api/v1/reports/inventory?from='.self::DAY1.'&to='.self::DAY2.'&low_stock=true')
-            ->assertOk()
-            ->assertJsonPath('meta.total', 1)
-            ->assertJsonPath('data.0.name', 'Syrup');
-    }
-
     public function test_empty_period_returns_zeroed_sales_and_empty_breakdowns(): void
     {
         [$owner, $business, $outlet] = $this->merchant();
@@ -238,11 +198,6 @@ class ReportTest extends TestCase
             ->assertJsonCount(0, 'data.by_status');
 
         $this->getJson('/api/v1/reports/operators?from='.self::DAY1.'&to='.self::DAY2)
-            ->assertOk()
-            ->assertJsonPath('meta.total', 0);
-
-        // Tanpa item inventory: laporan kosong, bukan error.
-        $this->getJson('/api/v1/reports/inventory?from='.self::DAY1.'&to='.self::DAY2)
             ->assertOk()
             ->assertJsonPath('meta.total', 0);
     }
@@ -308,7 +263,7 @@ class ReportTest extends TestCase
 
         Sanctum::actingAs($cashier);
 
-        foreach (['sales', 'payments', 'operators', 'cash', 'inventory'] as $report) {
+        foreach (['sales', 'payments', 'operators', 'cash'] as $report) {
             $this->getJson("/api/v1/reports/{$report}?from=".self::DAY1.'&to='.self::DAY1)
                 ->assertForbidden();
         }
@@ -374,22 +329,6 @@ class ReportTest extends TestCase
         ]);
         $payment->created_at = $paymentDate;
         $payment->saveQuietly();
-    }
-
-    private function stockMovement(int $businessId, int $outletId, InventoryItem $item, int $membershipId, int $change, string $date): void
-    {
-        $movement = StockMovement::create([
-            'business_id' => $businessId,
-            'outlet_id' => $outletId,
-            'inventory_item_id' => $item->id,
-            'membership_id' => $membershipId,
-            'type' => StockMovement::TYPE_ADJUSTMENT,
-            'quantity_change' => $change,
-            'reason' => 'fixture',
-            'idempotency_key' => fake()->unique()->uuid(),
-        ]);
-        $movement->created_at = $date.' 10:00:00';
-        $movement->saveQuietly();
     }
 
     private function merchant(): array

@@ -154,7 +154,7 @@ apps/admin-web/src/
 - Provide visible focus rings using the Dagana focus token.
 - Use semantic HTML (`button`, `label`, `input`, `table`, `nav`, headings) rather than clickable generic containers.
 - Maintain logical heading order and meaningful page title.
-- Do not use color alone for validation, order status, cash variance, or inventory state.
+- Do not use color alone for validation, order status, or cash variance.
 - Respect browser zoom; 200% text zoom must not hide essential content or functionality.
 - Do not make small text or tightly packed controls the default for the sake of dashboard density.
 

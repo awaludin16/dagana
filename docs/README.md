@@ -22,7 +22,7 @@ Jika terdapat konflik: requirement produk menentukan behavior; architecture mene
 - [`identity-and-access.md`](requirements/identity-and-access.md)
 - [`catalog-and-pos.md`](requirements/catalog-and-pos.md)
 - [`payments-and-cash.md`](requirements/payments-and-cash.md)
-- [`inventory-and-reporting.md`](requirements/inventory-and-reporting.md)
+- [`reporting.md`](requirements/reporting.md)
 - [`qr-ordering-and-kitchen.md`](requirements/qr-ordering-and-kitchen.md)
 - [`billing.md`](requirements/billing.md)
 - [`platform-quality.md`](requirements/platform-quality.md)

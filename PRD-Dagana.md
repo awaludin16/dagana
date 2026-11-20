@@ -6,7 +6,7 @@
 
 ## 1. Product Overview
 
-**Dagana** adalah *F&B Business Operating Platform* untuk membantu usaha Food & Beverage menjalankan penjualan dan operasional dari satu platform. Produk menggabungkan POS, order, payment, cash management, catalog, basic inventory, employee/permission management, reporting, QR Ordering, kitchen operations, multi-outlet management, dan usage-based billing.
+**Dagana** adalah *F&B Business Operating Platform* untuk membantu usaha Food & Beverage menjalankan penjualan dan operasional dari satu platform. Produk menggabungkan POS, order, payment, cash management, catalog, employee/permission management, reporting, QR Ordering, kitchen operations, multi-outlet management, dan usage-based billing.
 
 **Visi:** membantu bisnis F&B mencatat transaksi dengan cepat, mengelola operasional dengan sederhana, dan memahami kondisi bisnis dari satu platform yang dapat berkembang bersama usahanya.
 
@@ -16,14 +16,14 @@
 
 Merchant kecil sering menggunakan catatan manual, spreadsheet, kalkulator, QRIS, atau aplikasi pembayaran yang terpisah. Saat outlet ramai, transaksi dapat terlambat dicatat atau terlupa sehingga catatan penjualan tidak selalu sesuai dengan uang kas aktual.
 
-Dagana berfokus membantu merchant mencatat transaksi saat transaksi terjadi, menghubungkan penjualan dengan pembayaran dan kas, lalu menyediakan laporan yang mudah dipahami. Inventory menjadi dukungan operasional tambahan. Dagana bukan sekadar pengganti spreadsheet.
+Dagana berfokus membantu merchant mencatat transaksi saat transaksi terjadi, menghubungkan penjualan dengan pembayaran dan kas, lalu menyediakan laporan yang mudah dipahami. Dagana bukan sekadar pengganti spreadsheet.
 
 ## 3. Target pengguna
 
 | Segmen | Karakteristik | Kebutuhan utama |
 |---|---|---|
 | **Primary — Solo/Micro F&B** | Owner menjalankan 1 outlet sendiri atau dengan sedikit employee. | POS sederhana, payment, Cash Session, catalog, dan laporan dasar. |
-| **Secondary — Small F&B** | Usaha memiliki beberapa employee dan dapat memiliki 1–3 outlet. | Employee, permission, outlet access, inventory, dan QR Ordering. |
+| **Secondary — Small F&B** | Usaha memiliki beberapa employee dan dapat memiliki 1–3 outlet. | Employee, permission, outlet access, dan QR Ordering. |
 | **Growing / Multi-Outlet** | Bisnis berkembang menjadi beberapa outlet atau grup F&B. | Multi-outlet, centralized reporting, pengelolaan outlet, dan operasional yang dapat berkembang. |
 
 Fokus awal adalah warung, kedai, food stall, booth, coffee stall, usaha kuliner rumahan, bakery kecil, cafe, coffee shop, dan restoran kecil. Retail non-F&B bukan target awal.
@@ -35,7 +35,7 @@ Fokus awal adalah warung, kedai, food stall, booth, coffee stall, usaha kuliner 
 3. Meminimalkan setup wajib sebelum transaksi pertama.
 4. Mencatat transaksi, pembayaran, dan kondisi kas secara akurat.
 5. Menyediakan Cash Session dan laporan penjualan dasar.
-6. Menyediakan basic inventory tanpa menjadikannya prasyarat untuk mulai berjualan.
+6. Menyediakan status ketersediaan menu dasar (tersedia/habis) tanpa menjadikannya prasyarat untuk mulai berjualan.
 7. Mendukung employee dan permission ketika bisnis membutuhkannya.
 8. Mendukung satu maupun banyak Outlet dalam satu Business.
 9. Menyediakan QR Ordering sebagai channel opsional.
@@ -51,7 +51,7 @@ Alur utama MVP:
 
 > **Register → Create Business & Outlet → Add Menu → Open Cash Session → Sell → Payment → Close Cash Session → View Sales Report.**
 
-Rangkuman kemampuan: authentication; satu User untuk satu Business; satu Business dengan satu atau banyak Outlet; Owner-as-Operator; employee opsional; role preset dan permission; catalog; POS dan order; payment; Cash Session dan rekonsiliasi; basic inventory; laporan dasar; QR Ordering opsional; serta billing platform yang tetap menunggu persetujuan komersial sebelum diaktifkan.
+Rangkuman kemampuan: authentication; satu User untuk satu Business; satu Business dengan satu atau banyak Outlet; Owner-as-Operator; employee opsional; role preset dan permission; catalog; POS dan order; payment; Cash Session dan rekonsiliasi; laporan dasar; QR Ordering opsional; serta billing platform yang tetap menunggu persetujuan komersial sebelum diaktifkan.
 
 Daftar MVP included/excluded yang normatif dan workflow per tipe merchant ada di [`docs/requirements/mvp-scope-and-workflows.md`](docs/requirements/mvp-scope-and-workflows.md). Detail behavior per modul ada di dokumen requirement domain.
 
@@ -62,7 +62,7 @@ Daftar MVP included/excluded yang normatif dan workflow per tipe merchant ada di
 | [`identity-and-access.md`](docs/requirements/identity-and-access.md) | User, Business, Outlet, onboarding, membership, role, permission, employee. |
 | [`catalog-and-pos.md`](docs/requirements/catalog-and-pos.md) | Catalog, POS, fast selling, quick sale, dan order dasar. |
 | [`payments-and-cash.md`](docs/requirements/payments-and-cash.md) | Payment, Cash Session, cash in/out, close, reconciliation. |
-| [`inventory-and-reporting.md`](docs/requirements/inventory-and-reporting.md) | Inventory, recipe/BOM, stock, reporting, dashboard. |
+| [`reporting.md`](docs/requirements/reporting.md) | Reporting dan dashboard owner. |
 | [`qr-ordering-and-kitchen.md`](docs/requirements/qr-ordering-and-kitchen.md) | Table, QR Ordering, kitchen workflow. |
 | [`billing.md`](docs/requirements/billing.md) | Usage-based platform fee dan billing statement. |
 | [`platform-quality.md`](docs/requirements/platform-quality.md) | Transaction integrity, tenant isolation, outlet context, realtime, offline, audit, security. |
@@ -75,7 +75,7 @@ Daftar MVP included/excluded yang normatif dan workflow per tipe merchant ada di
 - **Permission over role:** role merupakan preset; permission menentukan akses efektif.
 - **Single operator is first-class:** merchant yang menjalankan usaha sendiri bukan edge case.
 - **Cash Session over complex shift:** MVP berfokus pada akuntabilitas kas, bukan HR/shift management.
-- **Don't force setup:** employee, inventory, QR, table, dan recipe tidak wajib untuk mulai menjual.
+- **Don't force setup:** employee, QR, dan table tidak wajib untuk mulai menjual.
 - **One source of truth:** POS dan channel pemesanan memakai aturan bisnis serta data yang sama.
 - **Fast operational workflow:** kurangi langkah yang tidak perlu dalam proses penjualan.
 - **Build for growth, not complexity:** fondasi dapat berkembang tanpa membuat UX awal menjadi rumit.
@@ -88,7 +88,7 @@ Metrik utama mencakup time to first transaction, activation, transaction complet
 
 ## 10. Roadmap produk
 
-Arah pasca-MVP meliputi peningkatan operasional; F&B operations (recipe/BOM, COGS, waste, stock opname, modifier/variant); ordering dan kitchen; multi-outlet; growth; serta kemampuan platform. Rincian roadmap ada di [`docs/planning/post-mvp-roadmap.md`](docs/planning/post-mvp-roadmap.md). Roadmap bukan komitmen delivery otomatis.
+Arah pasca-MVP meliputi peningkatan operasional; ordering dan kitchen; multi-outlet; growth; serta kemampuan platform. Rincian roadmap ada di [`docs/planning/post-mvp-roadmap.md`](docs/planning/post-mvp-roadmap.md). Roadmap bukan komitmen delivery otomatis.
 
 ## 11. Dokumentasi teknis dan delivery
 

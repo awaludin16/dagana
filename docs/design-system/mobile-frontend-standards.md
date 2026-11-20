@@ -7,7 +7,7 @@
 
 Follow `PRD-Dagana.md`, the relevant `docs/requirements/` file, `docs/design-system/visual-foundation.md`, `tokens.json`, `docs/architecture/`, `docs/planning/phase-targets.md`, `AGENTS.md`, and `docs/engineering/engineering-standards.md`.
 
-The Flutter app is a client of the same Dagana backend and domain. Do not implement a different checkout, pricing, payment, cash, inventory, or authorization rule on mobile.
+The Flutter app is a client of the same Dagana backend and domain. Do not implement a different checkout, pricing, payment, cash, or authorization rule on mobile.
 
 ## 2. Product experience
 
@@ -19,7 +19,7 @@ The POS is an operational tool used while serving customers. Optimize for **fast
 - Show the current outlet and operator context clearly when relevant.
 - Keep cart state visible and prevent accidental loss when navigating away.
 - Provide clear feedback for online/offline state, pending sync, payment status, and failed actions.
-- Do not force the operator to configure inventory, employee, QR, or recipe features before ordinary selling unless a requirement explicitly makes it mandatory.
+- Do not force the operator to configure employee or QR features before ordinary selling unless a requirement explicitly makes it mandatory.
 
 ## 3. Adaptive layouts and orientation
 

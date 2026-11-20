@@ -34,11 +34,6 @@ export const PERMISSION_LABELS: Record<string, string> = {
   'cash.cash_out': 'Catat kas keluar',
   'cash.close': 'Tutup sesi kas',
   'cash.reconcile': 'Rekonsiliasi & koreksi kas',
-  'inventory.read': 'Lihat stok',
-  'inventory.create': 'Tambah item stok',
-  'inventory.update': 'Ubah item stok',
-  'inventory.adjust': 'Penyesuaian stok',
-  'inventory.stock_opname': 'Stock opname',
   'reports.read': 'Lihat laporan',
   'reports.export': 'Ekspor laporan',
   'qr.read': 'Lihat pesanan QR',
@@ -80,10 +75,6 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
   {
     title: 'Kas',
     items: ['cash.read', 'cash.open', 'cash.cash_in', 'cash.cash_out', 'cash.close', 'cash.reconcile'],
-  },
-  {
-    title: 'Stok',
-    items: ['inventory.read', 'inventory.create', 'inventory.update', 'inventory.adjust', 'inventory.stock_opname'],
   },
   {
     title: 'Laporan & Lainnya',

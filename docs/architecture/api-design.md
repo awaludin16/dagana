@@ -28,8 +28,6 @@ Resource group berikut adalah baseline untuk pengelompokan endpoint, bukan spesi
 /api/v1/regions
 /api/v1/categories
 /api/v1/products
-/api/v1/inventory
-/api/v1/stock-movements
 /api/v1/orders
 /api/v1/payments
 /api/v1/cash-sessions
@@ -170,7 +168,7 @@ Authorization memakai middleware `permission:<resource.action>` yang memeriksa m
 | `DELETE` | `/api/v1/members/{membership}` | `members.delete` | Hard delete membership employee; hanya Owner, tidak dapat menghapus Owner atau dirinya sendiri, dan token user dicabut. |
 | `GET` | `/api/v1/roles` | `members.read` | Katalog tiga role preset beserta permission-nya untuk kebutuhan UI. |
 
-`members.delete` menghapus record membership secara permanen, tetapi mempertahankan user untuk atribusi historis. Owner tidak dapat dihapus melalui endpoint ini. Member yang masih menjadi referensi data historis (order, pembayaran, sesi kas, kas masuk/keluar, atau stock movement) ditolak `422`; gunakan `PATCH` dengan field `status` untuk mencabut akses sementara agar membership dan outlet access dapat diaktifkan kembali.
+`members.delete` menghapus record membership secara permanen, tetapi mempertahankan user untuk atribusi historis. Owner tidak dapat dihapus melalui endpoint ini. Member yang masih menjadi referensi data historis (order, pembayaran, sesi kas, atau kas masuk/keluar) ditolak `422`; gunakan `PATCH` dengan field `status` untuk mencabut akses sementara agar membership dan outlet access dapat diaktifkan kembali.
 
 `POST /members` dan `PATCH /members/{membership}` menerima field opsional `extra_permissions` (array izin `resource.action` dari katalog D-03, revisi D-04 2026-11-17): izin tambahan di luar preset role; mengirim daftar berarti mengganti seluruh izin tambahan member (izin dicabut dengan menghapusnya dari daftar). Hanya Owner yang dapat mengirim field ini (aktor lain → `403`). Izin preset role yang dikirim ulang atau izin di luar katalog ditolak `422`. Response `MemberResource` menambahkan `extra_permissions` (daftar izin tambahan) di samping `permissions` (izin efektif = preset ∪ extra).
 
@@ -275,35 +273,9 @@ Keputusan yang dikunci untuk Phase 5 (disetujui Product Owner 2026-11-10, D-31):
 2. **Movement `REFUND`/`ADJUSTMENT` memakai permission `cash.reconcile`** karena katalog permission MVP tidak memiliki `cash.refund`; konsekuensi: CASHIER tidak dapat mencatat refund/adjustment kas.
 3. **Movement refund kas ≠ transition refund payment.** Refund kas adalah pengeluaran kas yang direkam sebagai ledger; status payment `REFUNDED` tetap belum didukung (D-30) sampai aturan bisnis refund payment disepakati.
 
-## 12. Phase 6 contract — Basic Inventory
+## 12. Phase 7 contract — Reporting
 
-Basic inventory bersifat opsional dan tidak menjadi prasyarat POS. Item dimiliki satu Business+Outlet (`inventory_items`). Kuantitas disimpan sebagai integer pada base unit item (`unit` berupa string, mis. `g`, `ml`, `pcs`); **tidak ada unit conversion** pada fase ini. Costing juga tidak termasuk.
-
-Aturan saldo dan movement:
-
-- `stock_movements` adalah ledger append-only. Saldo item **tidak disimpan sebagai kolom**; `current_stock = Σ quantity_change` seluruh movement item tersebut, sehingga saldo selalu dapat direkonsiliasi dari ledger.
-- Movement Phase 6 hanya `ADJUSTMENT` dengan `quantity_change` bertanda (positif masuk, negatif keluar), `reason` wajib, `membership_id` sebagai aktor, dan timestamp. Hard delete movement tidak tersedia.
-- Adjustment berjalan dalam transaksi database dengan `lockForUpdate` pada baris item; saldo diperiksa di dalam lock. Adjustment yang menghasilkan saldo negatif ditolak `422` (mengikuti baseline D-10 yang masih menunggu persetujuan Product Owner).
-- `idempotency_key` wajib UUID dan unik per Business (`unique (business_id, idempotency_key)`). Request ulang dengan key sama mengembalikan movement yang sama (`200`, bukan `201`) tanpa menambah baris; key yang sama untuk item lain ditolak `422`.
-- Item dinonaktifkan dengan `PATCH is_active=false`, bukan dihapus, agar referensi movement historis tetap valid. Item nonaktif menolak adjustment baru tetapi masih dapat dibaca.
-- Low stock: item dianggap low stock bila `low_stock_threshold` tidak null dan `current_stock <= low_stock_threshold`. Item tanpa threshold tidak pernah masuk low stock.
-
-**Pengurangan stok dari penjualan belum diimplementasikan.** Belum ada mapping resmi produk → bahan/recipe (recipe/BOM adalah Phase 12A), sehingga checkout tidak mengubah stok. Penjualan biasa tetap berjalan meskipun merchant membuat item inventory; integrasi hanya boleh ditambahkan setelah aturan konsumsi disetujui.
-
-| Method | Path | Permission | Keterangan |
-|---|---|---|---|
-| `GET` | `/api/v1/inventory` | `inventory.read` | Daftar item terpaginate; filter `outlet_id`, `q` (nama), `is_active`, `low_stock=true`. Non-owner hanya melihat outlet dalam cakupan aksesnya (D-05). Response memuat `current_stock` dan `is_low_stock`. |
-| `POST` | `/api/v1/inventory` | `inventory.create` | Buat item: `outlet_id` (wajib, milik Business sendiri), `name`, `unit`, `low_stock_threshold` (nullable, ≥ 0), `is_active`. |
-| `GET` | `/api/v1/inventory/{item}` | `inventory.read` | Detail item + saldo. `404` di luar Business, `403` bila outlet tidak dalam cakupan akses. |
-| `PATCH` | `/api/v1/inventory/{item}` | `inventory.update` | Update `name`, `unit`, `low_stock_threshold`, `is_active`. Tidak ada perubahan outlet atau hard delete. `unit` tidak dapat diubah setelah item memiliki movement (agar arti kuantitas ledger tidak berubah). |
-| `GET` | `/api/v1/inventory/{item}/movements` | `inventory.read` | Ledger movement item terpaginate, terbaru lebih dulu. |
-| `POST` | `/api/v1/inventory/{item}/adjustments` | `inventory.adjust` | Adjustment stok: `quantity_change` (integer ≠ 0), `reason` (wajib), `idempotency_key` (UUID). New movement `201`; replay key sama `200`. Saldo negatif, item nonaktif, atau key lintas item ditolak `422`. |
-
-Permission `inventory.create` dan `inventory.update` ditambahkan pada Phase 6 karena katalog D-03 sebelumnya hanya memuat `inventory.read`, `inventory.adjust`, dan `inventory.stock_opname`. `inventory.stock_opname` belum dipakai; stock opname/waste termasuk Phase 12B. Penambahan permission ini disetujui bersama D-32.
-
-## 13. Phase 7 contract — Reporting
-
-Reporting MVP bersifat read-only dan dihitung langsung dari data transaksi (orders, payments, cash ledger, stock ledger) pada `app/Domain/Report/ReportService.php`; tidak ada tabel agregat, tidak ada penghitungan ulang dari harga catalog terkini, dan bukan accounting penuh.
+Reporting MVP bersifat read-only dan dihitung langsung dari data transaksi (orders, payments, cash ledger) pada `app/Domain/Report/ReportService.php`; tidak ada tabel agregat, tidak ada penghitungan ulang dari harga catalog terkini, dan bukan accounting penuh.
 
 Definisi agregasi (baseline D-33):
 
@@ -311,7 +283,6 @@ Definisi agregasi (baseline D-33):
 - **Laporan payment** memakai basis tanggal pencatatan payment (`payments.created_at`). `by_method` hanya payment `PAID` (total + jumlah transaksi per metode); `by_status` memuat semua status yang ada (termasuk `PENDING`/`FAILED`) sehingga pending/failed tidak pernah menyatu ke angka paid.
 - **Laporan operator** = agregasi order `PAID` per membership operator (`orders.membership_id`), basis tanggal sama dengan sales, diurutkan dari total terbesar.
 - **Cash reconciliation** = daftar Cash Session dengan `opened_at` dalam rentang: `opening_cash`, arus ledger per tipe (`CASH_SALE`, `CASH_IN`, `CASH_OUT`, `REFUND`, `ADJUSTMENT`), `net_movement`, `expected_cash = opening_cash + net_movement` (formula Phase 5), `actual_cash`, dan `variance = actual_cash - expected_cash`; session `OPEN` masih `null` pada actual/variance.
-- **Basic inventory report** = item inventory dengan `current_stock` (Σ seluruh ledger `stock_movements`), ringkasan movement dalam rentang (`movements_count`, `movements_net`), dan `is_low_stock` (aturan Phase 6). Kosong bila modul inventory tidak aktif.
 - **Periode** mengikuti jam aplikasi (`config app.timezone` = **Asia/Jakarta**, keputusan Product Owner 2026-11-11): `from`/`to` wajib (`YYYY-MM-DD`), `from <= to`, maksimal 92 hari. Batas hari laporan adalah batas hari WIB, sesuai jam operasional outlet Indonesia.
 
 Semua endpoint memakai permission `reports.read` (CASHIER tidak memilikinya pada katalog D-03, sehingga laporan hanya OWNER/MANAGER), scope Business dari membership, dan batasan outlet akses (D-05): OWNER melihat semua outlet Business, non-owner hanya outlet yang diberi akses; `outlet_id` di luar cakupan → `403`.
@@ -322,6 +293,5 @@ Semua endpoint memakai permission `reports.read` (CASHIER tidak memilikinya pada
 | `GET` | `/api/v1/reports/payments` | `reports.read` | Params: `from`, `to`, `outlet_id`. Response: `by_method` (PAID saja) dan `by_status` (semua bucket). |
 | `GET` | `/api/v1/reports/operators` | `reports.read` | Params: `from`, `to`, `outlet_id`, `per_page`. Response terpaginate: `membership_id`, `operator_name`, `transactions`, `sales_total`. |
 | `GET` | `/api/v1/reports/cash` | `reports.read` | Params: `from`, `to`, `outlet_id`, `per_page`. Response terpaginate per session termasuk `movements_by_type`. |
-| `GET` | `/api/v1/reports/inventory` | `reports.read` | Params: `from`, `to`, `outlet_id`, `low_stock=true|false`, `per_page`. Response terpaginate per item: saldo, movement dalam rentang, `is_low_stock`. |
 
 Endpoint list terbatas pagination (`per_page` 1–100, default 20) atau lebar rentang (≤ 92 hari), sehingga response tidak terbuka. Validasi rentang dilaporkan `422` untuk parameter kurang, `from > to`, atau rentang > 92 hari.
