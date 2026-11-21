@@ -144,6 +144,8 @@ Gunakan keputusan D-03 sampai D-05 pada `docs/planning/decision-log.md` sebagai 
 > **Status (2026-11-19): Selesai dengan pengecualian yang disetujui.**
 > Gate ditetapkan setelah audit implementasi dan persetujuan Product Owner: D-34 (baseline teknis Phase 3) dan D-35 (ketersediaan menu per outlet, termasuk permission `products.update_availability`). Verifikasi: `CatalogTest` 16 passed (200 assertions), suite backend penuh 158 passed (1103 assertions), `pint --test` 168 files PASS, type-check admin-web lulus, test web catalog 5/5 dan POS 14/14 lulus (19/19).
 > Pengecualian yang disetujui: perubahan ketersediaan/nama/harga catalog belum masuk audit log — dependency D-28; seluruh suite admin-web (13 file) belum dijalankan ulang dalam satu run karena batasan environment, status terakhir 65/65 sebelum commit UI 2026-11-18 (file yang terpengaruh perubahan ini, catalog dan POS, sudah diuji ulang).
+>
+> **Revisi 2026-11-20 (D-37):** stok numerik opsional per menu dan outlet ditambahkan tanpa mengubah target onboarding. permission `products.update_stock` hanya untuk OWNER/MANAGER. Verifikasi terbaru: `CatalogTest` 20 passed, suite backend 147 passed (1008 assertions), `pint --test` 163 files PASS, `tsc -b` sukses, `oxlint` 0 error, `vitest run` 71/71 passed.
 
 ## Target pekerjaan
 

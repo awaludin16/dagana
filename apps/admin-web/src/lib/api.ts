@@ -25,6 +25,7 @@ import type {
   PaymentsReport,
   Product,
   ProductInput,
+  ProductStockInput,
   ReportCashRow,
   ReportListParams,
   ReportRangeParams,
@@ -283,6 +284,10 @@ export const api = {
     return data<Product>(
       await request(`/products/${id}/availability`, { method: 'PATCH', body: input }),
     )
+  },
+
+  async updateProductStock(id: number, input: ProductStockInput) {
+    return data<Product>(await request(`/products/${id}/stock`, { method: 'PATCH', body: input }))
   },
 
   async cashSessions(params: CashSessionListParams = {}) {

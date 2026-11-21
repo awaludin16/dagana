@@ -64,11 +64,19 @@ class Product extends Model
     }
 
     /**
-     * Phase 4 checkout guard hook: only active AND available menus may enter a
-     * new transaction. When an outlet is given, a per-outlet override can only
-     * narrow availability further (D-35). Checkout must re-resolve products
-     * through this scope on the server; client-supplied price/status/
-     * availability is never trusted.
+     * @return HasMany<ProductStock, $this>
+     */
+    public function outletStocks(): HasMany
+    {
+        return $this->hasMany(ProductStock::class);
+    }
+
+    /**
+     * Checkout guard hook: only active AND available menus may enter a new
+     * transaction. When an outlet is given, a per-outlet override can only
+     * narrow availability further (D-35), and tracked stock at 0 blocks sale
+     * (D-37). Checkout re-resolves products through this scope on the server;
+     * client-supplied price/status/availability is never trusted.
      *
      * @param  Builder<Product>  $query
      */
@@ -79,7 +87,10 @@ class Product extends Model
         if ($outletId !== null) {
             $query->whereDoesntHave('outletAvailabilities', function ($query) use ($outletId): void {
                 $query->where('outlet_id', $outletId)->where('is_available', false);
-            });
+            })
+                ->whereDoesntHave('outletStocks', function ($query) use ($outletId): void {
+                    $query->where('outlet_id', $outletId)->where('quantity', 0);
+                });
         }
     }
 }

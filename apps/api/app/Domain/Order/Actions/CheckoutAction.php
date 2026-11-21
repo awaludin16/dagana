@@ -8,6 +8,8 @@ use App\Models\CashSession;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Product;
+use App\Models\ProductStock;
+use App\Models\ProductStockMovement;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +19,7 @@ use Illuminate\Validation\ValidationException;
  * Checkout adalah titik masuk tunggal Order Engine:
  * - menu diambil ulang dari database melalui Product::sellable() (harga/status dari client tidak dipercaya),
  * - total dan snapshot dihitung di backend,
+ * - stok menu yang dipantau dikurangi dan dicatat dalam ledger yang sama,
  * - order, order items, dan payment dibuat dalam satu transaksi database,
  * - idempotency key mencegah transaksi ganda saat retry.
  */
@@ -69,11 +72,22 @@ class CheckoutAction
                     ->where('business_id', $businessId)
                     ->whereIn('id', $productIds)
                     ->sellable($outletId)
+                    ->orderBy('id')
                     ->lockForUpdate()
                     ->get()
                     ->keyBy('id');
 
+                $stocks = ProductStock::query()
+                    ->where('business_id', $businessId)
+                    ->where('outlet_id', $outletId)
+                    ->whereIn('product_id', $productIds)
+                    ->orderBy('product_id')
+                    ->lockForUpdate()
+                    ->get()
+                    ->keyBy('product_id');
+
                 $orderItemData = [];
+                $requestedByProduct = [];
                 $totalAmount = 0;
 
                 foreach ($itemsInput as $item) {
@@ -87,6 +101,7 @@ class CheckoutAction
 
                     $product = $products[$productId];
                     $quantity = (int) $item['quantity'];
+                    $requestedByProduct[$productId] = ($requestedByProduct[$productId] ?? 0) + $quantity;
                     $unitPrice = (int) $product->price;
                     $lineTotal = $unitPrice * $quantity;
 
@@ -99,6 +114,20 @@ class CheckoutAction
                     ];
 
                     $totalAmount += $lineTotal;
+                }
+
+                foreach ($requestedByProduct as $productId => $quantity) {
+                    $stock = $stocks->get($productId);
+
+                    if ($stock === null) {
+                        continue; // Menu tanpa baris stok tidak dibatasi (D-37).
+                    }
+
+                    if ($stock->quantity < $quantity) {
+                        throw ValidationException::withMessages([
+                            'items' => 'Stok '.($products[$productId]->name).' tidak cukup.',
+                        ]);
+                    }
                 }
 
                 if ($paymentMethod === Payment::METHOD_CASH && $amountTendered < $totalAmount) {
@@ -137,6 +166,30 @@ class CheckoutAction
 
                 foreach ($orderItemData as $data) {
                     $order->items()->create($data);
+                }
+
+                foreach ($requestedByProduct as $productId => $quantity) {
+                    $stock = $stocks->get($productId);
+
+                    if ($stock === null) {
+                        continue;
+                    }
+
+                    $stock->quantity -= $quantity;
+                    $stock->save();
+
+                    ProductStockMovement::create([
+                        'business_id' => $businessId,
+                        'product_id' => $productId,
+                        'outlet_id' => $outletId,
+                        'membership_id' => $membership->id,
+                        'order_id' => $order->id,
+                        'product_name' => $products[$productId]->name,
+                        'quantity_change' => -$quantity,
+                        'type' => ProductStockMovement::TYPE_SALE,
+                        'reason' => null,
+                        'created_at' => now(),
+                    ]);
                 }
 
                 // Tunai dibayar langsung di POS; metode lain PENDING menunggu konfirmasi server-side

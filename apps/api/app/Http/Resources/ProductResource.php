@@ -29,6 +29,10 @@ class ProductResource extends JsonResource
                 $this->relationLoaded('outletAvailabilities'),
                 fn (): bool => $this->is_available && ($this->outletAvailabilities->first()?->is_available ?? true),
             ),
+            'stock_quantity' => $this->when(
+                $this->relationLoaded('outletStocks'),
+                fn (): ?int => $this->outletStocks->first()?->quantity,
+            ),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];

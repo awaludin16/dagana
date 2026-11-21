@@ -349,6 +349,52 @@ describe('katalog (Phase 3)', () => {
     )
   })
 
+  it('mengubah stok menu untuk outlet terpilih', async () => {
+    const stockMembership = {
+      ...membership,
+      permissions: [...catalogPermissions, 'products.update_stock'],
+    }
+    const tracked = { ...product, is_available_at_outlet: true, stock_quantity: 4 }
+    const fetchMock = mockApi(async (url, init) => {
+      if (url.pathname.endsWith('/me')) {
+        return jsonResponse({ data: { ...user, membership: stockMembership } })
+      }
+      if (url.pathname.endsWith('/categories')) return jsonResponse(pageResponse([category]))
+      if (url.pathname.endsWith('/products/9/stock') && init?.method === 'PATCH') {
+        return jsonResponse({ data: { ...tracked, stock_quantity: 7 } })
+      }
+      if (url.pathname.endsWith('/products')) {
+        return jsonResponse(pageResponse([tracked]))
+      }
+      return null
+    })
+
+    renderCatalog()
+    expect((await screen.findAllByText('Stok: 4')).length).toBeGreaterThan(0)
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Ubah stok Es Kopi Susu' })[0])
+    fireEvent.change(await screen.findByLabelText('Stok tersedia'), { target: { value: '7' } })
+    fireEvent.change(screen.getByLabelText('Alasan (opsional)'), {
+      target: { value: 'Stok awal' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Simpan stok' }))
+
+    await waitFor(() => {
+      const request = fetchMock.mock.calls.find(
+        ([input, init]) => String(input).endsWith('/products/9/stock') && init?.method === 'PATCH',
+      )
+      expect(request).toBeDefined()
+      expect(JSON.parse(String(request?.[1]?.body))).toEqual({
+        outlet_id: outlet.id,
+        quantity: 7,
+        reason: 'Stok awal',
+      })
+    })
+    expect(
+      await screen.findByText('Stok Es Kopi Susu di Outlet Utama diperbarui menjadi 7.'),
+    ).toBeDefined()
+  })
+
   it('mengaktifkan kembali menu nonaktif dari dropdown aksi', async () => {
     const inactive = { ...product, is_active: false }
     const fetchMock = mockApi(async (url, init) => {

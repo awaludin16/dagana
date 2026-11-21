@@ -79,7 +79,7 @@
 
 ### D-03 — Permission catalog MVP
 
-**Status:** disetujui Product Owner (2026-11-16). Katalog berikut adalah baseline final MVP, termasuk `products.update_availability` dari D-35 (revisi 2026-11-19) dan penyesuaian D-36 (penghapusan permission `inventory.*`, 2026-11-20). Perubahan kategori/kata kunci permission di masa depan wajib lewat revisi keputusan, bukan langsung di kode. Catatan: `members.invite` tetap menjadi permission untuk endpoint pembuatan employee (alur direct-create, lihat konfirmasi teknis Phase 2).
+**Status:** disetujui Product Owner (2026-11-16). Katalog berikut adalah baseline final MVP, termasuk `products.update_availability` dari D-35 (revisi 2026-11-19), `products.update_stock` dari D-37 (revisi 2026-11-20), dan penyesuaian D-36 (penghapusan permission `inventory.*`, 2026-11-20). Perubahan kategori/kata kunci permission di masa depan wajib lewat revisi keputusan, bukan langsung di kode. Catatan: `members.invite` tetap menjadi permission untuk endpoint pembuatan employee (alur direct-create, lihat konfirmasi teknis Phase 2).
 
 **Keputusan:** gunakan permission eksplisit berbentuk `resource.action`. Katalog awal:
 
@@ -87,7 +87,7 @@
 - `outlets.read`, `outlets.create`, `outlets.update`, `outlets.delete`
 - `members.read`, `members.invite`, `members.update`, `members.delete`
 - `categories.read`, `categories.create`, `categories.update`, `categories.delete`
-- `products.read`, `products.create`, `products.update`, `products.update_availability`, `products.delete`
+- `products.read`, `products.create`, `products.update`, `products.update_availability`, `products.update_stock`, `products.delete`
 - `orders.read`, `orders.create`, `orders.update`, `orders.cancel`
 - `payments.read`, `payments.create`, `payments.refund`
 - `cash.read`, `cash.open`, `cash.cash_in`, `cash.cash_out`, `cash.close`, `cash.reconcile`
@@ -462,7 +462,28 @@ Setiap order lokal memiliki UUID/client-generated idempotency key yang unik, wak
 4. Checkout, payment, kas, order, dan reporting tidak berubah secara fungsional selain hilangnya laporan inventory. Ketersediaan menu memakai D-35; stok numerik per menu tidak ditambahkan pada keputusan ini.
 5. Recipe/BOM, COGS, waste, stock opname, konversi satuan, dan advanced inventory dikeluarkan dari perencanaan aktif MVP maupun roadmap Phase 12. Jika dibutuhkan kelak, semuanya memerlukan keputusan produk baru.
 
-**Verifikasi:** suite backend 143 passed / 946 assertions; `pint --test` PASS 158 files. Admin-web: `tsc -b` sukses, `oxlint` 0 error (3 warning lama), `vitest run` 70/70 passed. Perubahan penghapusan ini belum di-commit dan belum di-push.
+**Verifikasi:** suite backend 143 passed / 946 assertions; `pint --test` PASS 158 files. Admin-web: `tsc -b` sukses, `oxlint` 0 error (3 warning lama), `vitest run` 70/70 passed. Commit `616ea9b` di branch `refactor/remove-inventory`; masih belum di-push. Angka suite terbaru setelah D-37 tercatat pada keputusan tersebut.
+
+### D-37 — Stok numerik opsional per menu dan outlet — status: disetujui
+
+**Status:** disetujui Product Owner (2026-11-20). Melengkapi D-35 dan D-36 tanpa menghidupkan kembali modul inventory bahan baku.
+
+**Alasan:** merchant perlu membatasi jumlah menu yang dapat dijual per outlet, tetapi tidak boleh dipaksa mengisi stok. Fitur ini hanya mengikuti hasil penjualan dan koreksi manual; tidak ada resep, BOM, COGS, waste, atau stock opname.
+
+**Keputusan:**
+
+1. Stok bersifat **opsional**. Tidak ada baris `product_stocks` berarti menu tidak dibatasi (`stock_quantity = null` pada response). Adanya baris berarti stok dipantau; `quantity = 0` berarti habis. Menu lama tetap berjualan tanpa migrasi data.
+2. Tabel `product_stocks` menyimpan `business_id`, `product_id`, `outlet_id`, dan `quantity` unsigned dengan unique `(product_id, outlet_id)` serta FK `restrictOnDelete`. Semua query stok diskop ke Business dan outlet yang diizinkan.
+3. Tabel `product_stock_movements` adalah ledger append-only dengan tipe `adjustment` dan `sale`, menyimpan `quantity_change`, `product_name`, aktor (`membership_id`), order terkait, reason, dan `created_at`. FK ke product/outlet/membership boleh null agar histori tetap ada saat master data dihapus. Unique `(order_id, product_id)` mencegah movement ganda.
+4. Endpoint baru `PATCH /api/v1/products/{product}/stock` menerima `{outlet_id, quantity: number | null, reason?}`. `quantity: null` menghapus baris stok dan mengembalikan menu ke kondisi tanpa batas. Permission baru `products.update_stock` diberikan ke OWNER/MANAGER, bukan CASHIER; akses outlet tetap diverifikasi (D-05).
+5. `GET /api/v1/products?outlet_id=X` menyertakan `stock_quantity` hanya ketika `outlet_id` dikirim. Filter `is_available=true` dan `Product::sellable($outletId)` menyembunyikan/menolak menu dengan stok 0, selaras dengan D-35.
+6. Checkout mem-lock baris stok yang dipantau, menolak quantity melebihi stok dengan `422 items`, lalu memotong stok dan menulis satu movement `sale` per menu per order di dalam transaksi order/payment yang sama. Item duplikat diagregasi. Retry idempotency mengembalikan order yang sama tanpa potongan kedua.
+7. Admin-web menampilkan stok per outlet dan menyediakan dialog ubah stok bagi pengguna dengan `products.update_stock`. POS menyembunyikan menu habis dari filter server dan menonaktifkan tombol bila stok 0; backend tetap authoritative.
+8. Config stok per outlet dihapus saat outlet dihapus. Produk tanpa histori order dapat dihapus bersama config availability/stoknya; produk dengan histori tetap harus dinonaktifkan (D-34).
+
+**Gate yang belum ditutup:** belum ada test konkurensi paralel yang benar-benar bersamaan; perlindungan mengandalkan `lockForUpdate` dan unique constraint. Belum ada endpoint/report ledger stok untuk konsumsi UI atau audit, dan belum ada notifikasi stok menipis. Refund/pembatalan belum mengembalikan stok karena alur refund belum disetujui (D-30).
+
+**Verifikasi:** `pint --test` PASS 163 files; `php artisan test` 147 passed / 1008 assertions. Admin-web: `tsc -b` sukses, `oxlint` 0 error (3 warning lama), `vitest run` 71/71 passed. Fitur ini belum di-commit dan belum di-push.
 
 ## 9. Daftar Gate yang Tetap Harus Ditutup Sebelum Produksi
 
