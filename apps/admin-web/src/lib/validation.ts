@@ -57,17 +57,30 @@ export const categorySchema = z.object({
   is_active: z.boolean(),
 })
 
-export const productSchema = z.object({
-  name: requiredText('Nama menu'),
-  price: z
-    .number({ message: 'Harga wajib diisi.' })
-    .int('Harga harus berupa Rupiah utuh.')
-    .safe()
-    .nonnegative('Harga tidak boleh negatif.'),
-  category_id: z.number().int().positive().nullable(),
-  is_active: z.boolean(),
-  is_available: z.boolean(),
-})
+export const productSchema = z
+  .object({
+    name: requiredText('Nama menu'),
+    price: z
+      .number({ message: 'Harga wajib diisi.' })
+      .int('Harga harus berupa Rupiah utuh.')
+      .safe()
+      .nonnegative('Harga tidak boleh negatif.'),
+    category_id: z.number().int().positive().nullable(),
+    is_active: z.boolean(),
+    is_available: z.boolean(),
+    initial_stock: z
+      .number()
+      .int('Stok awal harus bilangan bulat.')
+      .nonnegative('Stok awal tidak boleh negatif.')
+      .max(1000000, 'Stok awal terlalu besar.')
+      .nullable()
+      .optional(),
+    initial_stock_outlet_id: z.number().int().positive().nullable().optional(),
+  })
+  .refine((value) => value.initial_stock == null || value.initial_stock_outlet_id != null, {
+    message: 'Outlet untuk stok awal wajib dipilih.',
+    path: ['initial_stock_outlet_id'],
+  })
 
 export const outletSchema = z.object({
   name: requiredText('Nama outlet'),

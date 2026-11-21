@@ -69,11 +69,17 @@ sudah cukup untuk mulai menjual.
 
 ### Ketersediaan menu
 
-Menu dapat dinonaktifkan secara global, ditandai habis untuk seluruh Business, atau ditandai habis hanya pada outlet tertentu (mis. bahan habis di satu cabang). Penandaan habis per outlet tidak mengubah harga dan tidak memengaruhi outlet lain (D-35). Operator dengan akses outlet dapat menandai menu habis saat berjualan.
+Menu dapat dinonaktifkan secara global (`is_active = false`), ditandai habis untuk seluruh Business (`is_available = false`), atau ditandai habis hanya pada outlet tertentu dengan menetapkan stok 0 (mis. bahan habis di satu cabang). Penandaan habis per outlet tidak mengubah harga dan tidak memengaruhi outlet lain (D-39). Operator dengan akses outlet, termasuk kasier, dapat mengubah stok saat berjualan.
 
 ### Stok menu opsional
 
-Merchant dapat, tetapi tidak wajib, memantau jumlah menu yang dapat dijual di tiap outlet (D-37). Menu tanpa stok yang dipantau tetap dapat dijual tanpa batas. Jika stok dipantau, angka habis di outlet itu menolak penjualan dan menu tidak tampil sebagai tersedia di POS. Stok berkurang otomatis saat checkout dan dapat dikoreksi manual oleh OWNER/MANAGER dengan alasan; setiap perubahan tercatat dalam ledger. Stok bukan prasyarat onboarding dan tidak terkait dengan resep atau bahan baku.
+Merchant dapat, tetapi tidak wajib, memantau jumlah menu yang dapat dijual di tiap outlet (D-37). Menu tanpa stok yang dipantau tetap dapat dijual tanpa batas. Jika stok dipantau, angka habis di outlet itu menolak penjualan dan menu tidak tampil sebagai tersedia di POS. Stok berkurang otomatis saat checkout dan dapat dikoreksi manual oleh OWNER/MANAGER/CASHIER yang memiliki akses outlet, dengan alasan opsional; setiap perubahan tercatat dalam ledger. Stok bukan prasyarat onboarding dan tidak terkait dengan resep atau bahan baku.
+
+Saat membuat menu, merchant dengan satu outlet dapat mengisi stok awal secara opsional; untuk multi-outlet, stok diatur per outlet setelah menu dibuat (D-38). Tabel katalog menampilkan kolom `Stok` terpisah bila ada menu yang stoknya dipantau: `—` berarti tanpa batas, angka berarti tersedia, dan `Habis` berarti stok 0. Kolom status menunjukkan aktif/nonaktif plus `Habis di semua outlet` bila master switch mati, `Habis di outlet ini` bila stok 0, atau `Tersedia di outlet ini` selainnya (D-39).
+
+Merchant dapat menentukan batas stok menipis per menu dan outlet. Batas hanya dapat diatur ketika stok sedang dipantau; sistem menolak batas jika stok tidak diset. Jika tidak diisi, sistem memakai default **10 porsi** dan baris lama otomatis mendapat nilai tersebut. Peringatan ditampilkan sebagai badge `Menipis` di katalog dan POS; nilai `0` menonaktifkan peringatan. Notifikasi aktif dan ringkasan dashboard belum menjadi bagian MVP.
+
+D-39 menghapus ketersediaan per outlet dan aksi cepat `Tandai habis` / `Jeda penjualan`. Satu-satunya cara menandai menu habis di satu outlet adalah menetapkan stok 0 lewat dialog ubah stok; kasier memiliki permission `products.update_stock` untuk melakukan ini pada outlet yang diaksesnya. Tidak ada lagi status `Dijeda di outlet ini`, sehingga stok yang masih tersisa selalu dilaporkan tersedia kecuali master switch global mati.
 
 ---
 

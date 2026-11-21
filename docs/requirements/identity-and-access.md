@@ -222,13 +222,14 @@ Baseline akses role:
 |---|---:|---:|---:|
 | POS, order, pembayaran, Cash Session | Ya | Ya | Ya |
 | Kelola catalog/menu | Ya | Ya | Tidak |
+| Ubah stok menu pada outlet yang diakses | Ya | Ya | Ya |
 | Lihat laporan | Ya | Ya | Tidak |
 | Kelola employee dan outlet access | Ya | Ya, kecuali Owner/permission | Tidak |
 | Ubah pengaturan bisnis/billing | Ya | Terbatas | Tidak |
 
 Akses aktual tetap ditentukan oleh permission preset dan outlet scope yang diperiksa backend. Manager tidak dapat mengubah Owner atau memberikan hak yang lebih tinggi daripada hak yang dimilikinya.
 
-**Revisi (2026-11-19, disetujui): ketersediaan per outlet.** Cashier menerima `products.update_availability` sehingga dapat menandai menu habis/tersedia pada outlet yang ia akses tanpa memperoleh `products.update` (master catalog tetap milik Owner/Manager).
+**Revisi (2026-11-21, disetujui): stok sebagai penentu habis.** D-35 dibatalkan, termasuk `products.update_availability`. Cashier menerima `products.update_stock` sehingga dapat menandai menu habis lewat stok 0 pada outlet yang ia akses tanpa memperoleh `products.update` (master catalog tetap milik Owner/Manager).
 
 Tidak ada role `INVENTORY`, `KITCHEN`, `STAFF`, atau custom role pada MVP. Kebutuhan akses khusus ditangani melalui permission yang tersedia dan outlet access, bukan dengan menambah role baru.
 
@@ -262,7 +263,7 @@ categories.delete
 products.read
 products.create
 products.update
-products.update_availability
+products.update_stock
 products.delete
 
 orders.read

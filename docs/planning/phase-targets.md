@@ -142,10 +142,14 @@ Gunakan keputusan D-03 sampai D-05 pada `docs/planning/decision-log.md` sebagai 
 # Phase 3 — Catalog
 
 > **Status (2026-11-19): Selesai dengan pengecualian yang disetujui.**
-> Gate ditetapkan setelah audit implementasi dan persetujuan Product Owner: D-34 (baseline teknis Phase 3) dan D-35 (ketersediaan menu per outlet, termasuk permission `products.update_availability`). Verifikasi: `CatalogTest` 16 passed (200 assertions), suite backend penuh 158 passed (1103 assertions), `pint --test` 168 files PASS, type-check admin-web lulus, test web catalog 5/5 dan POS 14/14 lulus (19/19).
+> Gate ditetapkan setelah audit implementasi dan persetujuan Product Owner: D-34 (baseline teknis Phase 3) dan D-35 (ketersediaan menu per outlet, termasuk permission `products.update_availability`; lalu dibatalkan D-39). Verifikasi saat itu: `CatalogTest` 16 passed (200 assertions), suite backend penuh 158 passed (1103 assertions), `pint --test` 168 files PASS, type-check admin-web lulus, test web catalog 5/5 dan POS 14/14 lulus (19/19).
 > Pengecualian yang disetujui: perubahan ketersediaan/nama/harga catalog belum masuk audit log — dependency D-28; seluruh suite admin-web (13 file) belum dijalankan ulang dalam satu run karena batasan environment, status terakhir 65/65 sebelum commit UI 2026-11-18 (file yang terpengaruh perubahan ini, catalog dan POS, sudah diuji ulang).
 >
 > **Revisi 2026-11-20 (D-37):** stok numerik opsional per menu dan outlet ditambahkan tanpa mengubah target onboarding. permission `products.update_stock` hanya untuk OWNER/MANAGER. Verifikasi terbaru: `CatalogTest` 20 passed, suite backend 147 passed (1008 assertions), `pint --test` 163 files PASS, `tsc -b` sukses, `oxlint` 0 error, `vitest run` 71/71 passed.
+>
+> **Revisi 2026-11-21 (D-38):** stok awal opsional saat create (satu outlet), kolom `Stok` terpisah, dan batas stok menipis default 10 porsi ditambahkan; stok 0 ikut membuat status efektif `Habis di outlet ini`. Tidak ada permission baru. Verifikasi terbaru: `CatalogTest` 22 passed, suite backend 149 passed (1045 assertions), `pint --test` 164 files PASS, `tsc -b` sukses, `oxlint` 0 error (3 warning lama), `vitest run` 74/74 passed.
+>
+> **Revisi 2026-11-21 (D-39):** ketersediaan per outlet dihapus penuh — tabel `product_outlet_availabilities`, endpoint availability, permission `products.update_availability`, `unavailable_reason`, dan toggle jeda; D-35 dibatalkan. Kasier memperoleh `products.update_stock` dan menandai habis lewat stok 0 pada outlet yang diakses. `is_available_at_outlet` murni turunan master switch dan stok. Verifikasi terbaru: `CatalogTest` 22 passed (292 assertions), suite backend 149 passed (1043 assertions), `pint --test` 163 files PASS, `tsc -b` sukses, `oxlint` 0 error (3 warning lama), `npm test -- --run` 74/74 passed, Prettier pada file web yang disentuh bersih.
 
 ## Target pekerjaan
 
@@ -155,13 +159,13 @@ Memungkinkan merchant mengelola kategori, menu/produk, harga, status aktif/nonak
 
 - [x] User dengan permission yang sesuai dapat membuat, membaca, memperbarui, dan menonaktifkan kategori/menu sesuai operasi yang disetujui. — Lulus; `CatalogTest` CRUD kategori/menu, deaktivasi via `PATCH is_active`, permission per role.
 - [x] Harga dan field wajib divalidasi di backend; input tidak valid tidak mengubah data. — Lulus; `test_product_validation_rejects_invalid_input`, `test_category_requires_a_name`.
-- [x] Menu aktif dan tersedia dapat ditemukan oleh proses POS sesuai Business/Outlet context yang berlaku. — Lulus; filter `is_active`/`is_available` (efektif bila `outlet_id` dikirim) dan POS mengirim outlet aktif (D-35).
+- [x] Menu aktif dan tersedia dapat ditemukan oleh proses POS sesuai Business/Outlet context yang berlaku. — Lulus; filter `is_active`/`is_available` (efektif bila `outlet_id` dikirim) dan POS mengirim outlet aktif (D-39).
 - [x] Menu nonaktif atau tidak tersedia tidak dapat ditambahkan ke transaksi baru melalui API hanya dengan memanipulasi request. — Lulus; `Product::sellable($outletId)` + `test_checkout_tolak_menu_tidak_aktif_dan_tidak_tersedia` (Phase 4).
-- [x] Ketersediaan menu dapat dibedakan per outlet tanpa mengubah harga Business; master switch global tetap menang. — Lulus; `test_availability_can_be_overridden_per_outlet_without_touching_global_flag`, `test_outlet_availability_requires_outlet_access` (D-35).
+- [x] Ketersediaan menu dapat dibedakan per outlet tanpa mengubah harga Business; master switch global tetap menang. — Lulus; `test_outlet_specific_stock_controls_availability_without_touching_global_flag`, `test_cashier_can_update_stock_only_at_accessible_outlets` (D-39).
 - [x] Data catalog milik satu Business tidak dapat dilihat/diubah oleh Business lain. — Lulus; `test_catalog_is_scoped_to_the_authenticated_business`, validasi `category_id` lintas Business.
 - [x] Perubahan nama/harga menu tidak mengubah snapshot transaksi historis yang sudah tersimpan. — Lulus; `test_order_menyimpan_snapshot_harga_dan_nama_setelah_catalog_ubah`; kontrak `api-design.md` §9.
 - [x] List endpoint memakai pagination atau batas hasil yang terdokumentasi saat jumlah data dapat bertambah. — Lulus; default 20/maksimum 100, diuji `per_page=200` → 100.
-- [x] Feature test mencakup CRUD dasar, validasi, status aktif/nonaktif, availability, dan cross-tenant access. — Lulus; 16 test catalog (termasuk guard hapus produk berhistori dan permission ketersediaan).
+- [x] Feature test mencakup CRUD dasar, validasi, status aktif/nonaktif, availability, dan cross-tenant access. — Lulus; 22 test catalog (termasuk guard hapus produk berhistori dan permission stok per outlet).
 
 ## Cara verifikasi / bukti
 
@@ -229,7 +233,7 @@ Decision log mencatat rekomendasi baseline tentang apakah satu Cash Session hany
 
 # Phase 6 — Dihapus
 
-Fase ini dihapus oleh D-36 (2026-11-20). Tidak ada target, acceptance criteria, atau bukti verifikasi yang aktif untuk nomor fase ini. Ketersediaan menu diatur pada Phase 3 melalui D-35.
+Fase ini dihapus oleh D-36 (2026-11-20). Tidak ada target, acceptance criteria, atau bukti verifikasi yang aktif untuk nomor fase ini. Ketersediaan menu diatur pada Phase 3 melalui D-39.
 
 ---
 

@@ -10,9 +10,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * Stok numerik opsional untuk satu menu di satu outlet. Tidak adanya baris
  * berarti menu tidak dibatasi stoknya (D-37).
  */
-#[Fillable(['business_id', 'product_id', 'outlet_id', 'quantity'])]
+#[Fillable(['business_id', 'product_id', 'outlet_id', 'quantity', 'low_stock_threshold'])]
 class ProductStock extends Model
 {
+    public const DEFAULT_LOW_STOCK_THRESHOLD = 10;
+
     /**
      * @return array<string, string>
      */
@@ -20,6 +22,7 @@ class ProductStock extends Model
     {
         return [
             'quantity' => 'integer',
+            'low_stock_threshold' => 'integer',
         ];
     }
 

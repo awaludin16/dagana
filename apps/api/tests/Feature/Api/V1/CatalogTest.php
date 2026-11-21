@@ -9,7 +9,6 @@ use App\Models\OrderItem;
 use App\Models\Outlet;
 use App\Models\OutletAccess;
 use App\Models\Product;
-use App\Models\ProductOutletAvailability;
 use App\Models\ProductStock;
 use App\Models\ProductStockMovement;
 use App\Models\User;
@@ -158,7 +157,7 @@ class CatalogTest extends TestCase
             ->assertJsonPath('data.category.name', 'Minuman');
     }
 
-    public function test_availability_can_be_overridden_per_outlet_without_touching_global_flag(): void
+    public function test_outlet_specific_stock_controls_availability_without_touching_global_flag(): void
     {
         [$owner, $business, $outletA] = $this->merchant();
         $outletB = Outlet::factory()->for($business)->create();
@@ -166,19 +165,14 @@ class CatalogTest extends TestCase
 
         Sanctum::actingAs($owner);
 
-        $this->patchJson("/api/v1/products/{$product->id}/availability", [
+        $this->patchJson("/api/v1/products/{$product->id}/stock", [
             'outlet_id' => $outletA->id,
-            'is_available' => false,
+            'quantity' => 0,
         ])
             ->assertOk()
             ->assertJsonPath('data.is_available', true)
-            ->assertJsonPath('data.is_available_at_outlet', false);
-
-        $this->assertDatabaseHas('product_outlet_availabilities', [
-            'product_id' => $product->id,
-            'outlet_id' => $outletA->id,
-            'is_available' => false,
-        ]);
+            ->assertJsonPath('data.is_available_at_outlet', false)
+            ->assertJsonPath('data.stock_quantity', 0);
 
         // Bisnis tetap penuh; hanya outlet A yang kehabisan.
         $this->getJson("/api/v1/products?outlet_id={$outletA->id}&is_available=true")
@@ -201,10 +195,10 @@ class CatalogTest extends TestCase
             ->assertCreated();
         $this->assertDatabaseCount('orders', 1);
 
-        // Mengembalikan ketersediaan di outlet A memulihkan penjualan.
-        $this->patchJson("/api/v1/products/{$product->id}/availability", [
+        // Mengisi stok di outlet A memulihkan penjualan.
+        $this->patchJson("/api/v1/products/{$product->id}/stock", [
             'outlet_id' => $outletA->id,
-            'is_available' => true,
+            'quantity' => 2,
         ])->assertOk()->assertJsonPath('data.is_available_at_outlet', true);
 
         $this->postJson('/api/v1/orders', $this->checkoutPayload($outletA, $product))
@@ -217,7 +211,7 @@ class CatalogTest extends TestCase
             ->assertJsonCount(0, 'data');
     }
 
-    public function test_outlet_availability_requires_outlet_access(): void
+    public function test_cashier_can_update_stock_only_at_accessible_outlets(): void
     {
         [$owner, $business, $outletA] = $this->merchant();
         $outletB = Outlet::factory()->for($business)->create();
@@ -232,29 +226,29 @@ class CatalogTest extends TestCase
 
         Sanctum::actingAs($cashier);
 
-        // Cashier boleh menandai habis di outlet yang ia akses (D-35 + D-03 revisi)...
-        $this->patchJson("/api/v1/products/{$product->id}/availability", [
+        // Cashier dapat mengubah stok di outlet yang ia akses (D-39)...
+        $this->patchJson("/api/v1/products/{$product->id}/stock", [
             'outlet_id' => $outletA->id,
-            'is_available' => false,
-        ])->assertOk();
+            'quantity' => 5,
+        ])->assertOk()->assertJsonPath('data.stock_quantity', 5);
 
         // ...tetapi tidak pada outlet di luar aksesnya, dan tidak bocor keberadaannya.
-        $this->patchJson("/api/v1/products/{$product->id}/availability", [
+        $this->patchJson("/api/v1/products/{$product->id}/stock", [
             'outlet_id' => $outletB->id,
-            'is_available' => false,
+            'quantity' => 5,
         ])->assertNotFound();
         $this->getJson("/api/v1/products?outlet_id={$outletB->id}")->assertNotFound();
-        $this->assertDatabaseMissing('product_outlet_availabilities', ['outlet_id' => $outletB->id]);
+        $this->assertDatabaseMissing('product_stocks', ['outlet_id' => $outletB->id]);
 
-        // Permission ketersediaan tidak memberi hak mengubah master produk.
+        // Hak stok tidak memberi hak mengubah master produk.
         $this->patchJson("/api/v1/products/{$product->id}", ['price' => 100])
             ->assertForbidden();
 
         // Outlet asing juga ditolak oleh validasi request (422) maupun 404.
         Sanctum::actingAs($owner);
-        $this->patchJson("/api/v1/products/{$product->id}/availability", [
+        $this->patchJson("/api/v1/products/{$product->id}/stock", [
             'outlet_id' => 999999,
-            'is_available' => false,
+            'quantity' => 5,
         ])->assertUnprocessable()->assertJsonValidationErrors('outlet_id');
     }
 
@@ -268,18 +262,23 @@ class CatalogTest extends TestCase
         $response = $this->getJson("/api/v1/products/{$product->id}?outlet_id={$outletA->id}")->assertOk();
         $this->assertArrayHasKey('stock_quantity', $response->json('data'));
         $this->assertNull($response->json('data.stock_quantity'));
+        $this->assertFalse($response->json('data.low_stock'));
 
         $this->patchJson("/api/v1/products/{$product->id}/stock", [
             'outlet_id' => $outletA->id,
             'quantity' => 5,
             'reason' => 'Stok awal',
-        ])->assertOk()->assertJsonPath('data.stock_quantity', 5);
+        ])->assertOk()
+            ->assertJsonPath('data.stock_quantity', 5)
+            ->assertJsonPath('data.low_stock_threshold', ProductStock::DEFAULT_LOW_STOCK_THRESHOLD)
+            ->assertJsonPath('data.low_stock', true);
 
         $this->assertDatabaseHas('product_stocks', [
             'business_id' => $business->id,
             'product_id' => $product->id,
             'outlet_id' => $outletA->id,
             'quantity' => 5,
+            'low_stock_threshold' => ProductStock::DEFAULT_LOW_STOCK_THRESHOLD,
         ]);
         $this->assertDatabaseHas('product_stock_movements', [
             'product_id' => $product->id,
@@ -311,6 +310,8 @@ class CatalogTest extends TestCase
         $response = $this->getJson("/api/v1/products/{$product->id}?outlet_id={$outletA->id}")->assertOk();
         $this->assertArrayHasKey('stock_quantity', $response->json('data'));
         $this->assertNull($response->json('data.stock_quantity'));
+        $this->assertNull($response->json('data.low_stock_threshold'));
+        $this->assertFalse($response->json('data.low_stock'));
         $this->assertDatabaseMissing('product_stocks', [
             'product_id' => $product->id,
             'outlet_id' => $outletA->id,
@@ -324,14 +325,17 @@ class CatalogTest extends TestCase
         $this->patchJson("/api/v1/products/{$product->id}/stock", [
             'outlet_id' => $outletA->id,
             'quantity' => 0,
-        ])->assertOk()->assertJsonPath('data.stock_quantity', 0);
+        ])->assertOk()
+            ->assertJsonPath('data.stock_quantity', 0)
+            ->assertJsonPath('data.is_available_at_outlet', false)
+            ->assertJsonPath('data.low_stock', true);
 
         $this->getJson("/api/v1/products?outlet_id={$outletA->id}&is_available=true")
             ->assertOk()->assertJsonCount(0, 'data');
         $this->assertSame([], Product::query()->sellable($outletA->id)->pluck('id')->all());
     }
 
-    public function test_stock_update_requires_permission_and_outlet_access(): void
+    public function test_stock_update_requires_outlet_access_and_valid_input(): void
     {
         [$owner, $business, $outletA] = $this->merchant();
         $outletB = Outlet::factory()->for($business)->create();
@@ -344,11 +348,12 @@ class CatalogTest extends TestCase
         ]);
         OutletAccess::create(['membership_id' => $cashierMembership->id, 'outlet_id' => $outletA->id]);
 
+        // Kasier kini dapat menyesuaikan stok di outlet yang ia akses (D-39).
         Sanctum::actingAs($cashier);
         $this->patchJson("/api/v1/products/{$product->id}/stock", [
             'outlet_id' => $outletA->id,
             'quantity' => 1,
-        ])->assertForbidden();
+        ])->assertOk();
 
         $manager = User::factory()->create();
         $managerMembership = BusinessMembership::factory()->for($manager)->create([
@@ -378,6 +383,110 @@ class CatalogTest extends TestCase
             'outlet_id' => $outletA->id,
             'quantity' => -1,
         ])->assertUnprocessable()->assertJsonValidationErrors('quantity');
+    }
+
+    public function test_product_can_be_created_with_initial_stock_for_single_outlet(): void
+    {
+        [$owner, $business, $outletA] = $this->merchant();
+
+        Sanctum::actingAs($owner);
+
+        $created = $this->postJson('/api/v1/products', [
+            'name' => 'Es Teh',
+            'price' => 5000,
+            'initial_stock' => 8,
+            'initial_stock_outlet_id' => $outletA->id,
+        ])->assertCreated()
+            ->assertJsonPath('data.stock_quantity', 8)
+            ->assertJsonPath('data.low_stock_threshold', ProductStock::DEFAULT_LOW_STOCK_THRESHOLD)
+            ->assertJsonPath('data.low_stock', true);
+
+        $productId = $created->json('data.id');
+        $this->assertDatabaseHas('product_stocks', [
+            'business_id' => $business->id,
+            'product_id' => $productId,
+            'outlet_id' => $outletA->id,
+            'quantity' => 8,
+            'low_stock_threshold' => ProductStock::DEFAULT_LOW_STOCK_THRESHOLD,
+        ]);
+        $this->assertDatabaseHas('product_stock_movements', [
+            'product_id' => $productId,
+            'outlet_id' => $outletA->id,
+            'quantity_change' => 8,
+            'type' => ProductStockMovement::TYPE_ADJUSTMENT,
+            'reason' => 'Stok awal',
+        ]);
+
+        $this->postJson('/api/v1/products', [
+            'name' => 'Tanpa Stok',
+            'price' => 3000,
+        ])->assertCreated();
+        $untracked = Product::query()->where('name', 'Tanpa Stok')->firstOrFail();
+        $this->assertArrayNotHasKey(
+            'stock_quantity',
+            $this->getJson("/api/v1/products/{$untracked->id}")->assertOk()->json('data'),
+        );
+        $this->assertDatabaseMissing('product_stocks', ['product_id' => $untracked->id]);
+
+        $this->postJson('/api/v1/products', [
+            'name' => 'Stok Tanpa Outlet',
+            'price' => 3000,
+            'initial_stock' => 4,
+        ])->assertUnprocessable()->assertJsonValidationErrors('initial_stock_outlet_id');
+    }
+
+    public function test_low_stock_threshold_can_be_customized_and_requires_tracked_stock(): void
+    {
+        [$owner, $business, $outletA] = $this->merchant();
+        $product = Product::factory()->for($business)->create();
+
+        Sanctum::actingAs($owner);
+
+        $this->patchJson("/api/v1/products/{$product->id}/stock", [
+            'outlet_id' => $outletA->id,
+            'quantity' => 12,
+            'low_stock_threshold' => 3,
+        ])->assertOk()
+            ->assertJsonPath('data.low_stock_threshold', 3)
+            ->assertJsonPath('data.low_stock', false);
+
+        // Tanpa field threshold, nilai yang sudah diatur tidak boleh kembali ke default.
+        $this->patchJson("/api/v1/products/{$product->id}/stock", [
+            'outlet_id' => $outletA->id,
+            'quantity' => 2,
+        ])->assertOk()
+            ->assertJsonPath('data.low_stock_threshold', 3)
+            ->assertJsonPath('data.low_stock', true);
+        $this->assertDatabaseHas('product_stocks', [
+            'product_id' => $product->id,
+            'quantity' => 2,
+            'low_stock_threshold' => 3,
+        ]);
+
+        $this->patchJson("/api/v1/products/{$product->id}/stock", [
+            'outlet_id' => $outletA->id,
+            'quantity' => 2,
+            'low_stock_threshold' => 0,
+        ])->assertOk()
+            ->assertJsonPath('data.low_stock_threshold', 0)
+            ->assertJsonPath('data.low_stock', false);
+
+        $this->patchJson("/api/v1/products/{$product->id}/stock", [
+            'outlet_id' => $outletA->id,
+            'quantity' => null,
+            'low_stock_threshold' => 5,
+        ])->assertUnprocessable()->assertJsonValidationErrors('low_stock_threshold');
+
+        $this->patchJson("/api/v1/products/{$product->id}/stock", [
+            'outlet_id' => $outletA->id,
+            'quantity' => null,
+        ])->assertOk();
+
+        $this->patchJson("/api/v1/products/{$product->id}/stock", [
+            'outlet_id' => $outletA->id,
+            'quantity' => 4,
+            'low_stock_threshold' => -1,
+        ])->assertUnprocessable()->assertJsonValidationErrors('low_stock_threshold');
     }
 
     public function test_checkout_deducts_tracked_stock_and_is_idempotent(): void
@@ -464,16 +573,11 @@ class CatalogTest extends TestCase
         $this->assertDatabaseHas('products', ['id' => $product->id]);
     }
 
-    public function test_product_without_history_can_be_deleted_with_its_outlet_configuration(): void
+    public function test_product_without_history_can_be_deleted_with_its_stock(): void
     {
         [$owner, $business, $outlet] = $this->merchant();
         $product = Product::factory()->for($business)->create();
 
-        ProductOutletAvailability::create([
-            'product_id' => $product->id,
-            'outlet_id' => $outlet->id,
-            'is_available' => false,
-        ]);
         ProductStock::create([
             'business_id' => $business->id,
             'product_id' => $product->id,
@@ -485,7 +589,6 @@ class CatalogTest extends TestCase
 
         $this->deleteJson("/api/v1/products/{$product->id}")->assertNoContent();
         $this->assertDatabaseMissing('products', ['id' => $product->id]);
-        $this->assertDatabaseMissing('product_outlet_availabilities', ['product_id' => $product->id]);
         $this->assertDatabaseMissing('product_stocks', ['product_id' => $product->id]);
     }
 

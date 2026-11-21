@@ -154,6 +154,27 @@ describe('POS Mode (Phase 4)', () => {
     expect(screen.getByText('Pilih menu untuk mulai menambahkan item.')).toBeVisible()
   })
 
+  it('menandai menu dengan stok menipis di POS', async () => {
+    const lowStockProduct = {
+      ...product,
+      stock_quantity: 4,
+      low_stock_threshold: 10,
+      low_stock: true,
+    }
+    mockApi(async (url) => {
+      if (url.pathname.endsWith('/me')) {
+        return jsonResponse({ data: { ...user, membership } })
+      }
+      if (url.pathname.endsWith('/products')) return jsonResponse(pageResponse([lowStockProduct]))
+      return null
+    })
+
+    renderPos()
+    expect(
+      await screen.findByRole('button', { name: /Es Kopi Susu.*Stok 4.*Menipis/ }),
+    ).toBeVisible()
+  })
+
   it('memfilter kategori dan menunda pencarian realtime sekitar 300 ms', async () => {
     const category = { id: 5, business_id: 12, name: 'Kopi', is_active: true }
     const categorizedProduct = { ...product, category_id: category.id, category }

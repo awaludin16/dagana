@@ -25,9 +25,8 @@ class DeleteProductAction
             ]);
         }
 
-        // Konfigurasi per outlet bukan histori; hapus lebih dulu agar FK
+        // Stok per outlet bukan histori; hapus lebih dulu agar FK
         // restrictOnDelete tidak berubah menjadi error 500.
-        DB::table('product_outlet_availabilities')->where('product_id', $product->id)->delete();
         DB::table('product_stocks')->where('product_id', $product->id)->delete();
 
         $product->delete();

@@ -26,12 +26,27 @@ class ProductResource extends JsonResource
             'is_active' => $this->is_active,
             'is_available' => $this->is_available,
             'is_available_at_outlet' => $this->when(
-                $this->relationLoaded('outletAvailabilities'),
-                fn (): bool => $this->is_available && ($this->outletAvailabilities->first()?->is_available ?? true),
+                $this->relationLoaded('outletStocks'),
+                fn (): bool => $this->is_available
+                    && ($this->outletStocks->first()?->quantity ?? 1) !== 0,
             ),
             'stock_quantity' => $this->when(
                 $this->relationLoaded('outletStocks'),
                 fn (): ?int => $this->outletStocks->first()?->quantity,
+            ),
+            'low_stock_threshold' => $this->when(
+                $this->relationLoaded('outletStocks'),
+                fn (): ?int => $this->outletStocks->first()?->low_stock_threshold,
+            ),
+            'low_stock' => $this->when(
+                $this->relationLoaded('outletStocks'),
+                function (): bool {
+                    $stock = $this->outletStocks->first();
+
+                    return $stock !== null
+                        && $stock->low_stock_threshold !== null
+                        && $stock->quantity <= $stock->low_stock_threshold;
+                },
             ),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),

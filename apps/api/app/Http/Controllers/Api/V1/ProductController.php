@@ -5,18 +5,17 @@ namespace App\Http\Controllers\Api\V1;
 use App\Domain\Catalog\Actions\DeleteProductAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Product\StoreProductRequest;
-use App\Http\Requests\Product\UpdateProductAvailabilityRequest;
 use App\Http\Requests\Product\UpdateProductRequest;
 use App\Http\Requests\Product\UpdateProductStockRequest;
 use App\Http\Resources\ProductResource;
 use App\Models\Product;
-use App\Models\ProductOutletAvailability;
 use App\Models\ProductStock;
 use App\Models\ProductStockMovement;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ProductController extends Controller
 {
@@ -32,7 +31,6 @@ class ProductController extends Controller
             ->with('category')
             ->when($outletId !== null, function ($query) use ($outletId): void {
                 $query->with([
-                    'outletAvailabilities' => fn ($relation) => $relation->where('outlet_id', $outletId),
                     'outletStocks' => fn ($relation) => $relation->where('outlet_id', $outletId),
                 ]);
             })
@@ -47,9 +45,6 @@ class ProductController extends Controller
             })
             ->when($availability === true && $outletId !== null, function ($query) use ($outletId): void {
                 $query->where('is_available', true)
-                    ->whereDoesntHave('outletAvailabilities', function ($relation) use ($outletId): void {
-                        $relation->where('outlet_id', $outletId)->where('is_available', false);
-                    })
                     ->whereDoesntHave('outletStocks', function ($relation) use ($outletId): void {
                         $relation->where('outlet_id', $outletId)->where('quantity', 0);
                     });
@@ -57,8 +52,8 @@ class ProductController extends Controller
             ->when($availability === false && $outletId !== null, function ($query) use ($outletId): void {
                 $query->where(function ($query) use ($outletId): void {
                     $query->where('is_available', false)
-                        ->orWhereHas('outletAvailabilities', function ($relation) use ($outletId): void {
-                            $relation->where('outlet_id', $outletId)->where('is_available', false);
+                        ->orWhereHas('outletStocks', function ($relation) use ($outletId): void {
+                            $relation->where('outlet_id', $outletId)->where('quantity', 0);
                         });
                 });
             })
@@ -73,10 +68,53 @@ class ProductController extends Controller
 
     public function store(StoreProductRequest $request): JsonResponse
     {
-        $product = Product::create([
-            'business_id' => $request->user()->membership->business_id,
-            ...$request->validated(),
-        ])->load('category');
+        $membership = $request->user()->membership;
+        $productData = $request->safe()->only(['name', 'category_id', 'price', 'is_active', 'is_available']);
+        $initialStock = $request->validated('initial_stock');
+        $initialOutletId = $request->validated('initial_stock_outlet_id');
+
+        if ($initialStock !== null) {
+            abort_unless($membership->canAccessOutlet((int) $initialOutletId), 404);
+        }
+
+        $product = DB::transaction(function () use ($membership, $productData, $initialStock, $initialOutletId): Product {
+            $product = Product::create([
+                'business_id' => $membership->business_id,
+                ...$productData,
+            ]);
+
+            if ($initialStock !== null) {
+                ProductStock::create([
+                    'business_id' => $membership->business_id,
+                    'product_id' => $product->id,
+                    'outlet_id' => (int) $initialOutletId,
+                    'quantity' => (int) $initialStock,
+                    'low_stock_threshold' => ProductStock::DEFAULT_LOW_STOCK_THRESHOLD,
+                ]);
+
+                ProductStockMovement::create([
+                    'business_id' => $membership->business_id,
+                    'product_id' => $product->id,
+                    'outlet_id' => (int) $initialOutletId,
+                    'membership_id' => $membership->id,
+                    'order_id' => null,
+                    'product_name' => $product->name,
+                    'quantity_change' => (int) $initialStock,
+                    'type' => ProductStockMovement::TYPE_ADJUSTMENT,
+                    'reason' => 'Stok awal',
+                    'created_at' => now(),
+                ]);
+            }
+
+            return $product;
+        });
+
+        $product->load($initialStock === null
+            ? ['category']
+            : [
+                'category',
+                'outletStocks' => fn ($relation) => $relation->where('outlet_id', (int) $initialOutletId),
+            ]);
 
         return response()->json(['data' => new ProductResource($product)], 201);
     }
@@ -95,23 +133,6 @@ class ProductController extends Controller
         return new ProductResource($this->loadOutletContext($model, $request));
     }
 
-    public function updateAvailability(UpdateProductAvailabilityRequest $request, int $product): ProductResource
-    {
-        $model = $this->scopedProduct($request, $product);
-        $outletId = (int) $request->validated('outlet_id');
-
-        abort_unless($request->user()->membership->canAccessOutlet($outletId), 404);
-
-        ProductOutletAvailability::updateOrCreate(
-            ['product_id' => $model->id, 'outlet_id' => $outletId],
-            ['is_available' => $request->boolean('is_available')],
-        );
-
-        $model->load(['category', 'outletAvailabilities' => fn ($relation) => $relation->where('outlet_id', $outletId)]);
-
-        return new ProductResource($model);
-    }
-
     public function updateStock(UpdateProductStockRequest $request, int $product): ProductResource
     {
         $model = $this->scopedProduct($request, $product);
@@ -122,8 +143,16 @@ class ProductController extends Controller
         $businessId = $request->user()->membership->business_id;
         $requestedQuantity = $request->validated('quantity');
         $nextQuantity = $requestedQuantity === null ? null : (int) $requestedQuantity;
+        $hasThresholdInput = $request->exists('low_stock_threshold');
+        $requestedThreshold = $request->validated('low_stock_threshold');
 
-        DB::transaction(function () use ($businessId, $model, $outletId, $nextQuantity, $request): void {
+        if ($nextQuantity === null && $hasThresholdInput && $requestedThreshold !== null) {
+            throw ValidationException::withMessages([
+                'low_stock_threshold' => 'Batas stok hanya dapat diatur ketika stok dipantau.',
+            ]);
+        }
+
+        DB::transaction(function () use ($businessId, $model, $outletId, $nextQuantity, $hasThresholdInput, $requestedThreshold, $request): void {
             $stock = ProductStock::query()
                 ->where('business_id', $businessId)
                 ->where('product_id', $model->id)
@@ -132,18 +161,23 @@ class ProductController extends Controller
                 ->first();
 
             $previousQuantity = $stock?->quantity ?? 0;
+            $threshold = $hasThresholdInput
+                ? ($requestedThreshold === null ? ProductStock::DEFAULT_LOW_STOCK_THRESHOLD : (int) $requestedThreshold)
+                : ($stock?->low_stock_threshold ?? ProductStock::DEFAULT_LOW_STOCK_THRESHOLD);
 
             if ($nextQuantity === null) {
                 $stock?->delete();
             } elseif ($stock !== null) {
                 $stock->quantity = $nextQuantity;
+                $stock->low_stock_threshold = $threshold;
                 $stock->save();
             } else {
-                $stock = ProductStock::create([
+                ProductStock::create([
                     'business_id' => $businessId,
                     'product_id' => $model->id,
                     'outlet_id' => $outletId,
                     'quantity' => $nextQuantity,
+                    'low_stock_threshold' => $threshold,
                 ]);
             }
 
@@ -167,7 +201,6 @@ class ProductController extends Controller
 
         $model->load([
             'category',
-            'outletAvailabilities' => fn ($relation) => $relation->where('outlet_id', $outletId),
             'outletStocks' => fn ($relation) => $relation->where('outlet_id', $outletId),
         ]);
 
@@ -189,9 +222,8 @@ class ProductController extends Controller
     }
 
     /**
-     * Optional outlet context: availability (D-35) and stock (D-37) per outlet.
-     * An outlet outside the caller's access is reported as 404 so existence is
-     * not leaked (D-05).
+     * Optional outlet context for stock (D-37/D-39). An outlet outside the
+     * caller's access is reported as 404 so existence is not leaked (D-05).
      */
     private function requestedOutlet(Request $request): ?int
     {
@@ -211,7 +243,6 @@ class ProductController extends Controller
 
         if ($outletId !== null) {
             $product->load([
-                'outletAvailabilities' => fn ($relation) => $relation->where('outlet_id', $outletId),
                 'outletStocks' => fn ($relation) => $relation->where('outlet_id', $outletId),
             ]);
         }

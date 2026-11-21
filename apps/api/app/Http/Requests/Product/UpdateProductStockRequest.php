@@ -27,6 +27,7 @@ class UpdateProductStockRequest extends FormRequest
             ],
             // null mengembalikan menu ke kondisi tanpa batas (tidak dilacak).
             'quantity' => ['present', 'nullable', 'integer', 'min:0', 'max:1000000'],
+            'low_stock_threshold' => ['nullable', 'integer', 'min:0', 'max:1000000'],
             'reason' => ['nullable', 'string', 'max:255'],
         ];
     }
