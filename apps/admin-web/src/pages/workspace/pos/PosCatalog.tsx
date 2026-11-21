@@ -172,9 +172,10 @@ export function PosCatalog({
                   </span>
                   {product.stock_quantity == null ? null : (
                     <span
-                      className={`text-xs tabular-nums ${product.stock_quantity === 0 ? 'text-destructive' : 'text-muted-foreground'}`}
+                      className={`text-xs tabular-nums ${product.stock_quantity === 0 ? 'text-destructive' : product.low_stock ? 'text-dagana-warning' : 'text-muted-foreground'}`}
                     >
                       {product.stock_quantity === 0 ? 'Habis' : `Stok ${product.stock_quantity}`}
+                      {product.low_stock && product.stock_quantity > 0 ? ' · Menipis' : ''}
                     </span>
                   )}
                 </button>

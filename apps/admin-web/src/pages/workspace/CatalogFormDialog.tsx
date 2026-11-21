@@ -33,7 +33,7 @@ type ProductDialogProps = {
   kind: 'product'
   item?: Product
   categories: Category[]
-  outletId?: number
+  initialStockOutletId?: number
   isSaving: boolean
   onClose: () => void
   onSubmit: (input: ProductInput) => Promise<void>
@@ -108,16 +108,13 @@ function CategoryFormDialog({ item, isSaving, onClose, onSubmit }: CategoryDialo
 function ProductFormDialog({
   item,
   categories,
-  outletId,
+  initialStockOutletId,
   isSaving,
   onClose,
   onSubmit,
 }: ProductDialogProps) {
-  // Saat edit dengan outlet terpilih, checkbox mewakili ketersediaan efektif outlet itu (D-35).
-  const outletScoped = Boolean(outletId && item)
-  const available = outletScoped
-    ? (item?.is_available_at_outlet ?? item?.is_available ?? true)
-    : (item?.is_available ?? true)
+  const showInitialStock = !item && initialStockOutletId !== undefined
+  const available = item?.is_available ?? true
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
     defaultValues: {
@@ -126,12 +123,26 @@ function ProductFormDialog({
       category_id: item?.category_id ?? null,
       is_active: item?.is_active ?? true,
       is_available: available,
+      initial_stock: null,
+      initial_stock_outlet_id: showInitialStock ? initialStockOutletId : null,
     },
   })
 
   async function save(values: ProductFormValues) {
     try {
-      await onSubmit(values)
+      await onSubmit({
+        name: values.name,
+        price: values.price,
+        category_id: values.category_id,
+        is_active: values.is_active,
+        is_available: values.is_available,
+        ...(showInitialStock && values.initial_stock != null
+          ? {
+              initial_stock: values.initial_stock,
+              initial_stock_outlet_id: initialStockOutletId,
+            }
+          : {}),
+      })
     } catch (error) {
       if (!applyApiErrors(error, form.setError)) {
         form.setError('root.server', {
@@ -211,6 +222,30 @@ function ProductFormDialog({
               </p>
             ) : null}
           </div>
+          {showInitialStock ? (
+            <FormField
+              id="product-initial-stock"
+              label="Stok awal (opsional)"
+              type="number"
+              min={0}
+              step={1}
+              inputMode="numeric"
+              value={form.watch('initial_stock') ?? ''}
+              onChange={(event) =>
+                form.setValue(
+                  'initial_stock',
+                  event.target.value === '' ? null : Number(event.target.value),
+                  { shouldValidate: true, shouldDirty: true },
+                )
+              }
+              error={
+                getFieldError(form.formState.errors, 'initial_stock') ??
+                getFieldError(form.formState.errors, 'initial_stock_outlet_id') ??
+                undefined
+              }
+              hint="Kosongkan bila stok tidak dipantau. Batas menipis otomatis 10 porsi."
+            />
+          ) : null}
           <div className="grid gap-2 sm:grid-cols-2">
             <label htmlFor="product-is-active" className="flex min-h-11 items-center gap-3 text-sm">
               <input
@@ -231,11 +266,7 @@ function ProductFormDialog({
                 className="size-4 accent-primary focus-visible:ring-2 focus-visible:ring-ring"
                 {...form.register('is_available')}
               />
-              {outletScoped
-                ? 'Tersedia di outlet ini'
-                : item
-                  ? 'Tersedia untuk semua outlet'
-                  : 'Tersedia untuk dijual'}
+              {item ? 'Tersedia untuk semua outlet' : 'Tersedia untuk dijual'}
             </label>
           </div>
           <DialogFooter>

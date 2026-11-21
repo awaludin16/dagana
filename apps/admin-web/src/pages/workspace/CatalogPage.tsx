@@ -5,8 +5,6 @@ import {
   ChevronRight,
   CirclePlus,
   EllipsisVertical,
-  PackageCheck,
-  PackageX,
   Pencil,
   RotateCcw,
   Search,
@@ -95,10 +93,9 @@ export function CatalogPage() {
 
   const canReadCategories = access.can('categories.read')
   const canReadProducts = access.can('products.read')
-  const canToggleAvailability = access.can('products.update_availability')
   const canUpdateStock = access.can('products.update_stock')
   const outlets = access.membership?.outlets ?? []
-  // Default ke outlet pertama agar status & aksi ketersediaan per outlet selalu terjangkau (D-35).
+  // Default ke outlet pertama agar status & stok per outlet selalu terjangkau (D-39).
   // "Semua outlet" tidak ditawarkan bila Business hanya punya satu outlet.
   const outletValue =
     productOutlet && (productOutlet !== 'all' || outlets.length > 1)
@@ -175,35 +172,22 @@ export function CatalogPage() {
     },
   })
 
-  const setAvailability = useMutation({
-    mutationFn: ({ item, isAvailable }: { item: Product; isAvailable: boolean }) =>
-      api.updateProductAvailability(item.id, {
-        outlet_id: selectedOutletId ?? 0,
-        is_available: isAvailable,
-      }),
-    onSuccess: async (product) => {
-      await queryClient.invalidateQueries({ queryKey: ['products'] })
-      setNotice(
-        product.is_available_at_outlet
-          ? `Menu tersedia kembali di ${selectedOutletName ?? 'outlet terpilih'}.`
-          : `Menu ditandai habis di ${selectedOutletName ?? 'outlet terpilih'}. Outlet lain tidak berubah.`,
-      )
-    },
-  })
-
   const setStock = useMutation({
     mutationFn: ({
       item,
       quantity,
+      lowStockThreshold,
       reason,
     }: {
       item: Product
       quantity: number | null
+      lowStockThreshold: number | null
       reason?: string
     }) =>
       api.updateProductStock(item.id, {
         outlet_id: selectedOutletId ?? 0,
         quantity,
+        low_stock_threshold: lowStockThreshold,
         reason,
       }),
     onSuccess: async (product, { quantity }) => {
@@ -511,15 +495,8 @@ export function CatalogPage() {
               canUpdate={access.can('products.update')}
               canDelete={access.can('products.delete')}
               outletId={selectedOutletId}
-              canToggleAvailability={canToggleAvailability}
               canUpdateStock={canUpdateStock}
               onEditStock={(item) => setStockTarget(item)}
-              onToggleAvailability={(item) =>
-                setAvailability.mutate({
-                  item,
-                  isAvailable: !(item.is_available_at_outlet ?? item.is_available),
-                })
-              }
               onEdit={(item) => setDialog({ kind: 'product', item })}
               onDeactivate={(item) => setArchiveTarget({ kind: 'product', item })}
               onActivate={(item) => activate.mutate({ kind: 'product', item })}
@@ -584,30 +561,11 @@ export function CatalogPage() {
           kind="product"
           item={dialog.item}
           categories={categoryOptions.data?.data ?? []}
-          outletId={selectedOutletId}
+          initialStockOutletId={outlets.length === 1 ? outlets[0].id : undefined}
           isSaving={saveProduct.isPending}
           onClose={() => setDialog(null)}
           onSubmit={async (input) => {
-            const item = dialog.item
-            if (!item || selectedOutletId === undefined) {
-              await saveProduct.mutateAsync({ item, input })
-              return
-            }
-
-            // Edit dengan outlet terpilih: checkbox mengatur override outlet ini (D-35).
-            const previous = item.is_available_at_outlet ?? item.is_available
-            const enableGlobal = input.is_available && !item.is_available
-            const { is_available, ...productInput } = input
-            if (is_available !== previous || enableGlobal) {
-              await api.updateProductAvailability(item.id, {
-                outlet_id: selectedOutletId,
-                is_available,
-              })
-            }
-            await saveProduct.mutateAsync({
-              item,
-              input: enableGlobal ? input : { ...productInput, is_available: item.is_available },
-            })
+            await saveProduct.mutateAsync({ item: dialog.item, input })
           }}
         />
       ) : null}
@@ -617,8 +575,13 @@ export function CatalogPage() {
           outletName={selectedOutletName ?? 'outlet terpilih'}
           isSaving={setStock.isPending}
           onClose={() => setStockTarget(null)}
-          onSubmit={async (quantity, reason) => {
-            await setStock.mutateAsync({ item: stockTarget, quantity, reason })
+          onSubmit={async (quantity, lowStockThreshold, reason) => {
+            await setStock.mutateAsync({
+              item: stockTarget,
+              quantity,
+              lowStockThreshold,
+              reason,
+            })
           }}
         />
       ) : null}
@@ -751,10 +714,8 @@ function ProductList({
   canUpdate,
   canDelete,
   outletId,
-  canToggleAvailability,
   canUpdateStock,
   onEditStock,
-  onToggleAvailability,
   onEdit,
   onDeactivate,
   onActivate,
@@ -763,32 +724,12 @@ function ProductList({
   canUpdate: boolean
   canDelete: boolean
   outletId?: number
-  canToggleAvailability: boolean
   canUpdateStock: boolean
   onEditStock: (item: Product) => void
-  onToggleAvailability: (item: Product) => void
   onEdit: (item: Product) => void
   onDeactivate: (item: Product) => void
   onActivate: (item: Product) => void
 }) {
-  const toggle = (item: Product) =>
-    outletId && canToggleAvailability ? (
-      <Button
-        type="button"
-        variant="original"
-        size="icon"
-        className="text-muted-foreground hover:text-foreground"
-        aria-label={item.is_available_at_outlet ? 'Tandai habis' : 'Tandai tersedia'}
-        onClick={() => onToggleAvailability(item)}
-      >
-        {item.is_available_at_outlet ? (
-          <PackageX aria-hidden="true" />
-        ) : (
-          <PackageCheck aria-hidden="true" />
-        )}
-      </Button>
-    ) : null
-
   const editStock = (item: Product) =>
     outletId && canUpdateStock ? (
       <Button
@@ -803,6 +744,8 @@ function ProductList({
       </Button>
     ) : null
 
+  const hasTrackedStock = items.some((item) => item.stock_quantity != null)
+
   return (
     <>
       <div className="hidden md:block">
@@ -812,6 +755,7 @@ function ProductList({
               <TableHead className="p-4">Menu</TableHead>
               <TableHead className="p-4">Kategori</TableHead>
               <TableHead className="p-4">Harga</TableHead>
+              {hasTrackedStock ? <TableHead className="p-4">Stok</TableHead> : null}
               <TableHead className="p-4">Status</TableHead>
               <TableHead className="p-4">Tindakan</TableHead>
             </TableRow>
@@ -824,12 +768,16 @@ function ProductList({
                   {item.category?.name ?? 'Tanpa kategori'}
                 </TableCell>
                 <TableCell className="p-4 tabular-nums">{formatRupiah(item.price)}</TableCell>
+                {hasTrackedStock ? (
+                  <TableCell className="p-4">
+                    <StockCell item={item} />
+                  </TableCell>
+                ) : null}
                 <TableCell className="p-4">
                   <ProductStatus item={item} outletSelected={outletId !== undefined} />
                 </TableCell>
                 <TableCell className="p-4">
                   <div className="flex flex-wrap max-w-48 justify-between items-center gap-2">
-                    {toggle(item)}
                     {editStock(item)}
                     <ItemActions
                       itemName={item.name}
@@ -861,9 +809,11 @@ function ProductList({
               <ProductStatus item={item} outletSelected={outletId !== undefined} />
             </div>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-              <span className="font-semibold tabular-nums">{formatRupiah(item.price)}</span>
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="font-semibold tabular-nums">{formatRupiah(item.price)}</span>
+                {hasTrackedStock ? <StockCell item={item} /> : null}
+              </div>
               <div className="flex flex-wrap items-center gap-2">
-                {toggle(item)}
                 {editStock(item)}
                 <ItemActions
                   itemName={item.name}
@@ -884,10 +834,40 @@ function ProductList({
   )
 }
 
+function StockCell({ item }: { item: Product }) {
+  if (item.stock_quantity == null) {
+    return <span className="text-muted-foreground">—</span>
+  }
+
+  if (item.stock_quantity === 0) {
+    return <Badge variant="destructive">Habis</Badge>
+  }
+
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1.5 tabular-nums">
+      {item.stock_quantity}
+      {item.low_stock ? (
+        <Badge variant="outline" className="border-dagana-warning/40 text-dagana-warning">
+          Menipis
+        </Badge>
+      ) : null}
+    </span>
+  )
+}
+
 function ProductStatus({ item, outletSelected }: { item: Product; outletSelected: boolean }) {
   const available = outletSelected
     ? (item.is_available_at_outlet ?? item.is_available)
     : item.is_available
+  const availabilityLabel = !outletSelected
+    ? available
+      ? 'Tersedia'
+      : 'Habis'
+    : !item.is_available
+      ? 'Habis di semua outlet'
+      : item.stock_quantity === 0 || !available
+        ? 'Habis di outlet ini'
+        : 'Tersedia di outlet ini'
 
   return (
     <div className="flex flex-wrap gap-1.5">
@@ -897,17 +877,7 @@ function ProductStatus({ item, outletSelected }: { item: Product; outletSelected
       >
         {item.is_active ? 'Aktif' : 'Nonaktif'}
       </Badge>
-      <Badge variant={available ? 'secondary' : 'destructive'}>
-        {available ? 'Tersedia' : 'Habis'}
-        {outletSelected ? ' di outlet ini' : ''}
-      </Badge>
-      {outletSelected ? (
-        <span
-          className={`w-full text-xs ${item.stock_quantity === 0 ? 'text-destructive' : 'text-muted-foreground'}`}
-        >
-          Stok: {item.stock_quantity == null ? 'tanpa batas' : item.stock_quantity}
-        </span>
-      ) : null}
+      <Badge variant={available ? 'secondary' : 'destructive'}>{availabilityLabel}</Badge>
     </div>
   )
 }
@@ -923,10 +893,17 @@ function StockDialog({
   outletName: string
   isSaving: boolean
   onClose: () => void
-  onSubmit: (quantity: number | null, reason?: string) => Promise<void>
+  onSubmit: (
+    quantity: number | null,
+    lowStockThreshold: number | null,
+    reason?: string,
+  ) => Promise<void>
 }) {
   const [quantity, setQuantity] = useState(
     item.stock_quantity == null ? '' : String(item.stock_quantity),
+  )
+  const [threshold, setThreshold] = useState(
+    item.low_stock_threshold == null ? '10' : String(item.low_stock_threshold),
   )
   const [reason, setReason] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -935,15 +912,21 @@ function StockDialog({
     event.preventDefault()
     const value = quantity.trim()
     const parsed = value === '' ? null : Number(value)
+    const thresholdValue = threshold.trim() === '' ? 10 : Number(threshold)
 
     if (parsed !== null && (!Number.isInteger(parsed) || parsed < 0)) {
       setError('Stok harus berupa bilangan bulat mulai dari 0.')
       return
     }
 
+    if (!Number.isInteger(thresholdValue) || thresholdValue < 0) {
+      setError('Batas stok harus bilangan bulat mulai dari 0.')
+      return
+    }
+
     setError(null)
     try {
-      await onSubmit(parsed, reason.trim() || undefined)
+      await onSubmit(parsed, parsed === null ? null : thresholdValue, reason.trim() || undefined)
     } catch (cause) {
       setError(apiErrorMessage(cause, 'Stok belum dapat disimpan. Coba lagi.'))
     }
@@ -974,6 +957,17 @@ function StockDialog({
             value={quantity}
             onChange={(event) => setQuantity(event.target.value)}
             hint="Kosong = tanpa batas. Isi 0 untuk menandai habis."
+          />
+          <FormField
+            id="stock-threshold"
+            label="Peringatan stok menipis (opsional)"
+            type="number"
+            min={0}
+            step={1}
+            inputMode="numeric"
+            value={threshold}
+            onChange={(event) => setThreshold(event.target.value)}
+            hint="Default 10 porsi. Isi 0 untuk menonaktifkan peringatan."
           />
           <FormField
             id="stock-reason"

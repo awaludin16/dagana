@@ -6,7 +6,7 @@
 
 Dokumen ini adalah sumber requirement untuk cakupan yang disebutkan. Interpretasi teknis berada di `docs/architecture/`; acceptance criteria implementasi berada di `docs/planning/phase-targets.md`. Jika behavior diubah, perbarui dokumen ini dan catat keputusan yang relevan.
 
-Ketersediaan menu bukan bagian laporan; aturannya ada di [`catalog-and-pos.md`](catalog-and-pos.md) dan D-35.
+Ketersediaan menu bukan bagian laporan; aturannya ada di [`catalog-and-pos.md`](catalog-and-pos.md) dan D-39.
 
 ---
 

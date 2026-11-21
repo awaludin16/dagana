@@ -6,7 +6,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SessionProvider } from '@/auth/SessionProvider'
 import { routes } from '@/router'
 
-const user = { id: 8, name: 'Ayu', email: 'ayu@example.com', email_verified_at: '2026-01-01T00:00:00+00:00' }
+const user = {
+  id: 8,
+  name: 'Ayu',
+  email: 'ayu@example.com',
+  email_verified_at: '2026-01-01T00:00:00+00:00',
+}
 const business = { id: 12, name: 'Kedai Pagi' }
 const outlet = {
   id: 23,
@@ -172,6 +177,62 @@ describe('katalog (Phase 3)', () => {
     expect(screen.getByRole('button', { name: 'Cari' })).toBeVisible()
   })
 
+  it('menyimpan stok awal saat membuat menu di satu outlet', async () => {
+    const fetchMock = mockApi(async (url, init) => {
+      if (url.pathname.endsWith('/me')) return jsonResponse({ data: { ...user, membership } })
+      if (url.pathname.endsWith('/categories')) return jsonResponse(pageResponse([category]))
+      if (url.pathname.endsWith('/products') && init?.method === 'POST') {
+        return jsonResponse({ data: product }, 201)
+      }
+      if (url.pathname.endsWith('/products')) return jsonResponse(pageResponse([product]))
+      return null
+    })
+
+    renderCatalog()
+    fireEvent.click(await screen.findByRole('button', { name: 'Tambah menu' }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.change(within(dialog).getByLabelText('Nama menu'), {
+      target: { value: 'Es Kopi Susu' },
+    })
+    fireEvent.change(within(dialog).getByLabelText('Harga (Rp)'), { target: { value: '15000' } })
+    fireEvent.change(within(dialog).getByLabelText('Stok awal (opsional)'), {
+      target: { value: '6' },
+    })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Simpan menu' }))
+
+    await waitFor(() => {
+      const request = fetchMock.mock.calls.find(
+        ([input, init]) => String(input).endsWith('/products') && init?.method === 'POST',
+      )
+      expect(request).toBeDefined()
+      expect(JSON.parse(String(request?.[1]?.body))).toMatchObject({
+        initial_stock: 6,
+        initial_stock_outlet_id: outlet.id,
+      })
+    })
+  })
+
+  it('menampilkan stok habis di kolom stok dan status', async () => {
+    const soldOut = {
+      ...product,
+      is_available_at_outlet: false,
+      stock_quantity: 0,
+      low_stock_threshold: 10,
+      low_stock: true,
+    }
+    mockApi(async (url) => {
+      if (url.pathname.endsWith('/me')) return jsonResponse({ data: { ...user, membership } })
+      if (url.pathname.endsWith('/categories')) return jsonResponse(pageResponse([category]))
+      if (url.pathname.endsWith('/products')) return jsonResponse(pageResponse([soldOut]))
+      return null
+    })
+
+    renderCatalog()
+    expect(await screen.findByRole('columnheader', { name: 'Stok' })).toBeVisible()
+    expect(screen.getAllByText('Habis').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Habis di outlet ini').length).toBeGreaterThan(0)
+  })
+
   it('mencari dan memaginasi kategori memakai filter API', async () => {
     const fetchMock = mockApi(async (url) => {
       if (url.pathname.endsWith('/me')) {
@@ -282,28 +343,23 @@ describe('katalog (Phase 3)', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('menandai menu habis hanya untuk outlet terpilih', async () => {
+  it('menampilkan status sesuai stok pada outlet terpilih', async () => {
     const branch = { ...outlet, id: 24, name: 'Outlet Cabang' }
-    const multiOutletMembership = {
-      ...membership,
-      outlets: [outlet, branch],
-      permissions: [...catalogPermissions, 'products.update_availability'],
-    }
-    const fetchMock = mockApi(async (url, init) => {
+    const multiOutletMembership = { ...membership, outlets: [outlet, branch] }
+    const fetchMock = mockApi(async (url) => {
       if (url.pathname.endsWith('/me')) {
         return jsonResponse({ data: { ...user, membership: multiOutletMembership } })
       }
       if (url.pathname.endsWith('/categories')) return jsonResponse(pageResponse([category]))
-      if (url.pathname.endsWith('/products/9/availability') && init?.method === 'PATCH') {
-        return jsonResponse({ data: { ...product, is_available_at_outlet: false } })
-      }
       if (url.pathname.endsWith('/products')) {
         const outletId = url.searchParams.get('outlet_id')
+        const soldOutAtBranch = Number(outletId) === branch.id
         return jsonResponse(
           pageResponse([
             {
               ...product,
-              ...(outletId ? { is_available_at_outlet: Number(outletId) === branch.id } : {}),
+              is_available_at_outlet: !soldOutAtBranch,
+              stock_quantity: soldOutAtBranch ? 0 : 4,
             },
           ]),
         )
@@ -313,9 +369,7 @@ describe('katalog (Phase 3)', () => {
 
     renderCatalog()
     await screen.findAllByText('Es Kopi Susu')
-
-    // Regresi: outlet pertama dipilih otomatis sehingga aksi ketersediaan langsung terjangkau.
-    expect(screen.getAllByRole('button', { name: 'Tandai tersedia' }).length).toBeGreaterThan(0)
+    expect((await screen.findAllByText('Tersedia di outlet ini')).length).toBeGreaterThan(0)
 
     // Regresi: daftar mobile tidak boleh berada di dalam container `hidden md:block`.
     const mobileList = screen
@@ -325,28 +379,14 @@ describe('katalog (Phase 3)', () => {
     expect(mobileList?.closest('.hidden')).toBeNull()
 
     fireEvent.change(screen.getByLabelText('Outlet'), { target: { value: String(branch.id) } })
-    expect((await screen.findAllByText(/Tersedia di outlet ini/)).length).toBeGreaterThan(0)
-    expect(
-      fetchMock.mock.calls.some(
-        ([input]) => new URL(String(input)).searchParams.get('outlet_id') === String(branch.id),
-      ),
-    ).toBe(true)
-
-    fireEvent.click(screen.getAllByRole('button', { name: 'Tandai habis' })[0])
     await waitFor(() => {
-      const request = fetchMock.mock.calls.find(
-        ([input, init]) =>
-          String(input).endsWith('/products/9/availability') && init?.method === 'PATCH',
-      )
-      expect(request).toBeDefined()
-      expect(JSON.parse(String(request?.[1]?.body))).toEqual({
-        outlet_id: branch.id,
-        is_available: false,
-      })
+      expect(
+        fetchMock.mock.calls.some(
+          ([input]) => new URL(String(input)).searchParams.get('outlet_id') === String(branch.id),
+        ),
+      ).toBe(true)
+      expect(screen.getAllByText('Habis di outlet ini').length).toBeGreaterThan(0)
     })
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      'Menu ditandai habis di Outlet Cabang.',
-    )
   })
 
   it('mengubah stok menu untuk outlet terpilih', async () => {
@@ -354,7 +394,13 @@ describe('katalog (Phase 3)', () => {
       ...membership,
       permissions: [...catalogPermissions, 'products.update_stock'],
     }
-    const tracked = { ...product, is_available_at_outlet: true, stock_quantity: 4 }
+    const tracked = {
+      ...product,
+      is_available_at_outlet: true,
+      stock_quantity: 4,
+      low_stock_threshold: 10,
+      low_stock: true,
+    }
     const fetchMock = mockApi(async (url, init) => {
       if (url.pathname.endsWith('/me')) {
         return jsonResponse({ data: { ...user, membership: stockMembership } })
@@ -370,10 +416,12 @@ describe('katalog (Phase 3)', () => {
     })
 
     renderCatalog()
-    expect((await screen.findAllByText('Stok: 4')).length).toBeGreaterThan(0)
+    expect(await screen.findByRole('columnheader', { name: 'Stok' })).toBeVisible()
+    expect(screen.getAllByText('Menipis').length).toBeGreaterThan(0)
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Ubah stok Es Kopi Susu' })[0])
     fireEvent.change(await screen.findByLabelText('Stok tersedia'), { target: { value: '7' } })
+    expect(screen.getByLabelText('Peringatan stok menipis (opsional)')).toHaveValue(10)
     fireEvent.change(screen.getByLabelText('Alasan (opsional)'), {
       target: { value: 'Stok awal' },
     })
@@ -387,12 +435,42 @@ describe('katalog (Phase 3)', () => {
       expect(JSON.parse(String(request?.[1]?.body))).toEqual({
         outlet_id: outlet.id,
         quantity: 7,
+        low_stock_threshold: 10,
         reason: 'Stok awal',
       })
     })
     expect(
       await screen.findByText('Stok Es Kopi Susu di Outlet Utama diperbarui menjadi 7.'),
     ).toBeDefined()
+  })
+
+  it('memberi kasier aksi ubah stok', async () => {
+    const cashierMembership = {
+      ...membership,
+      role: 'CASHIER',
+      permissions: ['outlets.read', 'products.read', 'products.update_stock'],
+    }
+    const tracked = {
+      ...product,
+      is_available_at_outlet: true,
+      stock_quantity: 3,
+      low_stock_threshold: 10,
+      low_stock: true,
+    }
+    mockApi(async (url) => {
+      if (url.pathname.endsWith('/me')) {
+        return jsonResponse({ data: { ...user, membership: cashierMembership } })
+      }
+      if (url.pathname.endsWith('/categories')) return jsonResponse(pageResponse([category]))
+      if (url.pathname.endsWith('/products')) return jsonResponse(pageResponse([tracked]))
+      return null
+    })
+
+    renderCatalog()
+    expect(await screen.findByRole('columnheader', { name: 'Stok' })).toBeVisible()
+    expect(
+      screen.getAllByRole('button', { name: 'Ubah stok Es Kopi Susu' }).length,
+    ).toBeGreaterThan(0)
   })
 
   it('mengaktifkan kembali menu nonaktif dari dropdown aksi', async () => {
@@ -420,15 +498,12 @@ describe('katalog (Phase 3)', () => {
 
     await waitFor(() => {
       const request = fetchMock.mock.calls.find(
-        ([input, init]) =>
-          String(input).endsWith('/products/9') && init?.method === 'PATCH',
+        ([input, init]) => String(input).endsWith('/products/9') && init?.method === 'PATCH',
       )
       expect(request).toBeDefined()
       expect(JSON.parse(String(request?.[1]?.body))).toEqual({ is_active: true })
     })
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      'Menu berhasil diaktifkan kembali.',
-    )
+    expect(await screen.findByRole('status')).toHaveTextContent('Menu berhasil diaktifkan kembali.')
   })
 
   it('menyimpan menu tanpa kategori pada klik simpan pertama', async () => {
@@ -467,69 +542,13 @@ describe('katalog (Phase 3)', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('Menu berhasil ditambahkan.')
   })
 
-  it('mengikuti ketersediaan outlet terpilih saat edit menu', async () => {
-    const unavailableAtOutlet = { ...product, is_available_at_outlet: false }
-    const fetchMock = mockApi(async (url, init) => {
-      if (url.pathname.endsWith('/me')) {
-        return jsonResponse({ data: { ...user, membership } })
-      }
-      if (url.pathname.endsWith('/categories')) return jsonResponse(pageResponse([category]))
-      if (url.pathname.endsWith('/products/9/availability') && init?.method === 'PATCH') {
-        return jsonResponse({ data: { ...product, is_available_at_outlet: true } })
-      }
-      if (url.pathname.endsWith('/products/9') && init?.method === 'PATCH') {
-        return jsonResponse({ data: product })
-      }
-      if (url.pathname.endsWith('/products')) {
-        return jsonResponse(pageResponse([unavailableAtOutlet]))
-      }
-      return null
-    })
-
-    renderCatalog()
-    await screen.findAllByText('Es Kopi Susu')
-    fireEvent.pointerDown(
-      screen.getAllByRole('button', { name: 'Aksi lain untuk Es Kopi Susu' })[0],
-      { button: 0, ctrlKey: false },
-    )
-    const menu = await screen.findByRole('menu')
-    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Edit' }))
-    const dialog = await screen.findByRole('dialog')
-    const checkbox = within(dialog).getByLabelText('Tersedia di outlet ini')
-    expect(checkbox).not.toBeChecked()
-
-    fireEvent.click(checkbox)
-    expect(checkbox).toBeChecked()
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Simpan menu' }))
-
-    await waitFor(() => {
-      const request = fetchMock.mock.calls.find(
-        ([input, init]) =>
-          String(input).endsWith('/products/9/availability') && init?.method === 'PATCH',
-      )
-      expect(request).toBeDefined()
-      expect(JSON.parse(String(request?.[1]?.body))).toEqual({
-        outlet_id: 23,
-        is_available: true,
-      })
-    })
-    const productRequest = fetchMock.mock.calls.find(
-      ([input, init]) => String(input).endsWith('/products/9') && init?.method === 'PATCH',
-    )
-    expect(JSON.parse(String(productRequest?.[1]?.body))).toMatchObject({ is_available: true })
-    expect(await screen.findByRole('status')).toHaveTextContent('Menu berhasil diperbarui.')
-  })
-
-  it('mengaktifkan ketersediaan global dari form edit saat menu habis di semua outlet', async () => {
+  it('mengubah ketersediaan global dari form edit', async () => {
     const unavailable = { ...product, is_available: false }
     const fetchMock = mockApi(async (url, init) => {
       if (url.pathname.endsWith('/me')) {
         return jsonResponse({ data: { ...user, membership } })
       }
       if (url.pathname.endsWith('/categories')) return jsonResponse(pageResponse([category]))
-      if (url.pathname.endsWith('/products/9/availability') && init?.method === 'PATCH') {
-        return jsonResponse({ data: { ...product, is_available_at_outlet: true } })
-      }
       if (url.pathname.endsWith('/products/9') && init?.method === 'PATCH') {
         return jsonResponse({ data: { ...product, is_available: true } })
       }
@@ -546,26 +565,22 @@ describe('katalog (Phase 3)', () => {
     const menu = await screen.findByRole('menu')
     fireEvent.click(within(menu).getByRole('menuitem', { name: 'Edit' }))
     const dialog = await screen.findByRole('dialog')
-    const checkbox = within(dialog).getByLabelText('Tersedia di outlet ini')
+    const checkbox = within(dialog).getByLabelText('Tersedia untuk semua outlet')
     expect(checkbox).not.toBeChecked()
 
     fireEvent.click(checkbox)
     fireEvent.click(within(dialog).getByRole('button', { name: 'Simpan menu' }))
 
     await waitFor(() => {
-      const productRequest = fetchMock.mock.calls.find(
+      const request = fetchMock.mock.calls.find(
         ([input, init]) => String(input).endsWith('/products/9') && init?.method === 'PATCH',
       )
-      expect(productRequest).toBeDefined()
-      expect(JSON.parse(String(productRequest?.[1]?.body))).toMatchObject({ is_available: true })
+      expect(request).toBeDefined()
+      expect(JSON.parse(String(request?.[1]?.body))).toMatchObject({ is_available: true })
     })
-    const availabilityRequest = fetchMock.mock.calls.find(
-      ([input, init]) =>
-        String(input).endsWith('/products/9/availability') && init?.method === 'PATCH',
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes('/availability'))).toBe(
+      false,
     )
-    expect(JSON.parse(String(availabilityRequest?.[1]?.body))).toEqual({
-      outlet_id: 23,
-      is_available: true,
-    })
+    expect(await screen.findByRole('status')).toHaveTextContent('Menu berhasil diperbarui.')
   })
 })

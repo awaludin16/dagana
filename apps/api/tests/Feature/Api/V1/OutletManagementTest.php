@@ -7,7 +7,6 @@ use App\Models\BusinessMembership;
 use App\Models\Order;
 use App\Models\Outlet;
 use App\Models\Product;
-use App\Models\ProductOutletAvailability;
 use App\Models\ProductStock;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -64,7 +63,7 @@ class OutletManagementTest extends TestCase
         $this->assertDatabaseCount('outlets', 1);
     }
 
-    public function test_outlet_with_product_availability_override_can_be_deleted(): void
+    public function test_outlet_with_product_stock_can_be_deleted(): void
     {
         [$owner, $business] = $this->merchant();
         $second = Outlet::factory()->for($business)->create();
@@ -72,11 +71,6 @@ class OutletManagementTest extends TestCase
 
         $this->assertDatabaseHas('outlets', ['id' => $second->id]);
 
-        ProductOutletAvailability::create([
-            'product_id' => $product->id,
-            'outlet_id' => $second->id,
-            'is_available' => false,
-        ]);
         ProductStock::create([
             'business_id' => $business->id,
             'product_id' => $product->id,
@@ -89,7 +83,6 @@ class OutletManagementTest extends TestCase
         $this->deleteJson("/api/v1/outlets/{$second->id}")->assertNoContent();
 
         $this->assertDatabaseMissing('outlets', ['id' => $second->id]);
-        $this->assertDatabaseMissing('product_outlet_availabilities', ['outlet_id' => $second->id]);
         $this->assertDatabaseMissing('product_stocks', ['outlet_id' => $second->id]);
     }
 

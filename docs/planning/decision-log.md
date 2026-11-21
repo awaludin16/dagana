@@ -14,11 +14,11 @@
 
 ## Konfirmasi teknis backend Phase 3 (2026-11-04)
 
-> **Status (2026-11-19):** disetujui dan diperluas oleh D-34/D-35 di bagian akhir dokumen. Butir di bawah tetap berlaku kecuali availability: `is_available` global menjadi master switch, dan ketersediaan per outlet ditambahkan lewat D-35.
+> **Status (2026-11-21):** disetujui dan diperluas oleh D-34/D-35 di bagian akhir dokumen. D-35 kemudian dibatalkan oleh D-39, sehingga ketersediaan per outlet tidak lagi menjadi bagian kontrak aktif.
 
 - **Skema catalog:** tabel `categories` (`business_id`, `name`, `is_active`) dan `products` (`business_id`, `category_id` nullable, `name`, `price` integer rupiah, `is_active`, `is_available`) dibuat pada migration `2026_11_04_000000`/`000001`. Catalog adalah master data level Business dengan harga yang sama di semua Outlet sesuai D-25; tidak ada override per-outlet.
 - **Nama resource:** endpoint memakai path `/api/v1/products` (bukan baseline `/menus` di `docs/architecture/api-design.md`) agar konsisten dengan permission D-03 `categories.*`/`products.*`. Baseline grouping `api-design.md` telah dikoreksi.
-- **Availability:** `is_available` adalah boolean global pada menu dan berperan sebagai master switch Business. Ketersediaan per outlet ditambahkan lewat D-35 (`product_outlet_availabilities`) dan hanya dapat mempersempit master switch; tidak ada override harga per outlet.
+- **Availability:** `is_available` adalah boolean global pada menu dan berperan sebagai master switch Business. Ketersediaan per outlet tidak ada lagi (D-39); di tingkat outlet yang menentukan adalah stok `product_stocks`. Tidak ada override harga per outlet.
 - **Delete vs deaktivasi:** `DELETE /api/v1/categories/{id}` hanya boleh saat kategori kosong; kategori berisi menu memakai deaktivasi `PATCH` `is_active` (permission `categories.update`). `DELETE /api/v1/products/{id}` masih bebas karena belum ada tabel transaksi; guard "tolak hapus bila sudah ada transaksi" wajib ditambahkan pada Phase 4 bersama order items (catatan `Domain/Catalog/Actions/DeleteProductAction.php`).
 - **Kontrak snapshot Phase 4:** terdokumentasi di `docs/architecture/api-design.md` bagian "Phase 3 contract — catalog": order item menyimpan snapshot `product_id`/`name`/`price`, checkout wajib mengambil ulang menu via `Product::sellable()`, dan perubahan catalog tidak boleh mengubah snapshot histori.
 - **Verifikasi penuh AC "menu nonaktif tidak bisa masuk transaksi":** menunggu jalur checkout Phase 4; saat ini sudah ada guard domain `Product::sellable()` beserta test scope-nya.
@@ -79,7 +79,7 @@
 
 ### D-03 — Permission catalog MVP
 
-**Status:** disetujui Product Owner (2026-11-16). Katalog berikut adalah baseline final MVP, termasuk `products.update_availability` dari D-35 (revisi 2026-11-19), `products.update_stock` dari D-37 (revisi 2026-11-20), dan penyesuaian D-36 (penghapusan permission `inventory.*`, 2026-11-20). Perubahan kategori/kata kunci permission di masa depan wajib lewat revisi keputusan, bukan langsung di kode. Catatan: `members.invite` tetap menjadi permission untuk endpoint pembuatan employee (alur direct-create, lihat konfirmasi teknis Phase 2).
+**Status:** disetujui Product Owner (2026-11-16). Katalog berikut adalah baseline final MVP, termasuk `products.update_stock` dari D-37 (revisi 2026-11-20, diperluas ke CASHIER oleh D-39 pada 2026-11-21) dan penyesuaian D-36 (penghapusan permission `inventory.*`, 2026-11-20). `products.update_availability` dari D-35 sudah dihapus oleh D-39. Perubahan kategori/kata kunci permission di masa depan wajib lewat revisi keputusan, bukan langsung di kode. Catatan: `members.invite` tetap menjadi permission untuk endpoint pembuatan employee (alur direct-create, lihat konfirmasi teknis Phase 2).
 
 **Keputusan:** gunakan permission eksplisit berbentuk `resource.action`. Katalog awal:
 
@@ -87,7 +87,7 @@
 - `outlets.read`, `outlets.create`, `outlets.update`, `outlets.delete`
 - `members.read`, `members.invite`, `members.update`, `members.delete`
 - `categories.read`, `categories.create`, `categories.update`, `categories.delete`
-- `products.read`, `products.create`, `products.update`, `products.update_availability`, `products.update_stock`, `products.delete`
+- `products.read`, `products.create`, `products.update`, `products.update_stock`, `products.delete`
 - `orders.read`, `orders.create`, `orders.update`, `orders.cancel`
 - `payments.read`, `payments.create`, `payments.refund`
 - `cash.read`, `cash.open`, `cash.cash_in`, `cash.cash_out`, `cash.close`, `cash.reconcile`
@@ -429,9 +429,9 @@ Setiap order lokal memiliki UUID/client-generated idempotency key yang unik, wak
 
 **Verifikasi:** `CatalogTest` (16 test, 200 assertions) mencakup CRUD, validasi, filter/pagination, status aktif/tersedia, isolasi tenant, permission, dan guard hapus berhistori; snapshot order dibuktikan `test_order_menyimpan_snapshot_harga_dan_nama_setelah_catalog_ubah`; suite backend penuh 158 passed (1103 assertions).
 
-### D-35 — Ketersediaan menu per outlet — status: disetujui
+### D-35 — Ketersediaan menu per outlet — status: dibatalkan oleh D-39
 
-**Status:** disetujui Product Owner (2026-11-19). Melengkapi D-34 butir 1 dan revisi `is_available`.
+**Status:** disetujui Product Owner (2026-11-19). Melengkapi D-34 butir 1 dan revisi `is_available`. **Dibatalkan penuh oleh D-39 (2026-11-21)**; bagian di bawah dipertahankan hanya sebagai catatan historis, bukan kontrak aktif.
 
 **Keputusan:**
 
@@ -452,21 +452,21 @@ Setiap order lokal memiliki UUID/client-generated idempotency key yang unik, wak
 
 **Status:** disetujui Product Owner (2026-11-20). Keputusan ini membatalkan bagian inventory pada D-03, D-22, D-24, D-28, D-32, dan D-33, serta seluruh keputusan historis di bagian 3.
 
-**Alasan:** stok numerik bahan baku tidak masuk scope produk saat ini. Ketersediaan menu untuk pembeli sudah dicakup oleh `products.is_available` dan `product_outlet_availabilities` (D-35), sehingga modul inventory tidak perlu dipertahankan sebagai fitur opsional.
+**Alasan:** stok numerik bahan baku tidak masuk scope produk saat ini. Ketersediaan menu untuk pembeli dicakup oleh `products.is_available` dan (setelah D-37/D-39) stok menu per outlet, sehingga modul inventory tidak perlu dipertahankan sebagai fitur opsional.
 
 **Keputusan:**
 
 1. Hapus seluruh modul inventory dari kode dan kontrak aktif: endpoint `/api/v1/inventory`, endpoint `/api/v1/reports/inventory`, kelima permission `inventory.*`, controller/request/resource/action/model/factory/test backend, halaman/dialog/route/nav/types/API client/validasi/label permission admin-web, widget low-stock dashboard, serta seksi inventory laporan.
 2. Hapus data inventory secara permanen lewat migration `2026_11_20_000000_drop_inventory_tables.php`: hapus override `inventory.%` pada `membership_permission_overrides`, lalu drop `stock_movements` dan `inventory_items`. Migration pembuat tabel lama tetap dipertahankan sebagai arsip skema; `down()` sengaja tidak memulihkan data.
 3. Katalog permission D-03 kembali tanpa `inventory.*`. Guard penghapusan outlet dan member tidak lagi memeriksa tabel inventory.
-4. Checkout, payment, kas, order, dan reporting tidak berubah secara fungsional selain hilangnya laporan inventory. Ketersediaan menu memakai D-35; stok numerik per menu tidak ditambahkan pada keputusan ini.
+4. Checkout, payment, kas, order, dan reporting tidak berubah secara fungsional selain hilangnya laporan inventory. Ketersediaan menu saat keputusan ini memakai D-35; kemudian digantikan oleh stok per menu D-37/D-39.
 5. Recipe/BOM, COGS, waste, stock opname, konversi satuan, dan advanced inventory dikeluarkan dari perencanaan aktif MVP maupun roadmap Phase 12. Jika dibutuhkan kelak, semuanya memerlukan keputusan produk baru.
 
 **Verifikasi:** suite backend 143 passed / 946 assertions; `pint --test` PASS 158 files. Admin-web: `tsc -b` sukses, `oxlint` 0 error (3 warning lama), `vitest run` 70/70 passed. Commit `616ea9b` di branch `refactor/remove-inventory`; masih belum di-push. Angka suite terbaru setelah D-37 tercatat pada keputusan tersebut.
 
 ### D-37 — Stok numerik opsional per menu dan outlet — status: disetujui
 
-**Status:** disetujui Product Owner (2026-11-20). Melengkapi D-35 dan D-36 tanpa menghidupkan kembali modul inventory bahan baku.
+**Status:** disetujui Product Owner (2026-11-20). Melengkapi D-36 tanpa menghidupkan kembali modul inventory bahan baku. D-39 kemudian memperluas `products.update_stock` ke CASHIER dan menghapus D-35.
 
 **Alasan:** merchant perlu membatasi jumlah menu yang dapat dijual per outlet, tetapi tidak boleh dipaksa mengisi stok. Fitur ini hanya mengikuti hasil penjualan dan koreksi manual; tidak ada resep, BOM, COGS, waste, atau stock opname.
 
@@ -475,15 +475,43 @@ Setiap order lokal memiliki UUID/client-generated idempotency key yang unik, wak
 1. Stok bersifat **opsional**. Tidak ada baris `product_stocks` berarti menu tidak dibatasi (`stock_quantity = null` pada response). Adanya baris berarti stok dipantau; `quantity = 0` berarti habis. Menu lama tetap berjualan tanpa migrasi data.
 2. Tabel `product_stocks` menyimpan `business_id`, `product_id`, `outlet_id`, dan `quantity` unsigned dengan unique `(product_id, outlet_id)` serta FK `restrictOnDelete`. Semua query stok diskop ke Business dan outlet yang diizinkan.
 3. Tabel `product_stock_movements` adalah ledger append-only dengan tipe `adjustment` dan `sale`, menyimpan `quantity_change`, `product_name`, aktor (`membership_id`), order terkait, reason, dan `created_at`. FK ke product/outlet/membership boleh null agar histori tetap ada saat master data dihapus. Unique `(order_id, product_id)` mencegah movement ganda.
-4. Endpoint baru `PATCH /api/v1/products/{product}/stock` menerima `{outlet_id, quantity: number | null, reason?}`. `quantity: null` menghapus baris stok dan mengembalikan menu ke kondisi tanpa batas. Permission baru `products.update_stock` diberikan ke OWNER/MANAGER, bukan CASHIER; akses outlet tetap diverifikasi (D-05).
-5. `GET /api/v1/products?outlet_id=X` menyertakan `stock_quantity` hanya ketika `outlet_id` dikirim. Filter `is_available=true` dan `Product::sellable($outletId)` menyembunyikan/menolak menu dengan stok 0, selaras dengan D-35.
+4. Endpoint baru `PATCH /api/v1/products/{product}/stock` menerima `{outlet_id, quantity: number | null, reason?}`. `quantity: null` menghapus baris stok dan mengembalikan menu ke kondisi tanpa batas. Permission `products.update_stock` awalnya hanya OWNER/MANAGER; D-39 memperluasnya ke CASHIER. Akses outlet tetap diverifikasi (D-05).
+5. `GET /api/v1/products?outlet_id=X` menyertakan `stock_quantity` hanya ketika `outlet_id` dikirim. Filter `is_available=true` dan `Product::sellable($outletId)` menyembunyikan/menolak menu dengan stok 0, selaras dengan D-39.
 6. Checkout mem-lock baris stok yang dipantau, menolak quantity melebihi stok dengan `422 items`, lalu memotong stok dan menulis satu movement `sale` per menu per order di dalam transaksi order/payment yang sama. Item duplikat diagregasi. Retry idempotency mengembalikan order yang sama tanpa potongan kedua.
 7. Admin-web menampilkan stok per outlet dan menyediakan dialog ubah stok bagi pengguna dengan `products.update_stock`. POS menyembunyikan menu habis dari filter server dan menonaktifkan tombol bila stok 0; backend tetap authoritative.
-8. Config stok per outlet dihapus saat outlet dihapus. Produk tanpa histori order dapat dihapus bersama config availability/stoknya; produk dengan histori tetap harus dinonaktifkan (D-34).
+8. Stok per outlet dihapus saat outlet dihapus. Produk tanpa histori order dapat dihapus bersama stoknya; produk dengan histori tetap harus dinonaktifkan (D-34).
 
-**Gate yang belum ditutup:** belum ada test konkurensi paralel yang benar-benar bersamaan; perlindungan mengandalkan `lockForUpdate` dan unique constraint. Belum ada endpoint/report ledger stok untuk konsumsi UI atau audit, dan belum ada notifikasi stok menipis. Refund/pembatalan belum mengembalikan stok karena alur refund belum disetujui (D-30).
+**Gate yang belum ditutup:** belum ada test konkurensi paralel yang benar-benar bersamaan; perlindungan mengandalkan `lockForUpdate` dan unique constraint. Belum ada endpoint/report ledger stok untuk konsumsi UI atau audit. Peringatan stok menipis hanya berupa badge UI (D-38), bukan notifikasi aktif. Refund/pembatalan belum mengembalikan stok karena alur refund belum disetujui (D-30).
 
-**Verifikasi:** `pint --test` PASS 163 files; `php artisan test` 147 passed / 1008 assertions. Admin-web: `tsc -b` sukses, `oxlint` 0 error (3 warning lama), `vitest run` 71/71 passed. Fitur ini belum di-commit dan belum di-push.
+**Verifikasi:** `pint --test` PASS 163 files; `php artisan test` 147 passed / 1008 assertions. Admin-web: `tsc -b` sukses, `oxlint` 0 error (3 warning lama), `vitest run` 71/71 passed. Implementasi dasar telah di-commit sebagai `a093aa3` di branch `feat/menu-stock`; belum di-push.
+
+### D-38 — Stok awal saat create, kolom stok, dan batas stok menipis — status: disetujui
+
+**Status:** disetujui Product Owner (2026-11-21). Melengkapi D-37 tanpa mengubah sifat opsional stok.
+
+**Keputusan:**
+
+1. Form pembuatan menu menampilkan input **stok awal opsional** hanya ketika user memiliki tepat satu outlet. Payload `POST /products` memakai `initial_stock` dan `initial_stock_outlet_id` yang wajib hadir berpasangan; keduanya dibuat dalam transaksi yang sama dengan produk, baris `product_stocks`, dan movement `adjustment` bernilai positif dengan reason `Stok awal`. Untuk multi-outlet, stok diatur setelah produk dibuat lewat dialog per outlet agar tidak disalin tanpa konteks.
+2. Tabel produk mendapat **kolom `Stok` tersendiri**, ditampilkan bila ada menu pada halaman tersebut yang stoknya dipantau. Isinya `—` untuk tanpa batas, angka untuk tersedia, dan `Habis` untuk stok 0. Kolom `Status` tetap menampilkan `Aktif`/`Nonaktif` plus label efektif; label tidak mengulang angka stok, tetapi stok 0 menghasilkan `Habis di outlet ini` (D-39).
+3. Batas stok menipis disimpan sebagai kolom nullable `low_stock_threshold` di `product_stocks`, bukan tabel baru. Nilai **default 10 porsi** dimaterialisasi saat stok pertama kali diisi dan dipakai untuk backfill baris lama. Batas boleh diubah per outlet; `0` berarti peringatan dinonaktifkan. Mengatur batas ketika stok tidak dipantau (`quantity: null`) ditolak `422`.
+4. Endpoint `PATCH /products/{product}/stock` menerima `low_stock_threshold` opsional. Response produk dengan `outlet_id` menyertakan `low_stock_threshold` dan `low_stock` (`quantity <= threshold`). Tidak ada permission baru: create memakai `products.create`, ubah batas memakai `products.update_stock`.
+5. Peringatan yang dibangun sekarang hanya **badge UI di katalog dan POS** plus field response. Filter `?low_stock=true`, ringkasan dashboard, dan notifikasi email/push/WA tidak masuk cakupan implementasi ini.
+
+**Verifikasi:** `pint --test` PASS 164 files; `php artisan test` 149 passed / 1045 assertions; `CatalogTest` 22 passed / 293 assertions. Admin-web: `tsc -b` sukses, `oxlint` 0 error (3 warning lama), `vitest run` 74/74 passed. Prettier check pada file yang disentuh hanya menemukan format lama yang sudah ada; tidak ada pelanggaran baru dari D-38. Perubahan ini belum di-commit dan belum di-push.
+
+### D-39 — Hapus ketersediaan per outlet; stok sebagai penentu habis — status: disetujui
+
+**Status:** disetujui Product Owner (2026-11-21). Membatalkan penuh D-35 dan menyempurnakan D-37/D-38 setelah ditemukan status habis yang saling bertentangan saat override aktif dengan stok masih tersisa.
+
+**Keputusan:**
+
+1. `products.is_available` tetap master switch Business. Tidak ada lagi override ketersediaan per outlet: tabel `product_outlet_availabilities`, endpoint `PATCH /products/{id}/availability`, permission `products.update_availability`, field `unavailable_reason`, dan toggle UI dihapus. Migration `2026_11_21_000200_drop_product_outlet_availabilities_table.php` menghapus tabel; `down()` hanya merekreasi schema, bukan data lama.
+2. `is_available_at_outlet` adalah satu boolean turunan: `is_available && (stok tidak dipantau ATAU quantity != 0)`. Checkout lewat `Product::sellable($outletId)` memakai aturan yang sama plus `is_active = true`. Tidak ada field alasan terpisah.
+3. `products.update_stock` diberikan ke CASHIER (selain OWNER/MANAGER). Kasier menandai menu habis dengan menetapkan `quantity = 0` lewat dialog ubah stok, hanya pada outlet yang dapat diakses; ia tidak memperoleh `products.update` atau hak mengubah master produk. Perubahan stok tetap tercatat di `product_stock_movements`.
+4. UI katalog tidak lagi menampilkan aksi `Tandai habis` / `Jeda penjualan`. Tombol `Ubah stok` tersedia bagi pemegang `products.update_stock`, termasuk kasier. Status: `Habis di semua outlet` bila master switch mati, `Habis di outlet ini` bila stok 0, dan `Tersedia di outlet ini` selainnya; tanpa outlet tetap `Tersedia`/`Habis`. Kolom `Stok` tetap terpisah dan tidak mengulang angka di label status.
+5. Risiko data: override per outlet yang tersimpan ikut terhapus dan sengaja tidak di-backfill ke stok 0 karena akan merusak angka stok. Sejak migrasi ini, stok outlet adalah satu-satunya penentu kehabisan di tingkat outlet.
+
+**Verifikasi:** `pint --test` PASS 163 files; `php artisan test` 149 passed / 1043 assertions; `CatalogTest` 22 passed / 292 assertions. Admin-web: `tsc -b` sukses, `oxlint` 0 error (3 warning lama), `npm test -- --run` 74/74 passed, Prettier pada file web yang disentuh bersih, `git diff --check` bersih. Perubahan D-38 + D-39 belum di-commit dan belum di-push.
 
 ## 9. Daftar Gate yang Tetap Harus Ditutup Sebelum Produksi
 
