@@ -9,6 +9,9 @@ use App\Models\OrderItem;
 use App\Models\Outlet;
 use App\Models\OutletAccess;
 use App\Models\Product;
+use App\Models\ProductOutletAvailability;
+use App\Models\ProductStock;
+use App\Models\ProductStockMovement;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -255,6 +258,198 @@ class CatalogTest extends TestCase
         ])->assertUnprocessable()->assertJsonValidationErrors('outlet_id');
     }
 
+    public function test_stock_is_optional_per_outlet_and_records_manual_adjustments(): void
+    {
+        [$owner, $business, $outletA] = $this->merchant();
+        $product = Product::factory()->for($business)->create(['price' => 15000]);
+
+        Sanctum::actingAs($owner);
+
+        $response = $this->getJson("/api/v1/products/{$product->id}?outlet_id={$outletA->id}")->assertOk();
+        $this->assertArrayHasKey('stock_quantity', $response->json('data'));
+        $this->assertNull($response->json('data.stock_quantity'));
+
+        $this->patchJson("/api/v1/products/{$product->id}/stock", [
+            'outlet_id' => $outletA->id,
+            'quantity' => 5,
+            'reason' => 'Stok awal',
+        ])->assertOk()->assertJsonPath('data.stock_quantity', 5);
+
+        $this->assertDatabaseHas('product_stocks', [
+            'business_id' => $business->id,
+            'product_id' => $product->id,
+            'outlet_id' => $outletA->id,
+            'quantity' => 5,
+        ]);
+        $this->assertDatabaseHas('product_stock_movements', [
+            'product_id' => $product->id,
+            'outlet_id' => $outletA->id,
+            'quantity_change' => 5,
+            'type' => ProductStockMovement::TYPE_ADJUSTMENT,
+            'reason' => 'Stok awal',
+        ]);
+
+        $this->patchJson("/api/v1/products/{$product->id}/stock", [
+            'outlet_id' => $outletA->id,
+            'quantity' => 3,
+        ])->assertOk()->assertJsonPath('data.stock_quantity', 3);
+        $this->assertDatabaseHas('product_stock_movements', [
+            'product_id' => $product->id,
+            'quantity_change' => -2,
+            'type' => ProductStockMovement::TYPE_ADJUSTMENT,
+        ]);
+
+        $this->getJson("/api/v1/products?outlet_id={$outletA->id}&is_available=true")
+            ->assertOk()->assertJsonCount(1, 'data');
+
+        // null mengembalikan menu ke kondisi opsional: tanpa baris stok.
+        $this->patchJson("/api/v1/products/{$product->id}/stock", [
+            'outlet_id' => $outletA->id,
+            'quantity' => null,
+        ])->assertOk();
+
+        $response = $this->getJson("/api/v1/products/{$product->id}?outlet_id={$outletA->id}")->assertOk();
+        $this->assertArrayHasKey('stock_quantity', $response->json('data'));
+        $this->assertNull($response->json('data.stock_quantity'));
+        $this->assertDatabaseMissing('product_stocks', [
+            'product_id' => $product->id,
+            'outlet_id' => $outletA->id,
+        ]);
+        $this->assertDatabaseHas('product_stock_movements', [
+            'product_id' => $product->id,
+            'quantity_change' => -3,
+            'reason' => 'Stok tidak lagi dipantau',
+        ]);
+
+        $this->patchJson("/api/v1/products/{$product->id}/stock", [
+            'outlet_id' => $outletA->id,
+            'quantity' => 0,
+        ])->assertOk()->assertJsonPath('data.stock_quantity', 0);
+
+        $this->getJson("/api/v1/products?outlet_id={$outletA->id}&is_available=true")
+            ->assertOk()->assertJsonCount(0, 'data');
+        $this->assertSame([], Product::query()->sellable($outletA->id)->pluck('id')->all());
+    }
+
+    public function test_stock_update_requires_permission_and_outlet_access(): void
+    {
+        [$owner, $business, $outletA] = $this->merchant();
+        $outletB = Outlet::factory()->for($business)->create();
+        $product = Product::factory()->for($business)->create();
+
+        $cashier = User::factory()->create();
+        $cashierMembership = BusinessMembership::factory()->for($cashier)->create([
+            'business_id' => $business->id,
+            'role' => BusinessMembership::ROLE_CASHIER,
+        ]);
+        OutletAccess::create(['membership_id' => $cashierMembership->id, 'outlet_id' => $outletA->id]);
+
+        Sanctum::actingAs($cashier);
+        $this->patchJson("/api/v1/products/{$product->id}/stock", [
+            'outlet_id' => $outletA->id,
+            'quantity' => 1,
+        ])->assertForbidden();
+
+        $manager = User::factory()->create();
+        $managerMembership = BusinessMembership::factory()->for($manager)->create([
+            'business_id' => $business->id,
+            'role' => BusinessMembership::ROLE_MANAGER,
+        ]);
+        OutletAccess::create(['membership_id' => $managerMembership->id, 'outlet_id' => $outletA->id]);
+
+        Sanctum::actingAs($manager);
+        $this->patchJson("/api/v1/products/{$product->id}/stock", [
+            'outlet_id' => $outletA->id,
+            'quantity' => 2,
+        ])->assertOk();
+        $this->patchJson("/api/v1/products/{$product->id}/stock", [
+            'outlet_id' => $outletB->id,
+            'quantity' => 2,
+        ])->assertNotFound();
+        $this->getJson("/api/v1/products?outlet_id={$outletB->id}")->assertNotFound();
+        $this->assertDatabaseMissing('product_stocks', ['outlet_id' => $outletB->id]);
+
+        Sanctum::actingAs($owner);
+        $this->patchJson("/api/v1/products/{$product->id}/stock", [
+            'outlet_id' => 999999,
+            'quantity' => 1,
+        ])->assertUnprocessable()->assertJsonValidationErrors('outlet_id');
+        $this->patchJson("/api/v1/products/{$product->id}/stock", [
+            'outlet_id' => $outletA->id,
+            'quantity' => -1,
+        ])->assertUnprocessable()->assertJsonValidationErrors('quantity');
+    }
+
+    public function test_checkout_deducts_tracked_stock_and_is_idempotent(): void
+    {
+        [$owner, $business, $outletA] = $this->merchant();
+        $outletB = Outlet::factory()->for($business)->create();
+        $product = Product::factory()->for($business)->create(['price' => 1000]);
+
+        Sanctum::actingAs($owner);
+        $this->patchJson("/api/v1/products/{$product->id}/stock", [
+            'outlet_id' => $outletA->id,
+            'quantity' => 2,
+            'reason' => 'Stok awal',
+        ])->assertOk();
+
+        // Kegagalan setelah stok divalidasi tidak boleh mengurangi stok.
+        $insufficientCash = $this->checkoutPayload($outletA, $product);
+        $insufficientCash['amount_tendered'] = 0;
+        $this->postJson('/api/v1/orders', $insufficientCash)->assertUnprocessable();
+        $this->assertDatabaseHas('product_stocks', [
+            'product_id' => $product->id,
+            'outlet_id' => $outletA->id,
+            'quantity' => 2,
+        ]);
+        $this->assertSame(0, ProductStockMovement::query()
+            ->where('type', ProductStockMovement::TYPE_SALE)
+            ->count());
+
+        $payload = $this->checkoutPayload($outletA, $product);
+        $payload['items'] = [
+            ['product_id' => $product->id, 'quantity' => 1],
+            ['product_id' => $product->id, 'quantity' => 1],
+        ];
+
+        $first = $this->postJson('/api/v1/orders', $payload)->assertCreated();
+        $orderId = $first->json('data.id');
+
+        $this->assertDatabaseHas('product_stocks', [
+            'product_id' => $product->id,
+            'outlet_id' => $outletA->id,
+            'quantity' => 0,
+        ]);
+        $this->assertDatabaseHas('product_stock_movements', [
+            'order_id' => $orderId,
+            'product_id' => $product->id,
+            'outlet_id' => $outletA->id,
+            'quantity_change' => -2,
+            'type' => ProductStockMovement::TYPE_SALE,
+        ]);
+        // Dua baris item dengan menu sama menghasilkan satu movement agregat.
+        $this->assertSame(1, ProductStockMovement::query()->where('order_id', $orderId)->count());
+
+        $this->postJson('/api/v1/orders', $payload)
+            ->assertOk()
+            ->assertJsonPath('data.id', $orderId);
+        $this->assertDatabaseHas('product_stocks', [
+            'product_id' => $product->id,
+            'outlet_id' => $outletA->id,
+            'quantity' => 0,
+        ]);
+        $this->assertSame(1, ProductStockMovement::query()->where('order_id', $orderId)->count());
+
+        $this->postJson('/api/v1/orders', $this->checkoutPayload($outletA, $product))
+            ->assertUnprocessable()->assertJsonValidationErrors('items');
+        $this->assertDatabaseCount('orders', 1);
+
+        // Outlet tanpa baris stok tetap tanpa batas.
+        $this->postJson('/api/v1/orders', $this->checkoutPayload($outletB, $product))->assertCreated();
+        $this->assertDatabaseMissing('product_stocks', ['outlet_id' => $outletB->id]);
+        $this->assertDatabaseCount('orders', 2);
+    }
+
     public function test_product_with_order_history_cannot_be_deleted(): void
     {
         [$owner, $business] = $this->merchant();
@@ -267,6 +462,31 @@ class CatalogTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonValidationErrors('product');
         $this->assertDatabaseHas('products', ['id' => $product->id]);
+    }
+
+    public function test_product_without_history_can_be_deleted_with_its_outlet_configuration(): void
+    {
+        [$owner, $business, $outlet] = $this->merchant();
+        $product = Product::factory()->for($business)->create();
+
+        ProductOutletAvailability::create([
+            'product_id' => $product->id,
+            'outlet_id' => $outlet->id,
+            'is_available' => false,
+        ]);
+        ProductStock::create([
+            'business_id' => $business->id,
+            'product_id' => $product->id,
+            'outlet_id' => $outlet->id,
+            'quantity' => 4,
+        ]);
+
+        Sanctum::actingAs($owner);
+
+        $this->deleteJson("/api/v1/products/{$product->id}")->assertNoContent();
+        $this->assertDatabaseMissing('products', ['id' => $product->id]);
+        $this->assertDatabaseMissing('product_outlet_availabilities', ['product_id' => $product->id]);
+        $this->assertDatabaseMissing('product_stocks', ['product_id' => $product->id]);
     }
 
     public function test_product_validation_rejects_invalid_input(): void

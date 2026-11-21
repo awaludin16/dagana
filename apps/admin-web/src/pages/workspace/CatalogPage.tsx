@@ -27,6 +27,14 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -82,11 +90,13 @@ export function CatalogPage() {
   const [categoryActive, setCategoryActive] = useState('all')
   const [dialog, setDialog] = useState<DialogState>(null)
   const [archiveTarget, setArchiveTarget] = useState<ArchiveTarget>(null)
+  const [stockTarget, setStockTarget] = useState<Product | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
   const canReadCategories = access.can('categories.read')
   const canReadProducts = access.can('products.read')
   const canToggleAvailability = access.can('products.update_availability')
+  const canUpdateStock = access.can('products.update_stock')
   const outlets = access.membership?.outlets ?? []
   // Default ke outlet pertama agar status & aksi ketersediaan per outlet selalu terjangkau (D-35).
   // "Semua outlet" tidak ditawarkan bila Business hanya punya satu outlet.
@@ -178,6 +188,32 @@ export function CatalogPage() {
           ? `Menu tersedia kembali di ${selectedOutletName ?? 'outlet terpilih'}.`
           : `Menu ditandai habis di ${selectedOutletName ?? 'outlet terpilih'}. Outlet lain tidak berubah.`,
       )
+    },
+  })
+
+  const setStock = useMutation({
+    mutationFn: ({
+      item,
+      quantity,
+      reason,
+    }: {
+      item: Product
+      quantity: number | null
+      reason?: string
+    }) =>
+      api.updateProductStock(item.id, {
+        outlet_id: selectedOutletId ?? 0,
+        quantity,
+        reason,
+      }),
+    onSuccess: async (product, { quantity }) => {
+      await queryClient.invalidateQueries({ queryKey: ['products'] })
+      setNotice(
+        quantity === null
+          ? `Stok ${product.name} tidak lagi dipantau di ${selectedOutletName ?? 'outlet terpilih'}.`
+          : `Stok ${product.name} di ${selectedOutletName ?? 'outlet terpilih'} diperbarui menjadi ${quantity}.`,
+      )
+      setStockTarget(null)
     },
   })
 
@@ -476,6 +512,8 @@ export function CatalogPage() {
               canDelete={access.can('products.delete')}
               outletId={selectedOutletId}
               canToggleAvailability={canToggleAvailability}
+              canUpdateStock={canUpdateStock}
+              onEditStock={(item) => setStockTarget(item)}
               onToggleAvailability={(item) =>
                 setAvailability.mutate({
                   item,
@@ -570,6 +608,17 @@ export function CatalogPage() {
               item,
               input: enableGlobal ? input : { ...productInput, is_available: item.is_available },
             })
+          }}
+        />
+      ) : null}
+      {stockTarget ? (
+        <StockDialog
+          item={stockTarget}
+          outletName={selectedOutletName ?? 'outlet terpilih'}
+          isSaving={setStock.isPending}
+          onClose={() => setStockTarget(null)}
+          onSubmit={async (quantity, reason) => {
+            await setStock.mutateAsync({ item: stockTarget, quantity, reason })
           }}
         />
       ) : null}
@@ -703,6 +752,8 @@ function ProductList({
   canDelete,
   outletId,
   canToggleAvailability,
+  canUpdateStock,
+  onEditStock,
   onToggleAvailability,
   onEdit,
   onDeactivate,
@@ -713,6 +764,8 @@ function ProductList({
   canDelete: boolean
   outletId?: number
   canToggleAvailability: boolean
+  canUpdateStock: boolean
+  onEditStock: (item: Product) => void
   onToggleAvailability: (item: Product) => void
   onEdit: (item: Product) => void
   onDeactivate: (item: Product) => void
@@ -733,6 +786,20 @@ function ProductList({
         ) : (
           <PackageCheck aria-hidden="true" />
         )}
+      </Button>
+    ) : null
+
+  const editStock = (item: Product) =>
+    outletId && canUpdateStock ? (
+      <Button
+        type="button"
+        variant="original"
+        size="icon"
+        className="text-muted-foreground hover:text-foreground"
+        aria-label={`Ubah stok ${item.name}`}
+        onClick={() => onEditStock(item)}
+      >
+        <Pencil aria-hidden="true" />
       </Button>
     ) : null
 
@@ -763,6 +830,7 @@ function ProductList({
                 <TableCell className="p-4">
                   <div className="flex flex-wrap max-w-48 justify-between items-center gap-2">
                     {toggle(item)}
+                    {editStock(item)}
                     <ItemActions
                       itemName={item.name}
                       canUpdate={canUpdate}
@@ -796,6 +864,7 @@ function ProductList({
               <span className="font-semibold tabular-nums">{formatRupiah(item.price)}</span>
               <div className="flex flex-wrap items-center gap-2">
                 {toggle(item)}
+                {editStock(item)}
                 <ItemActions
                   itemName={item.name}
                   canUpdate={canUpdate}
@@ -832,7 +901,98 @@ function ProductStatus({ item, outletSelected }: { item: Product; outletSelected
         {available ? 'Tersedia' : 'Habis'}
         {outletSelected ? ' di outlet ini' : ''}
       </Badge>
+      {outletSelected ? (
+        <span
+          className={`w-full text-xs ${item.stock_quantity === 0 ? 'text-destructive' : 'text-muted-foreground'}`}
+        >
+          Stok: {item.stock_quantity == null ? 'tanpa batas' : item.stock_quantity}
+        </span>
+      ) : null}
     </div>
+  )
+}
+
+function StockDialog({
+  item,
+  outletName,
+  isSaving,
+  onClose,
+  onSubmit,
+}: {
+  item: Product
+  outletName: string
+  isSaving: boolean
+  onClose: () => void
+  onSubmit: (quantity: number | null, reason?: string) => Promise<void>
+}) {
+  const [quantity, setQuantity] = useState(
+    item.stock_quantity == null ? '' : String(item.stock_quantity),
+  )
+  const [reason, setReason] = useState('')
+  const [error, setError] = useState<string | null>(null)
+
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const value = quantity.trim()
+    const parsed = value === '' ? null : Number(value)
+
+    if (parsed !== null && (!Number.isInteger(parsed) || parsed < 0)) {
+      setError('Stok harus berupa bilangan bulat mulai dari 0.')
+      return
+    }
+
+    setError(null)
+    try {
+      await onSubmit(parsed, reason.trim() || undefined)
+    } catch (cause) {
+      setError(apiErrorMessage(cause, 'Stok belum dapat disimpan. Coba lagi.'))
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && !isSaving && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Ubah stok menu</DialogTitle>
+          <DialogDescription>
+            {item.name} · {outletName}. Kosongkan stok untuk mengembalikan menu ke tanpa batas.
+          </DialogDescription>
+        </DialogHeader>
+        <form className="space-y-5" onSubmit={save} noValidate>
+          {error ? (
+            <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+              {error}
+            </p>
+          ) : null}
+          <FormField
+            id="stock-quantity"
+            label="Stok tersedia"
+            type="number"
+            min={0}
+            step={1}
+            inputMode="numeric"
+            value={quantity}
+            onChange={(event) => setQuantity(event.target.value)}
+            hint="Kosong = tanpa batas. Isi 0 untuk menandai habis."
+          />
+          <FormField
+            id="stock-reason"
+            label="Alasan (opsional)"
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            placeholder="Misalnya: stok awal, stok rusak"
+          />
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}>
+              Batal
+            </Button>
+            <Button type="submit" disabled={isSaving}>
+              {isSaving ? 'Menyimpan...' : 'Simpan stok'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }
 

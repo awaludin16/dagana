@@ -37,6 +37,7 @@ class PermissionCatalogTest extends TestCase
         $manager = PermissionCatalog::forRole(BusinessMembership::ROLE_MANAGER);
 
         $this->assertContains('members.update', $manager);
+        $this->assertContains('products.update_stock', $manager);
         $this->assertContains('orders.create', $manager);
         $this->assertNotContains('members.delete', $manager);
         $this->assertNotContains('billing.manage_settings', $manager);
@@ -50,6 +51,7 @@ class PermissionCatalogTest extends TestCase
         $this->assertNotContains('members.read', $cashier);
         $this->assertNotContains('products.create', $cashier);
         $this->assertContains('products.update_availability', $cashier);
+        $this->assertNotContains('products.update_stock', $cashier);
         $this->assertNotContains('products.update', $cashier);
         $this->assertNotContains('reports.read', $cashier);
         $this->assertNotContains('settings.read', $cashier);

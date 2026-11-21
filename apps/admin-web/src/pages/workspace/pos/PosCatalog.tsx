@@ -162,7 +162,7 @@ export function PosCatalog({
               <li key={product.id}>
                 <button
                   type="button"
-                  disabled={attempt}
+                  disabled={attempt || product.stock_quantity === 0}
                   onClick={() => onAddProduct(product)}
                   className="flex min-h-20 w-full flex-col items-start justify-between gap-2 rounded-lg border bg-card p-3 text-left transition hover:border-dagana-primary/50 hover:bg-dagana-primary-soft/40 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-24"
                 >
@@ -170,6 +170,13 @@ export function PosCatalog({
                   <span className="text-sm font-medium tabular-nums text-muted-foreground">
                     {formatRupiah(product.price)}
                   </span>
+                  {product.stock_quantity == null ? null : (
+                    <span
+                      className={`text-xs tabular-nums ${product.stock_quantity === 0 ? 'text-destructive' : 'text-muted-foreground'}`}
+                    >
+                      {product.stock_quantity === 0 ? 'Habis' : `Stok ${product.stock_quantity}`}
+                    </span>
+                  )}
                 </button>
               </li>
             ))}

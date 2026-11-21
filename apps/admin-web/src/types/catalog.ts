@@ -16,6 +16,8 @@ export type Product = {
   is_available: boolean
   /** Only present when the request supplies an outlet_id (D-35). */
   is_available_at_outlet?: boolean
+  /** null = stok tidak dipantau/tanpa batas (D-37). Hanya ada dengan outlet_id. */
+  stock_quantity?: number | null
 }
 
 export type CatalogPage<T> = {
@@ -44,3 +46,9 @@ export type ProductInput = Pick<
   Product,
   'name' | 'price' | 'category_id' | 'is_active' | 'is_available'
 >
+
+export type ProductStockInput = {
+  outlet_id: number
+  quantity: number | null
+  reason?: string
+}

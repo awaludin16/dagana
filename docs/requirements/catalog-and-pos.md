@@ -71,6 +71,10 @@ sudah cukup untuk mulai menjual.
 
 Menu dapat dinonaktifkan secara global, ditandai habis untuk seluruh Business, atau ditandai habis hanya pada outlet tertentu (mis. bahan habis di satu cabang). Penandaan habis per outlet tidak mengubah harga dan tidak memengaruhi outlet lain (D-35). Operator dengan akses outlet dapat menandai menu habis saat berjualan.
 
+### Stok menu opsional
+
+Merchant dapat, tetapi tidak wajib, memantau jumlah menu yang dapat dijual di tiap outlet (D-37). Menu tanpa stok yang dipantau tetap dapat dijual tanpa batas. Jika stok dipantau, angka habis di outlet itu menolak penjualan dan menu tidak tampil sebagai tersedia di POS. Stok berkurang otomatis saat checkout dan dapat dikoreksi manual oleh OWNER/MANAGER dengan alasan; setiap perubahan tercatat dalam ledger. Stok bukan prasyarat onboarding dan tidak terkait dengan resep atau bahan baku.
+
 ---
 
 ---

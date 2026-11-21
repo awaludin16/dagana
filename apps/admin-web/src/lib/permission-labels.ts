@@ -20,6 +20,7 @@ export const PERMISSION_LABELS: Record<string, string> = {
   'products.read': 'Lihat menu',
   'products.create': 'Tambah menu',
   'products.update': 'Ubah menu',
+  'products.update_stock': 'Ubah stok menu',
   'products.delete': 'Hapus menu',
   'orders.read': 'Lihat transaksi',
   'orders.create': 'Buat transaksi',
@@ -66,7 +67,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
   },
   {
     title: 'Menu & Kategori',
-    items: ['categories.read', 'categories.create', 'categories.update', 'categories.delete', 'products.read', 'products.create', 'products.update', 'products.delete'],
+    items: ['categories.read', 'categories.create', 'categories.update', 'categories.delete', 'products.read', 'products.create', 'products.update', 'products.update_stock', 'products.delete'],
   },
   {
     title: 'Transaksi & Pembayaran',

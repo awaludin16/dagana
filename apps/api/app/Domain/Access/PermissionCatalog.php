@@ -36,6 +36,7 @@ final class PermissionCatalog
         'products.create',
         'products.update',
         'products.update_availability',
+        'products.update_stock',
         'products.delete',
         'orders.read',
         'orders.create',

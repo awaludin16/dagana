@@ -4,6 +4,7 @@ namespace App\Domain\Catalog\Actions;
 
 use App\Models\OrderItem;
 use App\Models\Product;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class DeleteProductAction
@@ -23,6 +24,11 @@ class DeleteProductAction
                 'product' => 'Produk tidak dapat dihapus karena sudah digunakan pada histori transaksi. Nonaktifkan produk sebagai penggantinya.',
             ]);
         }
+
+        // Konfigurasi per outlet bukan histori; hapus lebih dulu agar FK
+        // restrictOnDelete tidak berubah menjadi error 500.
+        DB::table('product_outlet_availabilities')->where('product_id', $product->id)->delete();
+        DB::table('product_stocks')->where('product_id', $product->id)->delete();
 
         $product->delete();
     }

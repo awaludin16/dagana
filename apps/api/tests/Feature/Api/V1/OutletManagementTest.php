@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\Outlet;
 use App\Models\Product;
 use App\Models\ProductOutletAvailability;
+use App\Models\ProductStock;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -76,6 +77,12 @@ class OutletManagementTest extends TestCase
             'outlet_id' => $second->id,
             'is_available' => false,
         ]);
+        ProductStock::create([
+            'business_id' => $business->id,
+            'product_id' => $product->id,
+            'outlet_id' => $second->id,
+            'quantity' => 3,
+        ]);
 
         Sanctum::actingAs($owner);
 
@@ -83,6 +90,7 @@ class OutletManagementTest extends TestCase
 
         $this->assertDatabaseMissing('outlets', ['id' => $second->id]);
         $this->assertDatabaseMissing('product_outlet_availabilities', ['outlet_id' => $second->id]);
+        $this->assertDatabaseMissing('product_stocks', ['outlet_id' => $second->id]);
     }
 
     public function test_outlet_store_requires_phone_and_full_address(): void
