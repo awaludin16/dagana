@@ -4,7 +4,7 @@ import type { FieldErrors, FieldValues } from 'react-hook-form'
 import { FormField } from '@/components/FormField'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { getFieldError } from '@/lib/form-errors'
-import { regions } from '@/lib/regions'
+import { regions } from '@/lib/api/regions'
 import { cn } from '@/lib/utils'
 import type { Address } from '@/types'
 
