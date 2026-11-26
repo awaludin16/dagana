@@ -513,6 +513,12 @@ Setiap order lokal memiliki UUID/client-generated idempotency key yang unik, wak
 
 **Verifikasi:** `pint --test` PASS 163 files; `php artisan test` 149 passed / 1043 assertions; `CatalogTest` 22 passed / 292 assertions. Admin-web: `tsc -b` sukses, `oxlint` 0 error (3 warning lama), `npm test -- --run` 74/74 passed, Prettier pada file web yang disentuh bersih, `git diff --check` bersih. Perubahan D-38 + D-39 belum di-commit dan belum di-push.
 
+### Catatan implementasi gambar produk (2026-11-23)
+
+Bukan keputusan produk baru: manajemen satu gambar per menu dijalankan di atas baseline D-36–D-39 tanpa menghidupkan inventory atau menambah permission baru. Kontraknya tercatat di `docs/requirements/catalog-and-pos.md` dan `docs/architecture/api-design.md`: bucket khusus `dagana-product-images`, disk `product_images`, satu `image_path` nullable per produk, `image_url` hanya dari public URL configuration, serta endpoint `POST`/`DELETE /products/{id}/image` dengan `products.update`. Upload saat create terjadi setelah produk dibuat; kegagalan unggah tidak membatalkan produk. R2 produksi belum diverifikasi dengan kredensial nyata—baru konfigurasi dan perilaku lokal/MinIO yang diuji.
+
+**Verifikasi pada penggabungan ini:** admin-web `tsc -b` sukses, `npm test -- --run` 75/75 passed (termasuk alur upload multipart dan kegagalan unggah), `oxlint` 0 error (3 warning, dua di komponen UI lama dan satu pemakaian `watch` di `CatalogFormDialog`), Prettier bersih pada file yang disentuh, `npm run build -- --outDir dist-verify` sukses; API `pint --test` PASS 170 files. Suite backend tidak dapat dijalankan di host karena PHP CLI tidak memiliki `pdo_pgsql`; container Postgres/MinIO juga belum tersedia, jadi `ProductImageTest` dan `CatalogTest` belum terverifikasi ulang pada lingkungan ini.
+
 ## 9. Daftar Gate yang Tetap Harus Ditutup Sebelum Produksi
 
 Keputusan-keputusan di atas memberi arah yang cukup untuk desain dan pengembangan, tetapi item berikut membutuhkan bukti atau persetujuan khusus:

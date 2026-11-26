@@ -61,6 +61,8 @@ const product = {
   category,
   name: 'Es Kopi Susu',
   price: 15000,
+  image_path: null,
+  image_url: null,
   is_active: true,
   is_available: true,
 }
@@ -108,6 +110,18 @@ function pageResponse<T>(items: T[], currentPage = 1, lastPage = 1, total = item
       total,
     },
   }
+}
+
+async function openProductDetail(name = 'Es Kopi Susu') {
+  const trigger = (await screen.findAllByRole('button', { name: `Lihat detail ${name}` }))[0]
+  fireEvent.click(trigger)
+  return screen.findByRole('dialog')
+}
+
+async function openProductEditor(name = 'Es Kopi Susu') {
+  const detail = await openProductDetail(name)
+  fireEvent.click(within(detail).getByRole('button', { name: 'Ubah menu' }))
+  return screen.findByRole('dialog')
 }
 
 describe('katalog (Phase 3)', () => {
@@ -292,16 +306,9 @@ describe('katalog (Phase 3)', () => {
 
     renderCatalog()
     await screen.findAllByText('Es Kopi Susu')
-    fireEvent.pointerDown(
-      screen.getAllByRole('button', { name: 'Aksi lain untuk Es Kopi Susu' })[0],
-      { button: 0, ctrlKey: false },
-    )
-    const menu = await screen.findByRole('menu')
-    expect(within(menu).getByRole('menuitem', { name: 'Hapus permanen' })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
-    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Nonaktifkan' }))
+    const detail = await openProductDetail()
+    expect(within(detail).queryByRole('button', { name: 'Hapus permanen' })).not.toBeInTheDocument()
+    fireEvent.click(within(detail).getByRole('button', { name: 'Nonaktifkan' }))
     const dialog = await screen.findByRole('alertdialog')
     expect(within(dialog).getByText(/bukan menghapus histori transaksi/)).toBeVisible()
     fireEvent.click(within(dialog).getByRole('button', { name: 'Nonaktifkan' }))
@@ -489,12 +496,8 @@ describe('katalog (Phase 3)', () => {
 
     renderCatalog()
     await screen.findAllByText('Es Kopi Susu')
-    fireEvent.pointerDown(
-      screen.getAllByRole('button', { name: 'Aksi lain untuk Es Kopi Susu' })[0],
-      { button: 0, ctrlKey: false },
-    )
-    const menu = await screen.findByRole('menu')
-    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Aktifkan kembali' }))
+    const detail = await openProductDetail()
+    fireEvent.click(within(detail).getByRole('button', { name: 'Aktifkan kembali' }))
 
     await waitFor(() => {
       const request = fetchMock.mock.calls.find(
@@ -542,45 +545,91 @@ describe('katalog (Phase 3)', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('Menu berhasil ditambahkan.')
   })
 
-  it('mengubah ketersediaan global dari form edit', async () => {
-    const unavailable = { ...product, is_available: false }
+  it('mengunggah gambar menu sebagai multipart dari dialog edit', async () => {
+    const uploaded = {
+      ...product,
+      image_path: `businesses/${business.id}/products/${product.id}/foto.jpg`,
+      image_url: 'https://images.example.test/foto.jpg',
+    }
     const fetchMock = mockApi(async (url, init) => {
       if (url.pathname.endsWith('/me')) {
         return jsonResponse({ data: { ...user, membership } })
       }
       if (url.pathname.endsWith('/categories')) return jsonResponse(pageResponse([category]))
-      if (url.pathname.endsWith('/products/9') && init?.method === 'PATCH') {
-        return jsonResponse({ data: { ...product, is_available: true } })
+      if (url.pathname.endsWith('/products/9/image') && init?.method === 'POST') {
+        return jsonResponse({ data: uploaded })
       }
-      if (url.pathname.endsWith('/products')) return jsonResponse(pageResponse([unavailable]))
+      if (url.pathname.endsWith('/products/9') && init?.method === 'PATCH') {
+        return jsonResponse({ data: product })
+      }
+      if (url.pathname.endsWith('/products')) return jsonResponse(pageResponse([product]))
       return null
     })
 
     renderCatalog()
     await screen.findAllByText('Es Kopi Susu')
-    fireEvent.pointerDown(
-      screen.getAllByRole('button', { name: 'Aksi lain untuk Es Kopi Susu' })[0],
-      { button: 0, ctrlKey: false },
-    )
-    const menu = await screen.findByRole('menu')
-    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Edit' }))
-    const dialog = await screen.findByRole('dialog')
-    const checkbox = within(dialog).getByLabelText('Tersedia untuk semua outlet')
-    expect(checkbox).not.toBeChecked()
+    const dialog = await openProductEditor()
+    const file = new File([new Uint8Array([0xff, 0xd8, 0xff])], 'foto.jpg', {
+      type: 'image/jpeg',
+    })
 
-    fireEvent.click(checkbox)
+    fireEvent.change(within(dialog).getByLabelText('Gambar menu'), {
+      target: { files: [file] },
+    })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Simpan menu' }))
 
     await waitFor(() => {
       const request = fetchMock.mock.calls.find(
-        ([input, init]) => String(input).endsWith('/products/9') && init?.method === 'PATCH',
+        ([input, init]) => String(input).endsWith('/products/9/image') && init?.method === 'POST',
       )
       expect(request).toBeDefined()
-      expect(JSON.parse(String(request?.[1]?.body))).toMatchObject({ is_available: true })
+      expect(request?.[1]?.body).toBeInstanceOf(FormData)
+
+      const body = request?.[1]?.body as FormData
+      expect(body.get('image')).toBeInstanceOf(File)
+      expect(new Headers(request?.[1]?.headers).get('Content-Type')).toBeNull()
     })
-    expect(fetchMock.mock.calls.some(([input]) => String(input).includes('/availability'))).toBe(
-      false,
-    )
     expect(await screen.findByRole('status')).toHaveTextContent('Menu berhasil diperbarui.')
+  })
+
+  it('menutup dialog saat unggah gambar gagal setelah menu baru dibuat', async () => {
+    const fetchMock = mockApi(async (url, init) => {
+      if (url.pathname.endsWith('/me')) {
+        return jsonResponse({ data: { ...user, membership } })
+      }
+      if (url.pathname.endsWith('/categories')) return jsonResponse(pageResponse([category]))
+      if (url.pathname.endsWith('/products') && init?.method === 'POST') {
+        return jsonResponse({ data: product }, 201)
+      }
+      if (url.pathname.endsWith('/products/9/image') && init?.method === 'POST') {
+        return jsonResponse({ message: 'Gagal mengunggah.' }, 500)
+      }
+      if (url.pathname.endsWith('/products')) return jsonResponse(pageResponse([product]))
+      return null
+    })
+
+    renderCatalog()
+    await screen.findAllByText('Es Kopi Susu')
+    fireEvent.click(screen.getByRole('button', { name: 'Tambah menu' }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.change(within(dialog).getByLabelText('Nama menu'), {
+      target: { value: 'Es Kopi Susu' },
+    })
+    fireEvent.change(within(dialog).getByLabelText('Harga (Rp)'), { target: { value: '15000' } })
+    const file = new File([new Uint8Array([0xff, 0xd8, 0xff])], 'foto.jpg', {
+      type: 'image/jpeg',
+    })
+    fireEvent.change(within(dialog).getByLabelText('Gambar menu'), { target: { files: [file] } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Simpan menu' }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Menu dibuat, tetapi gambar gagal diunggah. Buka detail menu untuk mengulang.',
+    )
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(
+      fetchMock.mock.calls.filter(
+        ([input, init]) => String(input).endsWith('/products') && init?.method === 'POST',
+      ),
+    ).toHaveLength(1)
   })
 })

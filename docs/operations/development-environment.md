@@ -22,12 +22,14 @@ Semua workspace memakai scaffold resmi (`create vite`, `flutter create`) tanpa m
 
 File yang tersedia:
 
-- `compose.yaml` — service `api`, `postgres`, `redis`, `mailpit` dengan health check.
-- `docker/php/Dockerfile.dev` — PHP 8.5 CLI + `pdo_pgsql`, `redis`, `intl`.
+- `compose.yaml` — service `api`, `postgres`, `redis`, `mailpit`, `minio`, dan `minio-init` dengan health check.
+- `docker/php/Dockerfile.dev` — PHP 8.5 CLI + `pdo_pgsql`, `redis`, `intl`; memuat `docker/php/uploads.ini`.
+- `docker/php/uploads.ini` — batas upload PHP development (`upload_max_filesize=6M`, `post_max_size=10M`).
+- `docker/minio/init.sh` — membuat bucket gambar katalog dan bucket policy public read untuk MinIO lokal.
 - `docker/php/entrypoint.sh` — menjalankan `composer install` bila `vendor` belum ada.
 - `docker/postgres/init/01-test-database.sh` — membuat database uji `<POSTGRES_DB>_test` saat volume pertama kali dibuat.
 - `.env.docker.example` — contoh override Compose; salin ke `.env` (sudah di-gitignore).
-- Named volume `postgres_data` untuk data PostgreSQL.
+- Named volume `postgres_data` untuk data PostgreSQL dan `minio_data` untuk object storage lokal.
 
 ### Perintah setup dan operasi
 
@@ -38,6 +40,34 @@ docker compose up -d --build     # build image dan jalankan api + postgres + red
 docker compose exec api php artisan migrate
 docker compose ps                # status health tiap service
 ```
+
+### Object storage lokal (MinIO)
+
+Compose menjalankan `minio` (S3 API `http://localhost:9000`, console `http://localhost:9001`) dan `minio-init` satu kali untuk membuat bucket `dagana-product-images` serta bucket policy public read (`s3:GetObject`). Ini adalah pengecualian D-18 untuk gambar katalog; file lain tetap privat dan tidak boleh memakai bucket ini. Bucket dan policy dibuat idempoten, jadi `minio-init` aman dijalankan ulang.
+
+Image server memakai build Chainguard dengan digest dipin karena image resmi `minio/minio` tidak lagi dapat ditarik dari registry; init memakai image resmi `amazon/aws-cli`. Environment API yang dipakai:
+
+| Variable | Nilai lokal |
+|---|---|
+| `PRODUCT_IMAGES_ACCESS_KEY_ID` | `${MINIO_ROOT_USER}` (default `dagana`) |
+| `PRODUCT_IMAGES_SECRET_ACCESS_KEY` | `${MINIO_ROOT_PASSWORD}` (default `dagana_dev_secret`) |
+| `PRODUCT_IMAGES_BUCKET` | `dagana-product-images` |
+| `PRODUCT_IMAGES_ENDPOINT` | `http://minio:9000` |
+| `PRODUCT_IMAGES_PUBLIC_URL` | `http://localhost:9000/dagana-product-images` |
+| `PRODUCT_IMAGES_REGION` | `us-east-1` |
+| `PRODUCT_IMAGES_USE_PATH_STYLE_ENDPOINT` | `true` |
+
+Verifikasi cepat:
+
+```bash
+docker compose up -d minio minio-init
+docker compose logs minio-init
+docker compose exec api php artisan tinker --execute="Storage::disk('product_images')->put('smoke.txt','ok');"
+curl http://localhost:9000/dagana-product-images/smoke.txt
+docker compose exec api php artisan tinker --execute="Storage::disk('product_images')->delete('smoke.txt');"
+```
+
+Production memakai Cloudflare R2 melalui API S3-compatible: isi `PRODUCT_IMAGES_ACCESS_KEY_ID`, `PRODUCT_IMAGES_SECRET_ACCESS_KEY`, `PRODUCT_IMAGES_BUCKET`, `PRODUCT_IMAGES_ENDPOINT`, `PRODUCT_IMAGES_PUBLIC_URL`, `PRODUCT_IMAGES_REGION=auto`, dan `PRODUCT_IMAGES_USE_PATH_STYLE_ENDPOINT=false` (nama `R2_*` tetap didukung sebagai fallback). Public read R2 diatur lewat bucket policy/domain publik di Cloudflare, bukan object ACL. Integrasi R2 belum diverifikasi dengan bucket dan kredensial nyata.
 
 ### Health check
 
@@ -186,3 +216,5 @@ Verifikasi render aplikasi POS 2026-11-01: target Android belum dapat dijalankan
 Verifikasi browser 2026-11-01: dev server `apps/admin-web` (port 5173) dan `apps/customer-web` (port 5174) melayani `200`, deep link route tak dikenal menampilkan halaman not-found, dan render diperiksa dengan Edge headless (`--dump-dom` + screenshot) untuk judul, badge, skip link, dan API base URL.
 
 Yang belum dijalankan atau belum tersedia: menjalankan aplikasi mobile di emulator/perangkat fisik; test end-to-end; konfigurasi production. CI pipeline minimal (`​.github/workflows/ci.yml`: pint + test API, lint/type-check/test/build web) ditambahkan 2026-11-13 dan belum pernah dijalankan di GitHub runner.
+
+Verifikasi gambar katalog 2026-11-23: bucket `dagana-product-images` dan bucket policy public read terbentuk; upload/read/delete melalui disk `product_images` ke MinIO berhasil dan URL publik `http://localhost:9000/dagana-product-images/...` dapat diakses tanpa kredensial. Migration `add_image_path_to_products_table` diterapkan ke database development. Backend lulus 173 test (1165 assertion) dan `pint --test` (175 file). Frontend lulus 78 test; run pertama 77/78 karena flake pada test identity-flow yang tidak terkait fitur gambar, lalu lulus saat test file itu dijalankan terisolasi dan pada run penuh berikutnya. `type-check` lulus; `lint` 0 error dengan 4 warning lama; build produksi lulus memakai `--outDir` sementara karena direktori `dist` lama dimiliki root di WSL. Integrasi Cloudflare R2 dengan bucket/kredensial nyata belum diuji.

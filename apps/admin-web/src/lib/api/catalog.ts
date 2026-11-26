@@ -37,4 +37,14 @@ export const catalogApi = {
   async updateProductStock(id: number, input: ProductStockInput) {
     return data<Product>(`/products/${id}/stock`, { method: 'PATCH', body: input })
   },
+
+  async uploadProductImage(id: number, file: File) {
+    const body = new FormData()
+    body.append('image', file)
+    return data<Product>(`/products/${id}/image`, { method: 'POST', body })
+  },
+
+  async deleteProductImage(id: number) {
+    return data<Product>(`/products/${id}/image`, { method: 'DELETE' })
+  },
 }

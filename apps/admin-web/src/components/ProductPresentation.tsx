@@ -1,5 +1,29 @@
+import { ImageIcon } from 'lucide-react'
+
 import { Badge } from '@/components/ui/badge'
 import type { Product } from '@/types'
+
+export function ProductThumbnail({ item }: { item: Product }) {
+  if (!item.image_url) {
+    return (
+      <span
+        aria-hidden="true"
+        className="flex size-10 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground"
+      >
+        <ImageIcon className="size-4" />
+      </span>
+    )
+  }
+
+  return (
+    <img
+      src={item.image_url}
+      alt=""
+      loading="lazy"
+      className="size-10 shrink-0 rounded-md border object-cover"
+    />
+  )
+}
 
 export function ProductStatus({
   item,
@@ -30,6 +54,11 @@ export function ProductStatus({
         {item.is_active ? 'Aktif' : 'Nonaktif'}
       </Badge>
       <Badge variant={available ? 'secondary' : 'destructive'}>{availabilityLabel}</Badge>
+      {outletSelected && item.low_stock ? (
+        <Badge variant="outline" className="border-dagana-warning/40 text-dagana-warning">
+          Menipis
+        </Badge>
+      ) : null}
     </div>
   )
 }

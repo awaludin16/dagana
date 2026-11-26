@@ -196,7 +196,7 @@ Catatan: alur undangan via email belum diputuskan; implementasi saat ini adalah 
 
 Catalog adalah master data level Business (`categories`, `products`); satu Business memakai harga yang sama di semua Outlet sesuai D-25, sehingga tidak ada endpoint per-outlet. Path `/api/v1/products` dipakai alih-alih baseline `/menus` agar konsisten dengan permission D-03 (`products.*`). Menu tanpa kategori valid; menu bisa aktif tetapi tidak tersedia (`is_available` false, mis. sold out).
 
-Skema kolom: `products.price` adalah integer rupiah utuh; `is_active` dan `is_available` boolean (default `true`); `category_id` nullable dengan FK ke kategori milik Business yang sama.
+Skema kolom: `products.price` adalah integer rupiah utuh; `is_active` dan `is_available` boolean (default `true`); `category_id` nullable dengan FK ke kategori milik Business yang sama; `image_path` nullable, relative path di disk `product_images` dengan format `businesses/{business_id}/products/{product_id}/{uuid}.{ext}`.
 
 | Method | Path | Permission | Keterangan |
 |---|---|---|---|
@@ -210,7 +210,11 @@ Skema kolom: `products.price` adalah integer rupiah utuh; `is_active` dan `is_av
 | `GET` | `/api/v1/products/{id}` | `products.read` | `404` bila di luar Business. Menerima `outlet_id` opsional seperti list. |
 | `PATCH` | `/api/v1/products/{id}` | `products.update` | Update `name`, `price`, `category_id`, `is_active`, `is_available` (master switch Business). Response selalu menyertakan `category`. |
 | `PATCH` | `/api/v1/products/{id}/stock` | `products.update_stock` | Body: `outlet_id` (wajib, milik Business + dalam akses outlet), `quantity` (wajib, `number \| null`), `low_stock_threshold` (opsional, `number \| null`), `reason` (opsional). `quantity: null` menghapus baris stok dan menolak threshold non-null dengan `422`. Response menyertakan `stock_quantity`, `low_stock_threshold`, dan `low_stock` untuk outlet tersebut. |
+| `POST` | `/api/v1/products/{id}/image` | `products.update` | Multipart `image` (JPEG/PNG/WebP, maks. 5 MB dan 4096×4096; SVG ditolak). Mengganti gambar lama. Response menyertakan `image_path` dan `image_url`. |
+| `DELETE` | `/api/v1/products/{id}/image` | `products.update` | Menghapus file dan mengosongkan `image_path`. Tidak mengubah data transaksi. |
 | `DELETE` | `/api/v1/products/{id}` | `products.delete` | Hard delete hanya bila produk belum punya `order_items`; `422` bila sudah ada histori (gunakan `PATCH is_active=false`). |
+
+**Gambar produk:** satu `image_path` nullable per produk, diskop ke `business_id` dan `product_id` dari membership terautentikasi (bukan body request). File disimpan di disk `product_images` (bucket khusus `dagana-product-images` di production). `image_url` pada resource dibangun hanya dari konfigurasi public URL khusus gambar; endpoint S3/MinIO internal bukan public URL. Tanpa konfigurasi atau tanpa gambar, `image_url = null`. Upload pada form tambah dilakukan setelah produk dibuat memakai ID baru; bila unggah gagal, produk tetap tersimpan dan UI menutup dialog dengan notifikasi, tanpa mengulang Simpan.
 
 **Ketersediaan per outlet (D-39):** `products.is_available` adalah master switch Business. Tidak ada override ketersediaan per outlet. `is_available_at_outlet` = `is_available && (stok tidak dipantau ATAU quantity != 0)`; checkout lewat `Product::sellable($outletId)` menambahkan `is_active = true`. Menu yang habis di outlet A tetap dapat dijual di outlet B dan sebaliknya. Kasier menandai habis lewat stok 0 dengan `products.update_stock`; mengubah master produk tetap memerlukan `products.update`.
 

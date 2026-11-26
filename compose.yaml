@@ -35,6 +35,14 @@ services:
             MAIL_ENCRYPTION: null
             MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-dagana@example.test}
             MAIL_FROM_NAME: Dagana
+            # Gambar katalog: bucket MinIO lokal dengan public read via bucket policy.
+            PRODUCT_IMAGES_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-dagana}
+            PRODUCT_IMAGES_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-dagana_dev_secret}
+            PRODUCT_IMAGES_BUCKET: dagana-product-images
+            PRODUCT_IMAGES_ENDPOINT: http://minio:9000
+            PRODUCT_IMAGES_PUBLIC_URL: ${PRODUCT_IMAGES_PUBLIC_URL:-http://localhost:9000/dagana-product-images}
+            PRODUCT_IMAGES_REGION: us-east-1
+            PRODUCT_IMAGES_USE_PATH_STYLE_ENDPOINT: "true"
         volumes:
             - ./apps/api:/var/www/api
         ports:
@@ -44,6 +52,8 @@ services:
                 condition: service_healthy
             redis:
                 condition: service_healthy
+            minio-init:
+                condition: service_completed_successfully
         healthcheck:
             test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/api/v1/health"]
             interval: 10s
@@ -88,5 +98,35 @@ services:
             timeout: 3s
             retries: 10
 
+    # S3-compatible storage untuk gambar katalog di development (D-18).
+    # Bucket public read diatur lewat bucket policy, bukan object ACL.
+    minio:
+        # Image resmi MinIO tidak lagi tersedia di Docker Hub/Quay; Chainguard
+        # mempublikasikan build upstream MinIO. Digest dipin agar reproducible.
+        image: chainguard/minio:latest@sha256:304e0bbeb70a9aa0c40ff26d5a9c0a24296019c6d326ba8b75214fb73441d6e9
+        command: server /data --console-address ":9001"
+        environment:
+            MINIO_ROOT_USER: ${MINIO_ROOT_USER:-dagana}
+            MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-dagana_dev_secret}
+        ports:
+            - "9000:9000" # S3 API
+            - "9001:9001" # Console
+        volumes:
+            - minio_data:/data
+
+    minio-init:
+        image: amazon/aws-cli:latest
+        depends_on:
+            - minio
+        environment:
+            AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-dagana}
+            AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-dagana_dev_secret}
+            AWS_DEFAULT_REGION: us-east-1
+            PRODUCT_IMAGES_ENDPOINT: http://minio:9000
+        entrypoint: ["/bin/sh", "/init.sh"]
+        volumes:
+            - ./docker/minio/init.sh:/init.sh:ro
+
 volumes:
     postgres_data:
+    minio_data:

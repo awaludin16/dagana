@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\OutletController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\ProductController;
+use App\Http\Controllers\Api\V1\ProductImageController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\RegionController;
 use App\Http\Controllers\Api\V1\ReportController;
@@ -148,6 +149,13 @@ Route::prefix('v1')->group(function () {
         Route::delete('/products/{product}', [ProductController::class, 'destroy'])
             ->middleware('permission:products.delete')
             ->name('api.v1.products.destroy');
+        // Satu gambar utama per produk; POST yang sama dipakai untuk replace.
+        Route::post('/products/{product}/image', [ProductImageController::class, 'store'])
+            ->middleware('permission:products.update')
+            ->name('api.v1.products.image.store');
+        Route::delete('/products/{product}/image', [ProductImageController::class, 'destroy'])
+            ->middleware('permission:products.update')
+            ->name('api.v1.products.image.destroy');
 
         // Phase 4 — Order Engine dan pembayaran (POS).
         Route::get('/orders', [OrderController::class, 'index'])

@@ -19,7 +19,7 @@ import { api } from '@/lib/api'
 import { apiErrorMessage } from '@/lib/form-errors'
 import type { Category, CategoryInput, Product, ProductInput } from '@/types'
 
-import { CatalogFormDialog } from './CatalogFormDialog'
+import { CatalogFormDialog, type ProductImageChanges } from './CatalogFormDialog'
 import { CategoryList } from './CategoryList'
 import { EmptyState } from './EmptyState'
 import { Pagination } from './Pagination'
@@ -132,12 +132,40 @@ export function CatalogPage() {
   })
 
   const saveProduct = useMutation({
-    mutationFn: ({ item, input }: { item?: Product; input: ProductInput }) =>
-      item ? api.updateProduct(item.id, input) : api.createProduct(input),
-    onSuccess: async (_, { item }) => {
+    mutationFn: async ({
+      item,
+      input,
+      images,
+    }: {
+      item?: Product
+      input: ProductInput
+      images: ProductImageChanges
+    }) => {
+      const saved = item ? await api.updateProduct(item.id, input) : await api.createProduct(input)
+
+      if (images.imageFile || (item && images.removeImage)) {
+        try {
+          if (images.imageFile) await api.uploadProductImage(saved.id, images.imageFile)
+          else await api.deleteProductImage(saved.id)
+
+          return { imageFailed: false }
+        } catch (error) {
+          // Produk baru sudah tersimpan: jangan biarkan Simpan diulang dan membuat duplikat.
+          if (item) throw error
+
+          return { imageFailed: true }
+        }
+      }
+
+      return { imageFailed: false }
+    },
+    onSuccess: async ({ imageFailed }, { item }) => {
       await queryClient.invalidateQueries({ queryKey: ['products'] })
-      if (item) setNotice('Menu berhasil diperbarui.')
-      else setNotice('Menu berhasil ditambahkan.')
+      if (imageFailed) {
+        setNotice('Menu dibuat, tetapi gambar gagal diunggah. Buka detail menu untuk mengulang.')
+      } else {
+        setNotice(item ? 'Menu berhasil diperbarui.' : 'Menu berhasil ditambahkan.')
+      }
       setDialog(null)
     },
   })
@@ -167,6 +195,11 @@ export function CatalogPage() {
           ? `Stok ${product.name} tidak lagi dipantau di ${selectedOutletName ?? 'outlet terpilih'}.`
           : `Stok ${product.name} di ${selectedOutletName ?? 'outlet terpilih'} diperbarui menjadi ${quantity}.`,
       )
+      setDialog((current) =>
+        current?.kind === 'product' && current.item?.id === product.id
+          ? { ...current, item: product }
+          : current,
+      )
       setStockTarget(null)
     },
   })
@@ -185,6 +218,7 @@ export function CatalogPage() {
           ? 'Kategori berhasil dinonaktifkan. Menu dan histori tidak dihapus.'
           : 'Menu berhasil dinonaktifkan. Histori transaksi tidak dihapus.',
       )
+      if (target.kind === 'product') setDialog(null)
       setArchiveTarget(null)
     },
   })
@@ -203,6 +237,7 @@ export function CatalogPage() {
           ? 'Kategori berhasil diaktifkan kembali.'
           : 'Menu berhasil diaktifkan kembali.',
       )
+      if (target.kind === 'product') setDialog(null)
     },
   })
 
@@ -462,14 +497,13 @@ export function CatalogPage() {
           productData?.data.length ? (
             <ProductList
               items={productData.data}
-              canUpdate={access.can('products.update')}
-              canDelete={access.can('products.delete')}
               outletId={selectedOutletId}
               canUpdateStock={canUpdateStock}
-              onEditStock={(item) => setStockTarget(item)}
-              onEdit={(item) => setDialog({ kind: 'product', item })}
-              onDeactivate={(item) => setArchiveTarget({ kind: 'product', item })}
-              onActivate={(item) => activate.mutate({ kind: 'product', item })}
+              onEditStock={(item) => {
+                setDialog(null)
+                setStockTarget(item)
+              }}
+              onView={(item) => setDialog({ kind: 'product', item })}
             />
           ) : (
             <EmptyState
@@ -532,10 +566,20 @@ export function CatalogPage() {
           item={dialog.item}
           categories={categoryOptions.data?.data ?? []}
           initialStockOutletId={outlets.length === 1 ? outlets[0].id : undefined}
+          outletId={selectedOutletId}
+          outletName={selectedOutletName}
+          canUpdate={access.can('products.update')}
+          canUpdateStock={canUpdateStock}
           isSaving={saveProduct.isPending}
           onClose={() => setDialog(null)}
-          onSubmit={async (input) => {
-            await saveProduct.mutateAsync({ item: dialog.item, input })
+          onEditStock={(item) => {
+            setDialog(null)
+            setStockTarget(item)
+          }}
+          onDeactivate={(item) => setArchiveTarget({ kind: 'product', item })}
+          onActivate={(item) => activate.mutate({ kind: 'product', item })}
+          onSubmit={async (input, images) => {
+            await saveProduct.mutateAsync({ item: dialog.item, input, images })
           }}
         />
       ) : null}

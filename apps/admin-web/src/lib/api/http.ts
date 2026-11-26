@@ -56,15 +56,19 @@ const fetchAdapter: AxiosAdapter = async (config) => {
     if (value !== undefined && value !== null) headers.set(key, String(value))
   }
 
+  if (config.data instanceof FormData) headers.delete('Content-Type')
+
   const response = await fetch(fullUrl(config), {
     method: (config.method ?? 'get').toUpperCase(),
     headers,
     body:
       config.data === undefined
         ? undefined
-        : typeof config.data === 'string'
+        : config.data instanceof FormData
           ? config.data
-          : JSON.stringify(config.data),
+          : typeof config.data === 'string'
+            ? config.data
+            : JSON.stringify(config.data),
     credentials: 'include',
   })
 
@@ -118,7 +122,9 @@ export const http = axios.create({
 http.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
   const headers = new AxiosHeaders(config.headers)
 
-  if (config.data !== undefined) headers.set('Content-Type', 'application/json')
+  if (config.data !== undefined && !(config.data instanceof FormData)) {
+    headers.set('Content-Type', 'application/json')
+  }
 
   if ((config.method ?? 'get').toUpperCase() !== 'GET') {
     if (!xsrfToken()) await refreshCsrf()

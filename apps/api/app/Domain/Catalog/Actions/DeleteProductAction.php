@@ -2,6 +2,7 @@
 
 namespace App\Domain\Catalog\Actions;
 
+use App\Domain\Catalog\Services\ProductImageService;
 use App\Models\OrderItem;
 use App\Models\Product;
 use Illuminate\Support\Facades\DB;
@@ -9,6 +10,8 @@ use Illuminate\Validation\ValidationException;
 
 class DeleteProductAction
 {
+    public function __construct(private readonly ProductImageService $images) {}
+
     /**
      * shortcut: historical reference guard (order items) arrives with Phase 4;
      * once orders exist, this must refuse to delete a product that already has
@@ -29,6 +32,12 @@ class DeleteProductAction
         // restrictOnDelete tidak berubah menjadi error 500.
         DB::table('product_stocks')->where('product_id', $product->id)->delete();
 
+        $imagePath = $product->image_path;
+
         $product->delete();
+
+        // File dihapus setelah row benar-benar hilang; kegagalan storage
+        // dilaporkan ke log dan tidak mengembalikan produk.
+        $this->images->delete($imagePath);
     }
 }

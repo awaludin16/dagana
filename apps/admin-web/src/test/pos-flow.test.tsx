@@ -6,7 +6,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SessionProvider } from '@/auth/SessionProvider'
 import { routes } from '@/router'
 
-const user = { id: 8, name: 'Ayu', email: 'ayu@example.com', email_verified_at: '2026-01-01T00:00:00+00:00' }
+const user = {
+  id: 8,
+  name: 'Ayu',
+  email: 'ayu@example.com',
+  email_verified_at: '2026-01-01T00:00:00+00:00',
+}
 const outlet = { id: 23, name: 'Outlet Utama' }
 const membership = {
   id: 1,
@@ -23,6 +28,8 @@ const product = {
   category: null,
   name: 'Es Kopi Susu',
   price: 15000,
+  image_path: null,
+  image_url: null,
   is_active: true,
   is_available: true,
 }
