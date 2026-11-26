@@ -1,5 +1,6 @@
-import { Pencil } from 'lucide-react'
+import { Eye, Pencil } from 'lucide-react'
 
+import { ProductStatus, ProductThumbnail } from '@/components/ProductPresentation'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -12,30 +13,20 @@ import {
 import { formatRupiah } from '@/lib/order-format'
 import type { Product } from '@/types'
 
-import { ItemActions } from './ItemActions'
-import { ProductStatus } from './ProductStatus'
 import { StockCell } from './StockCell'
 
 export function ProductList({
   items,
-  canUpdate,
-  canDelete,
   outletId,
   canUpdateStock,
   onEditStock,
-  onEdit,
-  onDeactivate,
-  onActivate,
+  onView,
 }: {
   items: Product[]
-  canUpdate: boolean
-  canDelete: boolean
   outletId?: number
   canUpdateStock: boolean
   onEditStock: (item: Product) => void
-  onEdit: (item: Product) => void
-  onDeactivate: (item: Product) => void
-  onActivate: (item: Product) => void
+  onView: (item: Product) => void
 }) {
   const editStock = (item: Product) =>
     outletId && canUpdateStock ? (
@@ -52,6 +43,7 @@ export function ProductList({
     ) : null
 
   const hasTrackedStock = items.some((item) => item.stock_quantity != null)
+  const outletSelected = outletId !== undefined
 
   return (
     <>
@@ -70,7 +62,12 @@ export function ProductList({
           <TableBody>
             {items.map((item) => (
               <TableRow key={item.id}>
-                <TableCell className="p-4 font-medium">{item.name}</TableCell>
+                <TableCell className="p-4">
+                  <div className="flex items-center gap-3">
+                    <ProductThumbnail item={item} />
+                    <span className="font-medium">{item.name}</span>
+                  </div>
+                </TableCell>
                 <TableCell className="p-4 text-muted-foreground">
                   {item.category?.name ?? 'Tanpa kategori'}
                 </TableCell>
@@ -81,21 +78,21 @@ export function ProductList({
                   </TableCell>
                 ) : null}
                 <TableCell className="p-4">
-                  <ProductStatus item={item} outletSelected={outletId !== undefined} />
+                  <ProductStatus item={item} outletSelected={outletSelected} />
                 </TableCell>
                 <TableCell className="p-4">
-                  <div className="flex flex-wrap max-w-48 justify-between items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {editStock(item)}
-                    <ItemActions
-                      itemName={item.name}
-                      canUpdate={canUpdate}
-                      canDelete={canDelete}
-                      canDeactivate={item.is_active}
-                      canActivate={!item.is_active}
-                      onEdit={() => onEdit(item)}
-                      onDeactivate={() => onDeactivate(item)}
-                      onActivate={() => onActivate(item)}
-                    />
+                    <Button
+                      type="button"
+                      variant="original"
+                      size="icon"
+                      className="text-muted-foreground hover:text-foreground"
+                      aria-label={`Lihat detail ${item.name}`}
+                      onClick={() => onView(item)}
+                    >
+                      <Eye aria-hidden="true" />
+                    </Button>
                   </div>
                 </TableCell>
               </TableRow>
@@ -105,35 +102,23 @@ export function ProductList({
       </div>
       <ul className="space-y-3 md:hidden">
         {items.map((item) => (
-          <li key={item.id} className="rounded-lg border p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h2 className="break-words font-semibold">{item.name}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {item.category?.name ?? 'Tanpa kategori'}
-                </p>
+          <li key={item.id}>
+            <button
+              type="button"
+              onClick={() => onView(item)}
+              aria-label={`Lihat detail ${item.name}`}
+              className="w-full space-y-3 rounded-lg border p-4 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40"
+            >
+              <div className="flex items-center gap-3">
+                <ProductThumbnail item={item} />
+                <span className="min-w-0 flex-1 break-words font-semibold">{item.name}</span>
+                <ProductStatus item={item} outletSelected={outletSelected} />
               </div>
-              <ProductStatus item={item} outletSelected={outletId !== undefined} />
-            </div>
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <span className="font-semibold tabular-nums">{formatRupiah(item.price)}</span>
                 {hasTrackedStock ? <StockCell item={item} /> : null}
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {editStock(item)}
-                <ItemActions
-                  itemName={item.name}
-                  canUpdate={canUpdate}
-                  canDelete={canDelete}
-                  canDeactivate={item.is_active}
-                  canActivate={!item.is_active}
-                  onEdit={() => onEdit(item)}
-                  onDeactivate={() => onDeactivate(item)}
-                  onActivate={() => onActivate(item)}
-                />
-              </div>
-            </div>
+            </button>
           </li>
         ))}
       </ul>

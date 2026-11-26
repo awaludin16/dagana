@@ -34,6 +34,7 @@ BUSINESS
 - Membership menyimpan hubungan User–Business, role preset, status, dan outlet access sesuai keputusan produk.
 - Business hanya menyimpan `name` pada MVP. Outlet menyimpan alamat komposit sebagai kolom flat: `street`, `village`, `district`, `regency`, `province`, dan `postal_code`, plus `phone` opsional.
 - Catalog (category dan menu/produk) adalah master data milik Business dengan harga yang sama di semua Outlet sesuai D-25. Menu memakai `is_active` dan `is_available` boolean; `is_available` adalah master switch Business. Tidak ada override ketersediaan per outlet (D-39); kehabisan lokal ditentukan oleh baris `product_stocks` dengan `quantity = 0`. Price disimpan sebagai integer rupiah utuh.
+- `products.image_path` nullable menyimpan satu relative path gambar per menu dengan format `businesses/{business_id}/products/{product_id}/{uuid}.{ext}` pada disk `product_images`. File lama dihapus saat gambar diganti/dihapus serta saat produk dihapus; URL publik tidak disimpan di database.
 - Constraint penting wajib dijaga pada database dan backend, bukan hanya frontend validation.
 
 ## 3. Operational data ownership

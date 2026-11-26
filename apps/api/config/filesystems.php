@@ -60,6 +60,25 @@ return [
             'report' => false,
         ],
 
+        /*
+         * Catalog product images only (D-18 exception: public read through the
+         * bucket policy). Uses an S3-compatible endpoint: MinIO locally,
+         * Cloudflare R2 in production. Never falls back to the S3 API endpoint
+         * as a public URL; image_url is null until PRODUCT_IMAGES_PUBLIC_URL is
+         * configured.
+         */
+        'product_images' => [
+            'driver' => 's3',
+            'key' => env('PRODUCT_IMAGES_ACCESS_KEY_ID', env('R2_ACCESS_KEY_ID')),
+            'secret' => env('PRODUCT_IMAGES_SECRET_ACCESS_KEY', env('R2_SECRET_ACCESS_KEY')),
+            'region' => env('PRODUCT_IMAGES_REGION', env('R2_REGION', 'auto')),
+            'bucket' => env('PRODUCT_IMAGES_BUCKET', env('R2_BUCKET', 'dagana-product-images')),
+            'url' => env('PRODUCT_IMAGES_PUBLIC_URL', env('R2_PUBLIC_URL')),
+            'endpoint' => env('PRODUCT_IMAGES_ENDPOINT', env('R2_ENDPOINT')),
+            'use_path_style_endpoint' => env('PRODUCT_IMAGES_USE_PATH_STYLE_ENDPOINT', false),
+            'throw' => true,
+        ],
+
     ],
 
     /*

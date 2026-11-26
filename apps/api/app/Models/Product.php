@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'price',
     'is_active',
     'is_available',
+    'image_path',
 ])]
 class Product extends Model
 {

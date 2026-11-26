@@ -12,6 +12,10 @@ export type Product = {
   category: Category | null
   name: string
   price: number
+  /** Relative storage path; null bila belum ada gambar. */
+  image_path: string | null
+  /** URL publik dari backend; null bila belum ada gambar atau public URL belum dikonfigurasi. */
+  image_url: string | null
   is_active: boolean
   is_available: boolean
   /** Hanya ada dengan outlet_id; dihitung dari is_available global dan stok outlet (D-39). */

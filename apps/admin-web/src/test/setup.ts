@@ -14,3 +14,9 @@ if (!Element.prototype.hasPointerCapture) {
 if (!Element.prototype.scrollIntoView) {
   Element.prototype.scrollIntoView = () => {}
 }
+
+// jsdom tidak menyediakan object URL untuk pratinjau gambar.
+if (!URL.createObjectURL) {
+  URL.createObjectURL = () => 'blob:dagana-preview'
+  URL.revokeObjectURL = () => {}
+}

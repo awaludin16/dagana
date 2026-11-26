@@ -34,6 +34,10 @@ COPY . .
 ENV COMPOSER_ALLOW_SUPERUSER=1
 RUN composer install --no-dev --optimize-autoloader
 
+# 7b. Batas upload gambar produk. Nilai ini sama dengan docker/php/uploads.ini,
+# tetapi build context Render adalah apps/api sehingga file dev tidak tersedia.
+RUN printf 'upload_max_filesize=6M\npost_max_size=10M\n' > /usr/local/etc/php/conf.d/uploads.ini
+
 # 8. Atur hak akses/permission folder storage dan bootstrap (Wajib agar Laravel tidak error 500)
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 

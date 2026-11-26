@@ -67,6 +67,10 @@ Rp15.000
 
 sudah cukup untuk mulai menjual.
 
+### Gambar menu
+
+Merchant dapat menambahkan satu gambar per menu (JPEG/PNG/WebP, maks. 5 MB, 4096×4096; SVG ditolak) saat membuat menu atau lewat detail menu. Gambar disimpan di bucket khusus `dagana-product-images` dengan path `businesses/{business_id}/products/{product_id}/{uuid}.{ext}`; URL publik hanya dibangun dari konfigurasi khusus, bukan endpoint S3/MinIO internal. Tanpa gambar atau tanpa konfigurasi public URL, `image_url` bernilai `null`. Mengganti atau menghapus gambar memerlukan `products.update`; pengguna dengan `products.read` melihat detail secara read-only. Hapus permanen tidak tersedia di detail menu—hanya nonaktifkan/aktifkan kembali. Bila unggah gambar gagal saat membuat menu, menu tetap tersimpan, dialog ditutup, dan notifikasi memberitahu pengguna untuk mengulang lewat detail menu.
+
 ### Ketersediaan menu
 
 Menu dapat dinonaktifkan secara global (`is_active = false`), ditandai habis untuk seluruh Business (`is_available = false`), atau ditandai habis hanya pada outlet tertentu dengan menetapkan stok 0 (mis. bahan habis di satu cabang). Penandaan habis per outlet tidak mengubah harga dan tidak memengaruhi outlet lain (D-39). Operator dengan akses outlet, termasuk kasier, dapat mengubah stok saat berjualan.
